@@ -1,4 +1,3 @@
-<script>
 console.log("Skript wird geladen....");
 
 document.addEventListener('DOMContentLoaded', (event) => {
@@ -304,4 +303,3 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 });
             });
 });
-</script>
