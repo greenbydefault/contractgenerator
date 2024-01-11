@@ -9,9 +9,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 try {
                     // Assuming the jsPDF library is loaded in the global scope
                     if (typeof jsPDF === 'undefined') {
-                        console.error('jsPDF is not defined. Make sure the jsPDF library has been included in the HTML.');
-                        return;
-                    }
+    console.error('jsPDF ist nicht geladen oder nicht definiert.');
+} else {
+    console.log('jsPDF erfolgreich geladen.');
+}
 
                     // Retrieve values from form elements
                     const brandName = document.getElementById('vertrag-brandname').value;
