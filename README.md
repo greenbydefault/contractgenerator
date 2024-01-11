@@ -1,1 +1,3 @@
 # contractgenerator
+
+SCRIPTGENERATOR TOOL
