@@ -1,13 +1,14 @@
 console.log("Skript wird geladen....");
 
+
+document.addEventListener('DOMContentLoaded', (event) => {
+    console.log("Dokument vollständig geladen und bereit.");
+    
 if (typeof jsPDF === 'undefined') {
     console.error('jsPDF ist nicht geladen oder nicht definiert.');
 } else {
     console.log('jsPDF erfolgreich geladen.');
 }
-
-document.addEventListener('DOMContentLoaded', (event) => {
-    console.log("Dokument vollständig geladen und bereit.");
             function generatePDF() {
                 console.log('Starting PDF generation');
 
