@@ -1,5 +1,4 @@
 console.log("Skript wird geladen....");
-console.log("Eigenes Skript wird geladen...");
 
 if (typeof jsPDF === 'undefined') {
     console.error('jsPDF ist nicht geladen oder nicht definiert.');
