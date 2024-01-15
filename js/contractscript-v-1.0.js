@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     const doc = new jsPDF(); // Anpassung basierend auf der Einbindung von jsPDF
                     console.log('jsPDF instance created');
                     doc.setFont("helvetica");
-                    doc.setFontSize(8);
+                    doc.setFontSize(10);
                     // Define the static parts of the contract and insert dynamic values
                     const contractText = [
                     "1. Rechte und Pflichten des Creators",
