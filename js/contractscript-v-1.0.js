@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     "         STADT."
             ];
          
-            const lines = doc.splitTextToSize(contractText, 140);
+            const lines = doc.splitTextToSize(contractText, 280);
             let y = 10;
 
             lines.forEach(line => {
