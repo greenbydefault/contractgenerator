@@ -3,22 +3,20 @@ console.log("Skript wird geladen....");
 document.addEventListener('DOMContentLoaded', (event) => {
     console.log("Dokument vollständig geladen und bereit.");
     
-            if (typeof jsPDF === 'undefined') {
-                console.error('jsPDF ist nicht geladen oder nicht definiert.');
-            } else {
-                console.log('jsPDF erfolgreich geladen.');
-            }
-            function generatePDF() {
-                console.log('Starting PDF generation');
+    // Überprüfung, ob jsPDF geladen ist
+    if (typeof jsPDF === 'undefined') {
+        console.error('jsPDF ist nicht geladen oder nicht definiert.');
+        return; // Beendet die Ausführung, wenn jsPDF nicht vorhanden ist
+    } else {
+        console.log('jsPDF erfolgreich geladen.');
+    }
 
-                // Try-catch block for error handling
-                try {
-                    // Assuming the jsPDF library is loaded in the global scope
-                    if (typeof jsPDF === 'undefined') {
-    console.error('jsPDF ist nicht geladen oder nicht definiert.');
-} else {
-    console.log('jsPDF erfolgreich geladen.');
-}
+    function generatePDF() {
+        console.log('Starting PDF generation');
+
+        // Try-catch Block für Fehlerbehandlung
+        try {
+            // Initialisierung von jsPDF
 
                     // Retrieve values from form elements
                     const brandName = document.getElementById('vertrag-brandname').value;
@@ -36,11 +34,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     // ... retrieve other form values
                     console.log('Form values retrieved:', { brandName });
 
-                    // Initialize jsPDF
-                    const doc = new jsPDF(); // Adjust based on how jsPDF is included
+                    const doc = new jsPDF(); // Anpassung basierend auf der Einbindung von jsPDF
                     console.log('jsPDF instance created');
-            		doc.setFont("helvetica");
-            		doc.setFontSize(8);
+                    doc.setFont("helvetica");
+                    doc.setFontSize(8);
                     // Define the static parts of the contract and insert dynamic values
                     const contractText = [
                     "1. Rechte und Pflichten des Creators",
@@ -279,7 +276,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     "    6.4. Der Vertrag unterliegt dem deutschen Recht, und der Gerichtsstand ist",
                     "         STADT."
             ];
-                    
+         
             const lines = doc.splitTextToSize(contractText, 140);
             let y = 10;
 
@@ -291,22 +288,22 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     y = 10;
                 }
             });
-
-                    // Save the PDF
-                    doc.save('contract.pdf');
-                    console.log('PDF saved successfully');
-                } catch (error) {
-                    // Log any errors that occur during the process
-                    console.error('An error occurred during PDF generation:', error);
-                }
-            }
-
-            // Add event listener to your form to call the generatePDF function on submit
-            document.addEventListener('DOMContentLoaded', (event) => {
-                document.getElementById('vertragsgenerator-v2').addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    console.log('Form submission intercepted');
-                    generatePDF();
-                });
-            });
+            // Speichern des PDFs
+            doc.save('contract.pdf');
+            console.log('PDF saved successfully');
+        } catch (error) {
+            console.error('An error occurred during PDF generation:', error);
+        }
+    }
+    // Event Listener für Formular-Submit hinzufügen
+    const form = document.getElementById('vertragsgenerator-v2');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Form submission intercepted');
+            generatePDF();
+        });
+    } else {
+        console.error('Formular mit ID vertragsgenerator-v2 nicht gefunden.');
+    }
 });
