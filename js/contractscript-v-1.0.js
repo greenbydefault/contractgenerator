@@ -277,15 +277,20 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     "         STADT."
             ];
          
-            const lines = doc.splitTextToSize(contractText, 280);
-            let y = 10;
-
+            const margin = 20; // 10mm auf jeder Seite
+            const maxWidth = doc.internal.pageSize.width - (margin * 2);
+            
+            // Aufteilung des Textes
+            const lines = doc.splitTextToSize(contractText, maxWidth);
+            let y = 20; // Starten etwas unterhalb des oberen Randes
+            
+            // Text zeilenweise hinzufügen
             lines.forEach(line => {
-                doc.text(line, 10, y);
-                y += 7;
-                if (y > 280) {
+                doc.text(line, margin, y);
+                y += 10; // Höhe zwischen den Zeilen
+                if (y > doc.internal.pageSize.height - 20) {
                     doc.addPage();
-                    y = 10;
+                    y = 20; // Zurücksetzen des Y-Wertes für die neue Seite
                 }
             });
             // Speichern des PDFs
