@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     "        1.2.4. Abgabe des Skripts: ${abgabeScript} um 12:00 Uhr mittags",
                     "        1.2.5. Abgabe des Contents: ${abgabeContent} um 12:00 Uhr mittags",
                     "        1.2.6. Abgabe der Korrektur: ${abgabeKorrektur} um 12:00 Uhr mittags",
-                    "        1.2.7. Abgabe der zweiten Korrektur: ${abgabeZweiteKorrektur} um 12:00 Uhr mittags`,
+                    "        1.2.7. Abgabe der zweiten Korrektur: ${abgabeZweiteKorrektur} um 12:00 Uhr mittags",
                     "        1.2.8. Der Vertrag muss vom Creator innerhalb von 3 Tagen nach Erhalt",
                     "               unterschrieben werden, sonst kann das Unternehmen den Auftrag an",
                     "               einen anderen Creator vergeben.",
