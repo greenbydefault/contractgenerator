@@ -28,8 +28,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     const videoDauer = document.getElementById('vertrag-video-dauer').value;
                     const abgabeScript = document.getElementById('vertrag-abgabe-script').value;
                     const abgabeContent = document.getElementById('vertrag-abgabe-content').value;
-                    const abgabeKorrektur = document.getElementById('vertrag-abgabe-korrektrur').value;
-                    const abgabeZweiteKorrektur = document.getElementById('vertrag-abgabe-zweite-korrektrur').value;
+                    const abgabeKorrektur = document.getElementById('vertrag-abgabe-korrektur').value;
+                    const abgabeZweiteKorrektur = document.getElementById('vertrag-abgabe-zweite-korrektur').value;
                     const jobBezahlung = document.getElementById('vertrag-job-bezahlung').value;
                     // ... retrieve other form values
                     console.log('Form values retrieved:', { brandName });
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     const doc = new jsPDF(); // Anpassung basierend auf der Einbindung von jsPDF
                     console.log('jsPDF instance created');
                     doc.setFont("helvetica");
-                    doc.setFontSize(10);
+                    doc.setFontSize(9);
                     // Define the static parts of the contract and insert dynamic values
                     const contractText = [
                     "1. Rechte und Pflichten des Creators",
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     "        1.2.4. Abgabe des Skripts: ${abgabeScript} um 12:00 Uhr mittags",
                     "        1.2.5. Abgabe des Contents: ${abgabeContent} um 12:00 Uhr mittags",
                     "        1.2.6. Abgabe der Korrektur: ${abgabeKorrektur} um 12:00 Uhr mittags",
-                    "        1.2.7. Abgabe der zweiten Korrektur: ${abgabeZweiteKorrektur} um 12:00 Uhr mittags",
+                    "        1.2.7. Abgabe der zweiten Korrektur: ${abgabeZweiteKorrektur} um 12:00 Uhr mittags`,
                     "        1.2.8. Der Vertrag muss vom Creator innerhalb von 3 Tagen nach Erhalt",
                     "               unterschrieben werden, sonst kann das Unternehmen den Auftrag an",
                     "               einen anderen Creator vergeben.",
@@ -276,23 +276,41 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     "    6.4. Der Vertrag unterliegt dem deutschen Recht, und der Gerichtsstand ist",
                     "         STADT."
             ];
-         
+            
             const margin = 20; // 10mm auf jeder Seite
             const maxWidth = doc.internal.pageSize.width - (margin * 2);
             
-            // Aufteilung des Textes
-            const lines = doc.splitTextToSize(contractText, maxWidth);
-            let y = 20; // Starten etwas unterhalb des oberen Randes
-            
-            // Text zeilenweise hinzufügen
+            contractText.forEach(text => {
+            // Setzen der Standardformatierung
+            doc.setFontSize(9);
+            doc.setFontStyle("normal");
+
+            // Spezielle Formatierung für Hauptüberschriften
+            if (["1. Rechte und Pflichten des Creators", "2. Rechte und Pflichten des Unternehmens", "3. Vertragsdauer, Beendigung, Nutzungsrecht", "4. Vertraulichkeit, Geheimhaltung", "5. Datenschutz", "6. Sonstiges"].includes(text)) {
+                doc.setFontSize(14);
+                doc.setFontStyle("bold");
+            }
+            // Spezielle Formatierung für Unterpunkte
+            else if (["1.1. Verpflichtung zur Erstellung von Content", "1.2. Verpflichtung zur Einhaltung von Deadlines", "1.3. Verpflichtung zur Erstellung von Skripten", "1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos", "1.5. Verpflichtung zur Bewahrung der Rechte Dritter", "1.6. Verpflichtung zur Anpassung am erstellten Inhalt", "1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung"].includes(text)) {
+                doc.setFontSize(12);
+                doc.setFontStyle("bold");
+            }
+            // Spezielle Formatierung für bestimmte Begriffe
+            else if (["PDF-Format", "STADT"].includes(text)) {
+                doc.setFontStyle("bold");
+            }
+
+            // Text zum PDF hinzufügen
+            const lines = doc.splitTextToSize(text, maxWidth);
             lines.forEach(line => {
                 doc.text(line, margin, y);
-                y += 10; // Höhe zwischen den Zeilen
+                y += 6; // Höhe zwischen den Zeilen
                 if (y > doc.internal.pageSize.height - 20) {
                     doc.addPage();
                     y = 20; // Zurücksetzen des Y-Wertes für die neue Seite
                 }
             });
+        });
             // Speichern des PDFs
             doc.save('contract.pdf');
             console.log('PDF saved successfully');
