@@ -38,6 +38,16 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     console.log('jsPDF instance created');
                     doc.setFont("helvetica");
                     doc.setFontSize(9);
+
+                    // Text für das Deckblatt
+                    const deckblattText = "Kooperationsvertrag\nzwischen\nName des Unternehmens\nStraße / Hausnummer\nPLZ / Stadt\nLand\n-im Folgenden kurz „Unternehmen“ genannt–\nund\nName des Creators\nStraße / Hausnummer\nPLZ / Stadt\nLand\n-im Folgenden kurz „Creator“ genannt-";
+                    doc.setFontSize(12);
+                    const textWidth = doc.getStringUnitWidth(deckblattText) * doc.internal.getFontSize() / doc.internal.scaleFactor;
+                    const textOffset = (doc.internal.pageSize.width - textWidth) / 2; // Berechnen der X-Position für die Zentrierung
+                    doc.text(deckblattText, textOffset, 20); // Einstellung der Y-Position nach Bedarf
+            
+                    // Neue Seite für den Rest des Vertragstextes
+                    doc.addPage();
                     // Define the static parts of the contract and insert dynamic values
                     const contractText = [
                     "1. Rechte und Pflichten des Creators",
