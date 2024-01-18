@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     doc.setFontSize(9);
 
                     // Bild hinzufügen
-                    const imageUrl = 'https://www.dropbox.com/scl/fi/ehdt04fxnsspm412jud0d/gbd-logo_schwarz-17.png?rlkey=c04fufkvhuy5ohum9ypgnxmsb&raw=1'; // URL oder Base64-String des Bildes
+                    const imageUrl = 'https://uploads-ssl.webflow.com/63db7d558cd2e4be56cd7e2f/63e0afcbe4e25f5e961b9d45_CreatorJobs-logo.png'; // URL oder Base64-String des Bildes
                     doc.addImage(imageUrl, 'JPEG', 15, 15, 180, 60); // Position und Größe anpassen (x, y, Breite, Höhe)
             
                     // Text für das Deckblatt
