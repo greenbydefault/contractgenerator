@@ -2,7 +2,7 @@ console.log("Skript wird geladen....");
 
 document.addEventListener('DOMContentLoaded', (event) => {
     console.log("Dokument vollständig geladen und bereit.");
-    
+ 
     // Überprüfung, ob jsPDF geladen ist
     if (typeof jsPDF === 'undefined') {
         console.error('jsPDF ist nicht geladen oder nicht definiert.');
@@ -10,14 +10,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
     } else {
         console.log('jsPDF erfolgreich geladen.');
     }
-
     function generatePDF() {
         console.log('Starting PDF generation');
-
         // Try-catch Block für Fehlerbehandlung
         try {
             // Initialisierung von jsPDF
-
                     // Retrieve values from form elements
                     const brandName = document.getElementById('vertrag-brandname').value;
                     const brandStreet = document.getElementById('vertrag-brand-street').value;
