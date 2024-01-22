@@ -38,10 +38,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     console.log('jsPDF instance created');
                     doc.setFont("helvetica");
                     doc.setFontSize(9);
-
-                    // Bild hinzufügen
-                    const imageUrl = 'https://uploads-ssl.webflow.com/63db7d558cd2e4be56cd7e2f/63e0afcbe4e25f5e961b9d45_CreatorJobs-logo.png'; // URL oder Base64-String des Bildes
-                    doc.addImage(imageUrl, 'JPEG', 15, 15, 180, 60); // Position und Größe anpassen (x, y, Breite, Höhe)
             
                     // Text für das Deckblatt
                     const deckblattText = "Kooperationsvertrag\nzwischen\nName des Unternehmens\nStraße / Hausnummer\nPLZ / Stadt\nLand\n-im Folgenden kurz „Unternehmen“ genannt–\nund\nName des Creators\nStraße / Hausnummer\nPLZ / Stadt\nLand\n-im Folgenden kurz „Creator“ genannt-";
