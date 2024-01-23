@@ -286,6 +286,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             
             const margin = 20; // 10mm auf jeder Seite
             const maxWidth = doc.internal.pageSize.width - (margin * 2);
+            let y = 20
             
             contractText.forEach(text => {
             // Setzen der Standardformatierung
