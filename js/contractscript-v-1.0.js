@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
         // Try-catch Block für Fehlerbehandlung
         try {
             // Initialisierung von jsPDF
-                    // Retrieve values from form elements
                     const brandName = document.getElementById('vertrag-brandname').value;
                     const brandStreet = document.getElementById('vertrag-brand-street').value;
                     const brandHouseNumber = document.getElementById('vertrag-brand-housenumber').value;
@@ -28,7 +27,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     const abgabeKorrektur = document.getElementById('vertrag-abgabe-korrektur').value;
                     const abgabeZweiteKorrektur = document.getElementById('vertrag-abgabe-zweite-korrektur').value;
                     const jobBezahlung = document.getElementById('vertrag-job-bezahlung').value;
-                    // ... retrieve other form values
+            
                     console.log('Form values retrieved:', { brandName });
 
                     const doc = new jsPDF(); // Anpassung basierend auf der Einbindung von jsPDF
