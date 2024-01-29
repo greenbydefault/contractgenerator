@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
                     const doc = new jsPDF(); // Anpassung basierend auf der Einbindung von jsPDF
                     console.log('jsPDF instance created');
-                    doc.setFont("helvetica");
+                    doc.setFont("Arial");
                     doc.setFontSize(9);
             
                     // Text für das Deckblatt
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     "        1.2.2. Der Creator ist dazu verpflichtet, etwaige Verzögerungen seinerseits",
                     "               durch Urlaube oder andere Verhinderungen frühzeitig mitzuteilen.",
                     "        1.2.3. Folgende Deadlines sind einzuhalten:",
-                    "        1.2.4. Abgabe des Skripts: ${abgabeScript} um 12:00 Uhr mittags",
+                    "        1.2.4. Abgabe des Skripts: " + abgabeScript + " um 12:00 Uhr mittags",
                     "        1.2.5. Abgabe des Contents: ${abgabeContent} um 12:00 Uhr mittags",
                     "        1.2.6. Abgabe der Korrektur: ${abgabeKorrektur} um 12:00 Uhr mittags",
                     "        1.2.7. Abgabe der zweiten Korrektur: ${abgabeZweiteKorrektur} um 12:00 Uhr mittags",
