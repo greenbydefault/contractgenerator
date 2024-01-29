@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     console.log('jsPDF instance created');
                     doc.setFont("Arial");
                     doc.setFontSize(9);
-            
+                    const charSpacing = 2; // Hier können Sie den gewünschten Abstand zwischen den Buchstaben einstellen
+                    doc.setCharSpacing(charSpacing);
                     // Text für das Deckblatt
                     const deckblattText = "Kooperationsvertrag\nzwischen\nName des Unternehmens\nStraße / Hausnummer\nPLZ / Stadt\nLand\n-im Folgenden kurz „Unternehmen“ genannt–\nund\nName des Creators\nStraße / Hausnummer\nPLZ / Stadt\nLand\n-im Folgenden kurz „Creator“ genannt-";
                     doc.setFontSize(12);
