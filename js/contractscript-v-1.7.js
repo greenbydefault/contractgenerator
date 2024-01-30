@@ -332,6 +332,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
 					doc.setFontStyle("bold");
 				}
 				// Fügen Sie hier den Text zum PDF hinzu (z.B. doc.text(text, x, y))
+				doc.text(text, margin, y);
+   				y += 10; // Erhöhen Sie y, um den nächsten Text darunter zu positionieren
 			});
 
 			// Speichern des PDFs
@@ -357,6 +359,5 @@ document.addEventListener('DOMContentLoaded', (event) => {
 		} else {
 			console.error('Formular mit ID vertragsgenerator-v2 nicht gefunden.');
 		}
-
 	}
 });
