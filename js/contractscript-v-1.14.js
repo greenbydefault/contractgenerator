@@ -293,8 +293,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
 			];
 			let y = 10;
             contractText.forEach(line => {
-                doc.text(line, 10, y); // Position des Textes anpassen
-                y += 10; // Abstand zwischen den Zeilen anpassen
+                if (y > 280) { // Überprüfung, ob das Ende der Seite erreicht ist
+                    doc.addPage();
+                    y = 7; // Zurücksetzen der Y-Position für die neue Seite
+                }
+                doc.text(line, 7, y); // Position des Textes anpassen
+                y += 7; // Abstand zwischen den Zeilen anpassen
             });
             doc.save('contract.pdf');
             console.log('PDF saved successfully');
