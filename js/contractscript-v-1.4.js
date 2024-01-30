@@ -337,8 +337,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.save('contract.pdf');
             console.log('PDF saved successfully');
         } catch (error) {
-            console.error('An error occurred during PDF generation:', error);
-        }
+            console.error('An error occurred during PDF saving:', error);
+        }} catch (error) {
+    console.error('An error occurred during PDF generation:', error);
+}
         
             
     // Event Listener für Formular-Submit hinzufügen
