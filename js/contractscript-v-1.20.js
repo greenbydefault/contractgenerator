@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 				"        6.3.     Nebenabreden bedürfen der Schriftform. Gesetzliche Formerfordernisse",
 				"                 bleiben unberührt.",
 				"        6.4.     Der Vertrag unterliegt dem deutschen Recht, und der Gerichtsstand ist",
-				"                 STADT."
+				`                 ${brandCity}`
 			];
 			const margin = 40; // 20mm auf jeder Seite
 			const maxWidth = doc.internal.pageSize.width - (margin * 2);
