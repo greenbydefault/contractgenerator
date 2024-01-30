@@ -379,14 +379,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 doc.line(margin, y, margin + tableWidth, y); // Untere Linie der Unterschriftentabelle
                 doc.line(margin + cellWidth, y - lineHeight, margin + cellWidth, y); // Vertikale Linie
             }
-            
-            // ...
-            
             // Tabelle für Unternehmensinformationen und Unterschriften hinzufügen
             let y = doc.internal.pageSize.height - 120; // Positionieren Sie die Tabelle entsprechend höher
             addInformationAndSignatureTable(doc, y);
-            
-            // ...
 
             // Speichern des PDFs
             doc.save('contract.pdf');
