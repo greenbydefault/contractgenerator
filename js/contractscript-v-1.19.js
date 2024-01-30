@@ -314,14 +314,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     doc.setFont("helvetica", "normal");
                 }
 
-                doc.text(line, 10, y);
-                y += 10;
+                doc.text(line, 7, y);
+                y += 7;
             });
-
-		    
-                doc.text(line, 7, y); // Position des Textes anpassen
-                y += 7; // Abstand zwischen den Zeilen anpassen
-            });
+           
             doc.save('contract.pdf');
             console.log('PDF saved successfully');
         } catch (error) {
