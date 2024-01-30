@@ -329,18 +329,43 @@ document.addEventListener('DOMContentLoaded', (event) => {
             else if (["PDF-Format", "STADT"].includes(text)) {
                 doc.setFontStyle("bold");
             }
-
-            // Text zum PDF hinzufügen
-            const lines = doc.splitTextToSize(text, maxWidth);
-            lines.forEach(line => {
-                doc.text(line, margin, y);
-                y += 6; // Höhe zwischen den Zeilen
-                if (y > doc.internal.pageSize.height - 20) {
-                    doc.addPage();
-                    y = 20; // Zurücksetzen des Y-Wertes für die neue Seite
+            //Tabelle Unterschrift
+            function addSignatureTable(doc, y) {
+                const margin = 40; // 20mm auf jeder Seite
+                const pageWidth = doc.internal.pageSize.width;
+                const tableWidth = pageWidth - (margin * 2);
+                const cellWidth = tableWidth / 2;
+                const lineHeight = 10;
+            
+                // Zeichnen der Tabelle
+                doc.setDrawColor(0);
+                doc.setLineWidth(0.1);
+                doc.line(margin, y, margin + tableWidth, y); // Oberste Linie
+                y += lineHeight;
+            
+                // Linien für die Spalten
+                doc.line(margin, y, margin + tableWidth, y); // Untere Linie
+                doc.line(margin + cellWidth, y - lineHeight, margin + cellWidth, y); // Vertikale Linie
+            
+                // Texte hinzufügen
+                doc.text("Name:", margin + 5, y - 7);
+                doc.text("Datum:", margin + cellWidth + 5, y - 7);
+                doc.text("Unterschrift:", margin + 5, y - 7 + lineHeight);
+                doc.text("Unterschrift:", margin + cellWidth + 5, y - 7 + lineHeight);
                 }
-            });
-        });
+                // Text zum PDF hinzufügen
+                const lines = doc.splitTextToSize(text, maxWidth);
+                    lines.forEach(line => {
+                        doc.text(line, margin, y);
+                        y += 6; // Höhe zwischen den Zeilen
+                        if (y > doc.internal.pageSize.height - 20) {
+                            doc.addPage();
+                            y = 20; // Zurücksetzen des Y-Wertes für die neue Seite
+                        }
+                    });
+                });
+            let y = doc.internal.pageSize.height - 80; // Positionieren Sie die Tabelle am unteren Rand der Seite
+            addSignatureTable(doc, y);
             // Speichern des PDFs
             doc.save('contract.pdf');
             console.log('PDF saved successfully');
