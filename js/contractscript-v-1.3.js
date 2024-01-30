@@ -333,56 +333,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             // ...
 
             // Funktion zum Hinzufügen der Tabelle für Unternehmensinformationen und Unterschriften
-            function addInformationAndSignatureTable(doc, y) {
-                const margin = 40; // 20mm auf jeder Seite
-                const pageWidth = doc.internal.pageSize.width;
-                const tableWidth = pageWidth - (margin * 2);
-                const cellWidth = tableWidth / 2;
-                const lineHeight = 10;
-            
-                // Zeichnen der ersten Reihe (Unternehmensinformationen)
-                let currentY = y;
-                doc.setDrawColor(0);
-                doc.setLineWidth(0.1);
-                doc.line(margin, currentY, margin + tableWidth, currentY); // Oberste Linie der ersten Reihe
-                currentY += lineHeight;
-            
-                // Texte für die erste Reihe
-                doc.text("Name des Unternehmens", margin + 5, y + 3);
-                doc.text("Straße / Hausnummer", margin + cellWidth + 5, y + 3);
-                y += lineHeight; // Zur nächsten Zeile
-            
-                // Zeichnen der zweiten Reihe (Unternehmensinformationen)
-                doc.line(margin, y, margin + tableWidth, y); // Oberste Linie der zweiten Reihe
-                y += lineHeight;
-            
-                // Texte für die zweite Reihe
-                doc.text("PLZ / Stadt", margin + 5, y - 7);
-                doc.text("Land", margin + cellWidth + 5, y - 7);
-            
-                // Zeichnen der Linien für die Spalten
-                doc.line(margin + cellWidth, currentY, margin + cellWidth, y); // Vertikale Linie zwischen den Spalten
-            
-                // Zeichnen der Unterschriftentabelle unterhalb
-                y += lineHeight; // Abstand zur Unterschriftentabelle
-                doc.line(margin, y, margin + tableWidth, y); // Oberste Linie der Unterschriftentabelle
-                y += lineHeight;
-            
-                // Texte für die Unterschriftentabelle
-                doc.text("Datum:", margin + 5, y - 7);
-                doc.text("Ort:", margin + cellWidth + 5, y - 7);
-                y += lineHeight;
-                doc.text("Unterschrift:", margin + 5, y - 7);
-                doc.text("Unterschrift:", margin + cellWidth + 5, y - 7);
-            
-                // Linien für die Spalten der Unterschriftentabelle
-                doc.line(margin, y, margin + tableWidth, y); // Untere Linie der Unterschriftentabelle
-                doc.line(margin + cellWidth, y - lineHeight, margin + cellWidth, y); // Vertikale Linie
-            }
-            // Tabelle für Unternehmensinformationen und Unterschriften hinzufügen
-            let y = doc.internal.pageSize.height - 120; // Positionieren Sie die Tabelle entsprechend höher
-            addInformationAndSignatureTable(doc, y);
-
+           
             // Speichern des PDFs
             doc.save('contract.pdf');
             console.log('PDF saved successfully');
