@@ -291,7 +291,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
 				"        6.4.     Der Vertrag unterliegt dem deutschen Recht, und der Gerichtsstand ist",
 				"                 STADT."
 			];
-
+			let y = 10;
+            contractText.forEach(line => {
+                doc.text(line, 10, y); // Position des Textes anpassen
+                y += 10; // Abstand zwischen den Zeilen anpassen
+            });
             doc.save('contract.pdf');
             console.log('PDF saved successfully');
         } catch (error) {
