@@ -338,7 +338,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
             console.log('PDF saved successfully');
         } catch (error) {
             console.error('An error occurred during PDF saving:', error);
-        }} catch (error) {
+        }    
+} catch (error) {
     console.error('An error occurred during PDF generation:', error);
 }
         
