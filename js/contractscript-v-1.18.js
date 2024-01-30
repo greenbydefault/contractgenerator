@@ -294,16 +294,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
 			const margin = 40; // 20mm auf jeder Seite
 			const maxWidth = doc.internal.pageSize.width - (margin * 2);
 			let y = 10;
-            contractText.forEach(line => {
-                if (y > 280) { // Überprüfung, ob das Ende der Seite erreicht ist
-                    doc.addPage();
-                    y = 7; // Zurücksetzen der Y-Position für die neue Seite
-                }
 
 		contractText.forEach(line => {
                 if (y > 280) {
                     doc.addPage();
-                    y = 10;
+                    y = 7;
                 }
 
                 // Formatierung für Überschriften
