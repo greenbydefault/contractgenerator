@@ -27,8 +27,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
             const doc = new jsPDF();
             console.log('jsPDF instance created');
-            doc.setFont("times");
-            doc.setFontSize(9);
+            doc.setFont("Helvetica");
+            doc.setFontSize(10);
 
            doc.addPage();
 			// Define the static parts of the contract and insert dynamic values
@@ -299,6 +299,31 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     doc.addPage();
                     y = 7; // Zurücksetzen der Y-Position für die neue Seite
                 }
+
+		contractText.forEach(line => {
+                if (y > 280) {
+                    doc.addPage();
+                    y = 10;
+                }
+
+                // Formatierung für Überschriften
+                if (line.startsWith('1. Rechte und Pflichten des Creators') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
+                    doc.setFontSize(12);
+                    doc.setFont("times", "bold");
+                } else if (line.startsWith('1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
+                    doc.setFontSize(11);
+                    doc.setFont("times", "bold");
+                } else {
+                    // Standardformatierung
+                    doc.setFontSize(9);
+                    doc.setFont("helvetica", "normal");
+                }
+
+                doc.text(line, 10, y);
+                y += 10;
+            });
+
+		    
                 doc.text(line, 7, y); // Position des Textes anpassen
                 y += 7; // Abstand zwischen den Zeilen anpassen
             });
