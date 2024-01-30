@@ -309,30 +309,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 			const maxWidth = doc.internal.pageSize.width - (margin * 2);
 			let y = 20
 
-			contractText.forEach(text => {
-				// Setzen der Standardformatierung
-				doc.setFontSize(9);
-				doc.setFontStyle("normal");
-
-				// Spezielle Formatierung für Hauptüberschriften
-				if (["1. Rechte und Pflichten des Creators", "2. Rechte und Pflichten des Unternehmens", "3. Vertragsdauer, Beendigung, Nutzungsrecht", "4. Vertraulichkeit, Geheimhaltung", "5. Datenschutz", "6. Sonstiges"].includes(text)) {
-					doc.setFontSize(14);
-					doc.setFontStyle("bold");
-				}
-				// Spezielle Formatierung für Unterpunkte
-				else if (["1.1. Verpflichtung zur Erstellung von Content", "1.2. Verpflichtung zur Einhaltung von Deadlines", "1.3. Verpflichtung zur Erstellung von Skripten", "1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos", "1.5. Verpflichtung zur Bewahrung der Rechte Dritter", "1.6. Verpflichtung zur Anpassung am erstellten Inhalt", "1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung"].includes(text)) {
-					doc.setFontSize(12);
-					doc.setFontStyle("bold");
-				}
-				// Spezielle Formatierung für bestimmte Begriffe
-				else if (["PDF-Format", "STADT"].includes(text)) {
-					doc.setFontStyle("bold");
-				}
-				// Fügen Sie hier den Text zum PDF hinzu (z.B. doc.text(text, x, y))
-				doc.text(text, margin, y);
-   				y += 10; // Erhöhen Sie y, um den nächsten Text darunter zu positionieren
-			});
-
+			
 			// Speichern des PDFs
 			try {
 				doc.save('contract.pdf');
