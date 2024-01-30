@@ -34,8 +34,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     console.log('jsPDF instance created');
                     doc.setFont("Arial");
                     doc.setFontSize(9);
-                    const charSpacing = 2; // Hier können Sie den gewünschten Abstand zwischen den Buchstaben einstellen
                     doc.setCharSpacing(charSpacing);
+                    const charSpacing = 2; // Hier können Sie den gewünschten Abstand zwischen den Buchstaben einstellen
                     // Text für das Deckblatt
                     const deckblattText = "Kooperationsvertrag\nzwischen\nName des Unternehmens\nStraße / Hausnummer\nPLZ / Stadt\nLand\n-im Folgenden kurz „Unternehmen“ genannt–\nund\nName des Creators\nStraße / Hausnummer\nPLZ / Stadt\nLand\n-im Folgenden kurz „Creator“ genannt-";
                     doc.setFontSize(12);
@@ -310,11 +310,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
             const maxWidth = doc.internal.pageSize.width - (margin * 2);
             let y = 20
             
-            contractText.forEach(text => {
+              contractText.forEach(text => {
             // Setzen der Standardformatierung
             doc.setFontSize(9);
             doc.setFontStyle("normal");
-
+        
             // Spezielle Formatierung für Hauptüberschriften
             if (["1. Rechte und Pflichten des Creators", "2. Rechte und Pflichten des Unternehmens", "3. Vertragsdauer, Beendigung, Nutzungsrecht", "4. Vertraulichkeit, Geheimhaltung", "5. Datenschutz", "6. Sonstiges"].includes(text)) {
                 doc.setFontSize(14);
@@ -329,18 +329,18 @@ document.addEventListener('DOMContentLoaded', (event) => {
             else if (["PDF-Format", "STADT"].includes(text)) {
                 doc.setFontStyle("bold");
             }
-            //Tabelle Unterschrift
-            // ...
-
-            // Funktion zum Hinzufügen der Tabelle für Unternehmensinformationen und Unterschriften
-           
-            // Speichern des PDFs
+            // Fügen Sie hier den Text zum PDF hinzu (z.B. doc.text(text, x, y))
+        });
+        
+        // Speichern des PDFs
+        try {
             doc.save('contract.pdf');
             console.log('PDF saved successfully');
         } catch (error) {
             console.error('An error occurred during PDF generation:', error);
         }
-    }
+        
+            
     // Event Listener für Formular-Submit hinzufügen
     const form = document.getElementById('vertragsgenerator-v2');
     if (form) {
