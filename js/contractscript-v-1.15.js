@@ -291,6 +291,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
 				"        6.4.     Der Vertrag unterliegt dem deutschen Recht, und der Gerichtsstand ist",
 				"                 STADT."
 			];
+			const margin = 40; // 20mm auf jeder Seite
+			const maxWidth = doc.internal.pageSize.width - (margin * 2);
 			let y = 10;
             contractText.forEach(line => {
                 if (y > 280) { // Überprüfung, ob das Ende der Seite erreicht ist
