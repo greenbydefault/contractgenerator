@@ -71,10 +71,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
 				"        1.2.2.    Der Creator ist dazu verpflichtet, etwaige Verzögerungen seinerseits",
 				"                  durch Urlaube oder andere Verhinderungen frühzeitig mitzuteilen.",
 				"        1.2.3.    Folgende Deadlines sind einzuhalten:",
-				"        1.2.4.    Abgabe des Skripts: ${abgabeScript} um 12:00 Uhr mittags",
-				"        1.2.5.    Abgabe des Contents: ${abgabeContent} um 12:00 Uhr mittags",
-				"        1.2.6.    Abgabe der Korrektur: ${abgabeKorrektur} um 12:00 Uhr mittags",
-				"        1.2.7.    Abgabe der zweiten Korrektur: ${abgabeZweiteKorrektur} um 12:00 Uhr mittags",
+				`        1.2.4.    Abgabe des Skripts: ${abgabeScript} um 12:00 Uhr mittags`,
+				`        1.2.5.    Abgabe des Contents: ${abgabeContent} um 12:00 Uhr mittags`,
+				`        1.2.6.    Abgabe der Korrektur: ${abgabeKorrektur} um 12:00 Uhr mittags`,
+				`        1.2.7.    Abgabe der zweiten Korrektur: ${abgabeZweiteKorrektur} um 12:00 Uhr mittags`,
 				"        1.2.8.    Der Vertrag muss vom Creator innerhalb von 3 Tagen nach Erhalt",
 				"                  unterschrieben werden, sonst kann das Unternehmen den Auftrag an",
 				"                  einen anderen Creator vergeben.",
@@ -304,10 +304,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 // Formatierung für Überschriften
                 if (line.startsWith('1. Rechte und Pflichten des Creators') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
                     doc.setFontSize(12);
-                    doc.setFont("times", "bold");
+                    doc.setFont("helvetica", "bold");
                 } else if (line.startsWith('1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
                     doc.setFontSize(11);
-                    doc.setFont("times", "bold");
+                    doc.setFont("helvetica", "bold");
                 } else {
                     // Standardformatierung
                     doc.setFontSize(9);
