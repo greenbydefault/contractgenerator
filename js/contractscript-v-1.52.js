@@ -359,7 +359,7 @@ const margin = 40; // 20mm auf jeder Seite
                 }
 
                doc.text(line, 30, y);
-                y += 10;
+                y += 6;
 		});
            
             doc.save('contract.pdf');
