@@ -57,7 +57,7 @@ const margin = 40; // 20mm auf jeder Seite
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1.Rechte und Pflichten des Creators",
-				"    1.1.     Verpflichtung zur Erstellung von Content",
+				"    1.1. Verpflichtung zur Erstellung von Content",
 				"        1.1.1. Der Creator verpflichtet sich, gemäß dem Briefing für das",
 				"                  Unternehmen User-Generated-Content Videos zu erstellen.",
 				`        1.1.2. Die Anzahl der Videos beläuft sich auf: ${anzahlVideos} Videos mit einer`,
@@ -81,7 +81,7 @@ const margin = 40; // 20mm auf jeder Seite
 				"        1.1.8. Das Unternehmen haftet nicht für Schäden oder Verluste, die dem",
 				"                  Creator während der Ausführung des Auftrags entstehen.",
 
-				"    1.2.     Verpflichtung zur Einhaltung von Deadlines",
+				"    1.2. Verpflichtung zur Einhaltung von Deadlines",
 
 				"        1.2.1. Der Creator verpflichtet sich alle Deadlines einzuhalten. Das",
 				"                  Unternehmen kann die Zusammenarbeit fristlos beenden, wenn der",
@@ -102,7 +102,7 @@ const margin = 40; // 20mm auf jeder Seite
 				"                  unterschrieben werden, sonst kann das Unternehmen den Auftrag an",
 				"                  einen anderen Creator vergeben.",
 
-				"    1.3.     Verpflichtung zur Erstellung von Skripten",
+				"    1.3. Verpflichtung zur Erstellung von Skripten",
 
 				"        1.3.1. Der Content Creator verpflichtet sich zur Erstellung eines detaillierten",
 				"                  Skripts für die Videos unter Berücksichtigung der folgenden Punkte:",
@@ -134,7 +134,7 @@ const margin = 40; // 20mm auf jeder Seite
 				"                  dem Unternehmen erfolgen und dürfen nicht im Widerspruch zu den",
 				"                  Grundsätzen oder Zielen des Unternehmens stehen.",
 
-				"    1.4.     Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos",
+				"    1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos",
 
 				"        1.4.1. Der Content Creator verpflichtet sich zur ordnungsgemäßen",
 				"                  Bereitstellung der produzierten Videos unter Berücksichtigung",
@@ -330,9 +330,10 @@ const margin = 40; // 20mm auf jeder Seite
                 // Formatierung für Überschriften
                 if (line.startsWith('1.Rechte und Pflichten des Creator') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
                     	y += headlineTopPadding;
+			y += headlineBottomPadding;
 			doc.setFontSize(12);
                     	doc.setFont("helvetica", "bold");
-       			y += headlineBottomPadding;
+       			
                 } else if (line.startsWith('    1.1.     Verpflichtung zur Erstellung von Content') || line.startsWith('    1.2.     Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('    1.3.     Verpflichtung zur Erstellung von Skripten') || line.startsWith('    1.4.     Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('    1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('    1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('    1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
                     	y += headlineTopPadding;
 			doc.setFontSize(10);
