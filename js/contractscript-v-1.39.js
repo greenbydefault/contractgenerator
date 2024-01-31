@@ -273,8 +273,7 @@ const margin = 40; // 20mm auf jeder Seite
 				"                  an den folgenden Kunden des Unternehmens zu übertragen:",
 				`                  ${brandName}`,
 				`                  ${brandStreet} ${brandHouseNumber}`,
-				`                  ${brandPLZ}`,
-				`                  ${brandCity}`,				
+				`                  ${brandPLZ} ${brandCity}`,				
 				"        3.6.1. Die Übertragung dieser Rechte an den Kunden erfolgt unter der",
 				"                  edingung, dass alle Verpflichtungen, Rechte und Pflichten, die sich",
 				"                  aus diesem Vertrag ergeben, auf den Kunden in gleicher Weise",
@@ -329,7 +328,7 @@ const margin = 40; // 20mm auf jeder Seite
 			const headlineBottomPadding = 3; // Abstand unter der Überschrift
 
                 // Formatierung für Überschriften
-                if (line.startsWith('1. Rechte und Pflichten des Creator') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
+                if (line.startsWith('1. Rechte und Pflichten des Creators') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
                     	y += headlineTopPadding;
 			doc.setFontSize(14);
                     	doc.setFont("helvetica", "bold");
@@ -345,7 +344,7 @@ const margin = 40; // 20mm auf jeder Seite
                     doc.setFont("helvetica", "normal");
                 }
 
-                doc.text(line, 30, y);
+               
                 y += 5;
             });
            
