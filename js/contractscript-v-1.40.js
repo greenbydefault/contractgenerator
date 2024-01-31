@@ -344,7 +344,7 @@ const margin = 40; // 20mm auf jeder Seite
                     doc.setFont("helvetica", "normal");
                 }
 
-               
+                doc.text(line, 30, y);
                 y += 5;
             });
            
