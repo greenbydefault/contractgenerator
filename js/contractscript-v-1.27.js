@@ -332,7 +332,7 @@ const margin = 40; // 20mm auf jeder Seite
                     	
 			doc.setFontSize(12);
                     	doc.setFont("helvetica", "bold");
-			doc.text(line, 40, y);
+			doc.text(line, 27, y);
        			
                 } else if (line.startsWith('    1.1.     Verpflichtung zur Erstellung von Content') || line.startsWith('    1.2.     Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('    1.3.     Verpflichtung zur Erstellung von Skripten') || line.startsWith('    1.4.     Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('    1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('    1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('    1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
                     	y += headlineTopPadding;
@@ -345,7 +345,7 @@ const margin = 40; // 20mm auf jeder Seite
                     doc.setFont("helvetica", "normal");
                 }
 
-                doc.text(line, 40, y);
+                doc.text(line, 30, y);
                 y += 6;
             });
            
