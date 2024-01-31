@@ -50,13 +50,14 @@ const margin = 40; // 20mm auf jeder Seite
             // Fügen Sie hier alle weiteren Variablen ein, die Sie aus dem Formular holen möchten
 
             const doc = new jsPDF();
+	    y = 10;
             console.log('jsPDF instance created');
             doc.setFont("Helvetica");
             doc.setFontSize(10);
 	    doc.setCharSpace(5);
             y = addTableOfContents(doc, y);
             doc.addPage();
-	    y = 10;
+	    
 	    
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
