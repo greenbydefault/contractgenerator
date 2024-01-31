@@ -16,8 +16,18 @@ function addTableOfContents(doc, y) {
 
     const contents = [
         "1. Rechte und Pflichten des Creators - Seite 3",
-        "1.1. Verpflichtung zur Erstellung von Content - Seite 3",
-        
+            "1.1. Verpflichtung zur Erstellung von Content - Seite 3",
+	    "1.1. Verpflichtung zur Erstellung von Content - Seite 3",
+	    "1.2. Verpflichtung zur Einhaltung von Deadlines - Seite 3",
+	    "1.3. Verpflichtung zur Erstellung von Skripten - Seite 3",
+	    "1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos - Seite 3",
+	    "1.6. Verpflichtung zur Anpassung am erstellten Inhalt - Seite 3",
+	    "1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung - Seite 3",
+	 "2. Rechte und Pflichten des Unternehmens - Seite 3",	
+	 "3. Vertragsdauer, Beendigung, Nutzungsrecht - Seite 3",   
+	 "4. Vertraulichkeit, Geheimhaltung - Seite 3",
+	 "5. Datenschutz - Seite 3", 
+         "6. Sonstiges", 
     ];
 
     doc.setFontSize(10);
@@ -349,7 +359,7 @@ const margin = 40; // 20mm auf jeder Seite
                 }
 
                 doc.text(line, 30, y);
-                y += 10;
+                y += 5;
             });
            
             doc.save('contract.pdf');
