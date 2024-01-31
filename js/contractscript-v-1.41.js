@@ -12,7 +12,7 @@ function addTableOfContents(doc) {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text("Inhaltsverzeichnis", 20, y);
-    y += 1;
+    y += 10;
 
     const contents = [
         "1. Rechte und Pflichten des Creators - Seite 3",
@@ -53,12 +53,13 @@ const margin = 40; // 20mm auf jeder Seite
             doc.setFont("Helvetica");
             doc.setFontSize(10);
 	    doc.setCharSpace(5);
+	    addTableOfContents(doc);
             doc.addPage();
 	    
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1. Rechte und Pflichten des Creators",
-				"	1.1. Verpflichtung zur Erstellung von Content",
+				"1.1. Verpflichtung zur Erstellung von Content",
 				"        1.1.1. Der Creator verpflichtet sich, gemäß dem Briefing für das",
 				"                  Unternehmen User-Generated-Content Videos zu erstellen.",
 				`        1.1.2. Die Anzahl der Videos beläuft sich auf: ${anzahlVideos} Videos mit einer`,
@@ -345,7 +346,7 @@ const margin = 40; // 20mm auf jeder Seite
                 }
 
                 doc.text(line, 30, y);
-                y += 5;
+                y += 10;
             });
            
             doc.save('contract.pdf');
