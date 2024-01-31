@@ -54,7 +54,7 @@ const margin = 40; // 20mm auf jeder Seite
             doc.setFontSize(10);
 	    doc.setCharSpace(1);
             doc.addPage();
-	    addTableOfContents(doc);
+	    
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1.Rechte und Pflichten des Creators",
