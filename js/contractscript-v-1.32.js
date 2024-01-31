@@ -12,7 +12,7 @@ function addTableOfContents(doc) {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text("Inhaltsverzeichnis", 20, y);
-    y += 10;
+    y += 1;
 
     const contents = [
         "1. Rechte und Pflichten des Creators - Seite 3",
@@ -52,8 +52,9 @@ const margin = 40; // 20mm auf jeder Seite
             console.log('jsPDF instance created');
             doc.setFont("Helvetica");
             doc.setFontSize(10);
-
-           doc.addPage();
+	    doc.setCharSpace(1);
+            doc.addPage();
+	    addTableOfContents(doc);
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1.Rechte und Pflichten des Creators",
