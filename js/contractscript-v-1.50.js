@@ -360,12 +360,8 @@ const margin = 40; // 20mm auf jeder Seite
 
                 doc.text(line, 30, y);
                // Zeilenabstand erhöhen
-    if (/* Bedingung für Überschriften oder Unterüberschriften */) {
-        y += headlineBottomPadding; // Unterer Abstand für Überschriften/Unterüberschriften
-    } else {
-        y += 6; // Standard Zeilenabstand
-    }
-            });
+              y += (line.startsWith('1. ') || line.startsWith('2. ') || line.startsWith('3. ') || line.startsWith('4. ') || line.startsWith('5. ') || line.startsWith('6. ')) ? headlineBottomPadding : 6; // Passen Sie den Zeilenabstand an
+
            
             doc.save('contract.pdf');
             console.log('PDF saved successfully');
