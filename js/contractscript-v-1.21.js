@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
            doc.addPage();
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
-				"1.     Rechte und Pflichten des Creators",
+				"1.Rechte und Pflichten des Creators",
 				"    1.1.     Verpflichtung zur Erstellung von Content",
 				"        1.1.1.    Der Creator verpflichtet sich, gemäß dem Briefing für das",
 				"                  Unternehmen User-Generated-Content Videos zu erstellen.",
@@ -298,14 +298,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
 		contractText.forEach(line => {
                 if (y > 280) {
                     doc.addPage();
-                    y = 7;
+                    y = 5;
                 }
 
                 // Formatierung für Überschriften
-                if (line.startsWith('1. Rechte und Pflichten des Creators') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
+                if (line.startsWith('1.Rechte und Pflichten des Creator') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
                     doc.setFontSize(12);
                     doc.setFont("helvetica", "bold");
-                } else if (line.startsWith('    1.1.     Verpflichtung zur Erstellung von Content') || line.startsWith('    1.2.     Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
+                } else if (line.startsWith('    1.1.     Verpflichtung zur Erstellung von Content') || line.startsWith('    1.2.     Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('    1.3.     Verpflichtung zur Erstellung von Skripten') || line.startsWith('    1.4.     Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('    1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('    1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('    1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
                     doc.setFontSize(11);
                     doc.setFont("helvetica", "bold");
                 } else {
@@ -314,8 +314,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
                     doc.setFont("helvetica", "normal");
                 }
 
-                doc.text(line, 7, y);
-                y += 7;
+                doc.text(line, 5, y);
+                y += 5;
             });
            
             doc.save('contract.pdf');
