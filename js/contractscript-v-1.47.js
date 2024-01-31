@@ -336,7 +336,7 @@ const margin = 40; // 20mm auf jeder Seite
 		contractText.forEach(line => {
                 if (y > 280) {
                     doc.addPage();
-                    y = 5;
+                    y = 10;
                 }
 			const headlineTopPadding = 3; // Abstand über der Überschrift
 			const headlineBottomPadding = 3; // Abstand unter der Überschrift
