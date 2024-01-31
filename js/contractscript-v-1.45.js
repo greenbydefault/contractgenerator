@@ -322,7 +322,6 @@ const margin = 40; // 20mm auf jeder Seite
 			
 			const maxWidth = doc.internal.pageSize.width - (margin * 2);
 			
-			let y = 1;
 
 		contractText.forEach(line => {
                 if (y > 280) {
