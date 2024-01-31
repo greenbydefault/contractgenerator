@@ -28,7 +28,7 @@ function addTableOfContents(doc) {
     });
 }
 
-
+const margin = 40; // 20mm auf jeder Seite
 
 	
     function generatePDF() {
@@ -314,10 +314,10 @@ function addTableOfContents(doc) {
 				"        6.4.     Der Vertrag unterliegt dem deutschen Recht, und der Gerichtsstand ist",
 				`                 ${brandCity}`
 			];
-			const margin = 40; // 20mm auf jeder Seite
+			
 			const maxWidth = doc.internal.pageSize.width - (margin * 2);
 			const headlineTopPadding = 5; // Abstand über der Überschrift
-			const headlineBottomPadding = 3; // Abstand unter der Überschrift
+			const headlineBottomPadding = 5; // Abstand unter der Überschrift
 
 			let y = 10;
 
@@ -332,13 +332,12 @@ function addTableOfContents(doc) {
                     	
 			doc.setFontSize(12);
                     	doc.setFont("helvetica", "bold");
-			doc.text(line, 6, y);
+			doc.text(line, 40, y);
        			
                 } else if (line.startsWith('    1.1.     Verpflichtung zur Erstellung von Content') || line.startsWith('    1.2.     Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('    1.3.     Verpflichtung zur Erstellung von Skripten') || line.startsWith('    1.4.     Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('    1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('    1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('    1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
                     	y += headlineTopPadding;
 			doc.setFontSize(10);
                     	doc.setFont("helvetica", "bold");
-			doc.text(line, 6, y);
        			y += headlineBottomPadding;
                 } else {
                     // Standardformatierung
@@ -346,7 +345,7 @@ function addTableOfContents(doc) {
                     doc.setFont("helvetica", "normal");
                 }
 
-                doc.text(line, 6, y);
+                doc.text(line, 40, y);
                 y += 6;
             });
            
