@@ -8,6 +8,29 @@ document.addEventListener('DOMContentLoaded', (event) => {
         console.log('jsPDF erfolgreich geladen.');
     }
 
+function addTableOfContents(doc) {
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Inhaltsverzeichnis", 20, y);
+    y += 10;
+
+    const contents = [
+        "1. Rechte und Pflichten des Creators - Seite 3",
+        "1.1. Verpflichtung zur Erstellung von Content - Seite 3",
+        
+    ];
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    contents.forEach(line => {
+        doc.text(line, 20, y);
+        y += 5;
+    });
+}
+
+
+
+	
     function generatePDF() {
         console.log('Starting PDF generation');
         try {
