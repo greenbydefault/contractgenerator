@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         console.log('jsPDF erfolgreich geladen.');
     }
 
-function addTableOfContents(doc) {
+function addTableOfContents(doc, y) {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text("Inhaltsverzeichnis", 20, y);
@@ -26,6 +26,7 @@ function addTableOfContents(doc) {
         doc.text(line, 20, y);
         y += 5;
     });
+    return y;
 }
 
 const margin = 40; // 20mm auf jeder Seite
@@ -53,8 +54,9 @@ const margin = 40; // 20mm auf jeder Seite
             doc.setFont("Helvetica");
             doc.setFontSize(10);
 	    doc.setCharSpace(5);
-	    addTableOfContents(doc);
+            y = addTableOfContents(doc, y);
             doc.addPage();
+	    y = 10;
 	    
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
