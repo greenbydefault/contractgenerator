@@ -320,12 +320,12 @@ const margin = 40; // 20mm auf jeder Seite
 			const headlineTopPadding = 4; // Abstand über der Überschrift
 			const headlineBottomPadding = 4; // Abstand unter der Überschrift
 
-			let y = 10;
+			let y = 1;
 
 		contractText.forEach(line => {
                 if (y > 280) {
                     doc.addPage();
-                    y = 6;
+                    y = 5;
                 }
 
                 // Formatierung für Überschriften
@@ -347,7 +347,7 @@ const margin = 40; // 20mm auf jeder Seite
                 }
 
                 doc.text(line, 30, y);
-                y += 6;
+                y += 5;
             });
            
             doc.save('contract.pdf');
