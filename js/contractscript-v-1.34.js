@@ -52,13 +52,13 @@ const margin = 40; // 20mm auf jeder Seite
             console.log('jsPDF instance created');
             doc.setFont("Helvetica");
             doc.setFontSize(10);
-	    doc.setCharSpace(1);
+	    doc.setCharSpace(2);
             doc.addPage();
 	    
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1.Rechte und Pflichten des Creators",
-				"    1.1. Verpflichtung zur Erstellung von Content",
+				"	1.1. Verpflichtung zur Erstellung von Content",
 				"        1.1.1. Der Creator verpflichtet sich, gemäß dem Briefing für das",
 				"                  Unternehmen User-Generated-Content Videos zu erstellen.",
 				`        1.1.2. Die Anzahl der Videos beläuft sich auf: ${anzahlVideos} Videos mit einer`,
@@ -82,7 +82,7 @@ const margin = 40; // 20mm auf jeder Seite
 				"        1.1.8. Das Unternehmen haftet nicht für Schäden oder Verluste, die dem",
 				"                  Creator während der Ausführung des Auftrags entstehen.",
 
-				"    1.2. Verpflichtung zur Einhaltung von Deadlines",
+				"1.2. Verpflichtung zur Einhaltung von Deadlines",
 
 				"        1.2.1. Der Creator verpflichtet sich alle Deadlines einzuhalten. Das",
 				"                  Unternehmen kann die Zusammenarbeit fristlos beenden, wenn der",
@@ -332,17 +332,17 @@ const margin = 40; // 20mm auf jeder Seite
                 if (line.startsWith('1.Rechte und Pflichten des Creator') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
                     	y += headlineTopPadding;
 			y += headlineBottomPadding;
-			doc.setFontSize(12);
+			doc.setFontSize(14);
                     	doc.setFont("helvetica", "bold");
        			
-                } else if (line.startsWith('    1.1.     Verpflichtung zur Erstellung von Content') || line.startsWith('    1.2.     Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('    1.3.     Verpflichtung zur Erstellung von Skripten') || line.startsWith('    1.4.     Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('    1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('    1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('    1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
+                } else if (line.startsWith('	1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('    1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('    1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith(' 1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith(' 1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith(' 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
                     	y += headlineTopPadding;
-			doc.setFontSize(10);
+			doc.setFontSize(12);
                     	doc.setFont("helvetica", "bold");
        			y += headlineBottomPadding;
                 } else {
                     // Standardformatierung
-                    doc.setFontSize(9);
+                    doc.setFontSize(10);
                     doc.setFont("helvetica", "normal");
                 }
 
