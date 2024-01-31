@@ -52,7 +52,7 @@ const margin = 40; // 20mm auf jeder Seite
             console.log('jsPDF instance created');
             doc.setFont("Helvetica");
             doc.setFontSize(10);
-	    doc.setCharSpace(2);
+	    doc.setCharSpace(5);
             doc.addPage();
 	    
 			// Define the static parts of the contract and insert dynamic values
@@ -272,7 +272,7 @@ const margin = 40; // 20mm auf jeder Seite
 				"                  Rahmen dieses Vertrags erstellten Inhalte, einschließlich Bilder und Videos,",
 				"                  an den folgenden Kunden des Unternehmens zu übertragen:",
 				`                  ${brandName}`,
-				`                  ${brandHouseNumber}`,
+				`                  ${brandStreet} ${brandHouseNumber}`,
 				`                  ${brandPLZ}`,
 				`                  ${brandCity}`,				
 				"        3.6.1. Die Übertragung dieser Rechte an den Kunden erfolgt unter der",
@@ -317,9 +317,7 @@ const margin = 40; // 20mm auf jeder Seite
 			];
 			
 			const maxWidth = doc.internal.pageSize.width - (margin * 2);
-			const headlineTopPadding = 3; // Abstand über der Überschrift
-			const headlineBottomPadding = 3; // Abstand unter der Überschrift
-
+			
 			let y = 1;
 
 		contractText.forEach(line => {
@@ -327,14 +325,15 @@ const margin = 40; // 20mm auf jeder Seite
                     doc.addPage();
                     y = 5;
                 }
+			const headlineTopPadding = 3; // Abstand über der Überschrift
+			const headlineBottomPadding = 3; // Abstand unter der Überschrift
 
                 // Formatierung für Überschriften
                 if (line.startsWith('1. Rechte und Pflichten des Creator') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
                     	y += headlineTopPadding;
-			y += headlineBottomPadding;
 			doc.setFontSize(14);
                     	doc.setFont("helvetica", "bold");
-       			
+			y += headlineBottomPadding;
                 } else if (line.startsWith('1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
                     	y += headlineTopPadding;
 			doc.setFontSize(12);
