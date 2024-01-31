@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 function addTableOfContents(doc, y) {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Inhaltsverzeichnis", 20, y);
+    doc.text("Inhaltsverzeichnis", 30, y);
     y += 10;
 
     const contents = [
@@ -33,7 +33,7 @@ function addTableOfContents(doc, y) {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     contents.forEach(line => {
-        doc.text(line, 20, y);
+        doc.text(line, 30, y);
         y += 5;
     });
     return y;
@@ -359,7 +359,7 @@ const margin = 40; // 20mm auf jeder Seite
                 }
 
                 doc.text(line, 30, y);
-                y += 5;
+                y += (line.startsWith('1. ') || line.startsWith('2. ') || line.startsWith('3. ') || line.startsWith('4. ') || line.startsWith('5. ') || line.startsWith('6. ')) ? headlineBottomPadding : 6; // Passen Sie den Zeilenabstand an
             });
            
             doc.save('contract.pdf');
