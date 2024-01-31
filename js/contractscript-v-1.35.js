@@ -103,7 +103,7 @@ const margin = 40; // 20mm auf jeder Seite
 				"                  unterschrieben werden, sonst kann das Unternehmen den Auftrag an",
 				"                  einen anderen Creator vergeben.",
 
-				"    1.3. Verpflichtung zur Erstellung von Skripten",
+				"1.3. Verpflichtung zur Erstellung von Skripten",
 
 				"        1.3.1. Der Content Creator verpflichtet sich zur Erstellung eines detaillierten",
 				"                  Skripts für die Videos unter Berücksichtigung der folgenden Punkte:",
@@ -135,7 +135,7 @@ const margin = 40; // 20mm auf jeder Seite
 				"                  dem Unternehmen erfolgen und dürfen nicht im Widerspruch zu den",
 				"                  Grundsätzen oder Zielen des Unternehmens stehen.",
 
-				"    1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos",
+				"1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos",
 
 				"        1.4.1. Der Content Creator verpflichtet sich zur ordnungsgemäßen",
 				"                  Bereitstellung der produzierten Videos unter Berücksichtigung",
@@ -156,7 +156,7 @@ const margin = 40; // 20mm auf jeder Seite
 				"                  folgenden Benennungsschema benennen und abgeben:",
 				"                  'Unternehmen_Creator_Video_Nummer X des Videos_VersionY'",
 
-				"    1.5. Verpflichtung zur Bewahrung der Rechte Dritter",
+				"1.5. Verpflichtung zur Bewahrung der Rechte Dritter",
 
 				"        1.5.1. Der Creator stellt sicher, dass in den Videos keine",
 				"                  Persönlichkeitsrechte von Privatpersonen oder Markenrechte verletzt",
@@ -271,10 +271,9 @@ const margin = 40; // 20mm auf jeder Seite
 				"        3.6. Der Creator gewährt dem Unternehmen das uneingeschränkte Recht, alle im",
 				"                  Rahmen dieses Vertrags erstellten Inhalte, einschließlich Bilder und Videos,",
 				"                  an den folgenden Kunden des Unternehmens zu übertragen:",
-				"                  Name des Unternehmens",
-				"                  Straße / Hausnummer",
-				"                  PLZ / Stadt",
-				"                  Land",
+				`                  ${brandName}`,
+				`                  ${brandHouseNumber}`,
+				`                  ${brandPLZ} ${brandCity}`,
 				"        3.6.1. Die Übertragung dieser Rechte an den Kunden erfolgt unter der",
 				"                  edingung, dass alle Verpflichtungen, Rechte und Pflichten, die sich",
 				"                  aus diesem Vertrag ergeben, auf den Kunden in gleicher Weise",
@@ -317,8 +316,8 @@ const margin = 40; // 20mm auf jeder Seite
 			];
 			
 			const maxWidth = doc.internal.pageSize.width - (margin * 2);
-			const headlineTopPadding = 4; // Abstand über der Überschrift
-			const headlineBottomPadding = 4; // Abstand unter der Überschrift
+			const headlineTopPadding = 3; // Abstand über der Überschrift
+			const headlineBottomPadding = 3; // Abstand unter der Überschrift
 
 			let y = 1;
 
@@ -335,7 +334,7 @@ const margin = 40; // 20mm auf jeder Seite
 			doc.setFontSize(14);
                     	doc.setFont("helvetica", "bold");
        			
-                } else if (line.startsWith('	1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('    1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('    1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith(' 1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith(' 1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith(' 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
+                } else if (line.startsWith('1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith(' 1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith(' 1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith(' 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
                     	y += headlineTopPadding;
 			doc.setFontSize(12);
                     	doc.setFont("helvetica", "bold");
