@@ -1,6 +1,13 @@
 <script>
+ console.log('Das Script wurde geladen.');   
 import config from './config.js';
-
+let config;
+try {
+    config = require('./config.js');
+    console.log('Die Konfigurationsdatei wurde erfolgreich geladen.');
+} catch (error) {
+    console.error('Fehler beim Laden der Konfigurationsdatei:', error);
+}
 // Debounce-Funktion
 function debounce(func, wait) {
     let timeout;
