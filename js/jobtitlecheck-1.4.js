@@ -1,8 +1,8 @@
 console.log('Das Script wurde geladen.');   
-import config from '/config.js';
+import config from './config/config.js';
 
 try {
-    config = require('/config.js');
+    config = require('./config/config.js');
     console.log('Die Konfigurationsdatei wurde erfolgreich geladen.');
 } catch (error) {
     console.error('Fehler beim Laden der Konfigurationsdatei:', error);
