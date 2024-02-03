@@ -1,5 +1,4 @@
-<script>
- console.log('Das Script wurde geladen.');   
+console.log('Das Script wurde geladen.');   
 import config from './config.js';
 let config;
 try {
@@ -66,4 +65,3 @@ async function checkJobTitleExists(title) {
         return false; // Im Fehlerfall sicherheitshalber false zurückgeben
     }
 }
-</script>
