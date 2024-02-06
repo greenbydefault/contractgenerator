@@ -39,8 +39,8 @@ jobTitleInput.addEventListener('input', debounce(async function(e) {
 async function checkJobTitleExists(title) {
     const apiKey = config.apiKey;
     const baseId = 'appVQBmxIpYuapHVR';
-    const tableName = 'Member';
-    const dynamicFieldName = 'Creator Name'; // Das Feld, nach dem gesucht wird
+    const tableName = 'Members';
+    const dynamicFieldName = 'Creatorname'; // Das Feld, nach dem gesucht wird
     const query = encodeURIComponent(`LOWER({${dynamicFieldName}})="${title.toLowerCase()}"`);
 
     const url = `https://api.airtable.com/v0/${baseId}/${tableName}?filterByFormula=${query}`;
