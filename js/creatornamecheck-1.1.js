@@ -22,13 +22,13 @@ jobTitleInput.addEventListener('input', debounce(async function(e) {
     if (exists) {
         // Setze den roten Rahmen, wenn der Jobtitel bereits vorhanden ist
         jobTitleInput.style.border = '2px solid #D92415';
-        messageElement.textContent = 'Dieser Jobtitel existiert bereits. Bitte verwende einen eindeutigen Namen';
+        messageElement.textContent = 'Dieser Creator Name existiert bereits. Bitte verwende einen eindeutigen Namen';
         messageElement.style.color = 'red';
         submitButton.classList.add('hide');
     } else {
         // Setze den grünen Rahmen, wenn der Name verfügbar ist
         jobTitleInput.style.border = '2px solid #3DB927';
-        messageElement.textContent = 'Dieser Jobtitel ist verfügbar.';
+        messageElement.textContent = 'Dieser Creator Name ist verfügbar.';
         messageElement.style.color = 'green';
         submitButton.classList.remove('hide');
 
