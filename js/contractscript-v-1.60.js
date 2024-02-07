@@ -75,13 +75,13 @@ function addTableOfContents(doc, y) {
 
     const contents = [
         "1. Rechte und Pflichten des Creators - 3",
-            "		1.1. Verpflichtung zur Erstellung von Content -  3",
-	    "		1.2. Verpflichtung zur Erstellung von Content -  3",
-	    "		1.3. Verpflichtung zur Einhaltung von Deadlines -  4",
-	    "		1.4. Verpflichtung zur Erstellung von Skripten -  4",
-	    "		1.5. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos -  5",
-	    "		1.6. Verpflichtung zur Anpassung am erstellten Inhalt -  5",
-	    "		1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung -  6",
+            "	 1.1. Verpflichtung zur Erstellung von Content -  3",
+	    "	 1.2. Verpflichtung zur Erstellung von Content -  3",
+	    "	 1.3. Verpflichtung zur Einhaltung von Deadlines -  4",
+	    "	 1.4. Verpflichtung zur Erstellung von Skripten -  4",
+	    "	 1.5. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos -  5",
+	    "	 1.6. Verpflichtung zur Anpassung am erstellten Inhalt -  5",
+	    "	 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung -  6",
 	 "2. Rechte und Pflichten des Unternehmens -  7",	
 	 "3. Vertragsdauer, Beendigung, Nutzungsrecht -  7",   
 	 "4. Vertraulichkeit, Geheimhaltung -  8",
@@ -127,7 +127,6 @@ const margin = 40; // 20mm auf jeder Seite
             // Fügen Sie hier alle weiteren Variablen ein, die Sie aus dem Formular holen möchten
 
             const doc = new jsPDF();
-	    addSignatureFields(doc);
 	    addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, brandCity, brandCountry, creatorName, creatorStreet, creatorHouseNumber, creatorPLZ, creatorCity, creatorCountry, jobBezahlung);
             console.log('jsPDF instance created');
             doc.setFont("Helvetica");
@@ -429,7 +428,8 @@ const margin = 40; // 20mm auf jeder Seite
                doc.text(line, 30, y);
                 y += 6;
 		});
-           
+
+            addSignatureFields(doc);
             doc.save('contract.pdf');
             console.log('PDF saved successfully');
         } catch (error) {
