@@ -84,6 +84,7 @@ const margin = 40; // 20mm auf jeder Seite
 			const brandHouseNumber = document.getElementById('vertrag-brand-housenumber').value;
 			const brandPLZ = document.getElementById('vertrag-brand-plz').value;
 			const brandCity = document.getElementById('vertrag-brand-city').value;
+			const brandCountry = document.getElementById('vertrag-brand-country').value;
 			const anzahlVideos = document.getElementById('vertrag-anzahl-video').value;
 			const videoDauer = document.getElementById('vertrag-video-dauer').value;
 			const abgabeScript = document.getElementById('vertrag-abgabe-script').value;
