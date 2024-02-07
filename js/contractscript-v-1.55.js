@@ -98,7 +98,7 @@ const margin = 40; // 20mm auf jeder Seite
 			const creatorHouseNumber = document.getElementById('vertrag-creator-housenumber').value;
 			const creatorPLZ = document.getElementById('vertrag-creator-plz').value;
 			const creatorCity = document.getElementById('vertrag-creator-city').value;
-			const creatorLand = document.getElementById('vertrag-creator-land').value;
+			const creatorCountry = document.getElementById('vertrag-creator-country').value;
             // Fügen Sie hier alle weiteren Variablen ein, die Sie aus dem Formular holen möchten
 
             const doc = new jsPDF();
