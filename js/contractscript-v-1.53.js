@@ -7,7 +7,41 @@ document.addEventListener('DOMContentLoaded', (event) => {
     } else {
         console.log('jsPDF erfolgreich geladen.');
     }
-
+function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, brandCity, brandCountry, creatorName, creatorStreet, creatorHouseNumber, creatorPLZ, creatorCity, creatorCountry) {
+    doc.setFont("Helvetica");
+    doc.setFontSize(16);
+    doc.addPage(); // Fügt eine neue Seite für das Deckblatt hinzu
+    doc.text('Kooperationsvertrag', 105, 80, null, null, 'center');
+    doc.setFontSize(12);
+    doc.text('zwischen', 105, 90, null, null, 'center');
+    
+    // Unternehmen
+    let y = 100;
+    doc.text(brandName, 105, y, null, null, 'center');
+    y += 10;
+    doc.text(`${brandStreet} ${brandHouseNumber}`, 105, y, null, null, 'center');
+    y += 10;
+    doc.text(`${brandPLZ} ${brandCity}`, 105, y, null, null, 'center');
+    y += 10;
+    doc.text(brandCountry, 105, y, null, null, 'center');
+    y += 10;
+    doc.text('- im Folgenden kurz "Unternehmen" genannt –', 105, y, null, null, 'center');
+    
+    // Creator
+    y += 20;
+    doc.text(creatorName, 105, y, null, null, 'center');
+    y += 10;
+    doc.text(`${creatorStreet} ${creatorHouseNumber}`, 105, y, null, null, 'center');
+    y += 10;
+    doc.text(`${creatorPLZ} ${creatorCity}`, 105, y, null, null, 'center');
+    y += 10;
+    doc.text(creatorCountry, 105, y, null, null, 'center');
+    y += 10;
+    doc.text('- im Folgenden kurz "Creator" genannt -', 105, y, null, null, 'center');
+    
+    // Nächste Seite für Inhaltsverzeichnis und Vertragstext
+    doc.addPage();
+}
 function addTableOfContents(doc, y) {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
@@ -57,10 +91,17 @@ const margin = 40; // 20mm auf jeder Seite
 			const abgabeKorrektur = document.getElementById('vertrag-abgabe-korrektur').value;
 			const abgabeZweiteKorrektur = document.getElementById('vertrag-abgabe-zweite-korrektur').value;
 			const jobBezahlung = document.getElementById('vertrag-job-bezahlung').value;
+		        // Creator Daten
+			const creatorName = document.getElementById('vertrag-creator-name').value;
+			const creatorStreet = document.getElementById('vertrag-creator-street').value;
+			const creatorHouseNumber = document.getElementById('vertrag-creator-housenumber').value;
+			const creatorPLZ = document.getElementById('vertrag-creator-plz').value;
+			const creatorCity = document.getElementById('vertrag-creator-city').value;
+			const creatorLand = document.getElementById('vertrag-creator-land').value;
             // Fügen Sie hier alle weiteren Variablen ein, die Sie aus dem Formular holen möchten
 
             const doc = new jsPDF();
-	    
+	    addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, brandCity, brandCountry, creatorName, creatorStreet, creatorHouseNumber, creatorPLZ, creatorCity, creatorCountry, jobBezahlung);
             console.log('jsPDF instance created');
             doc.setFont("Helvetica");
             doc.setFontSize(10);
