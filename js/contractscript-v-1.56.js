@@ -12,31 +12,32 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     doc.setFontSize(16);
     doc.addPage(); // Fügt eine neue Seite für das Deckblatt hinzu
     doc.text('Kooperationsvertrag', 105, 80, null, null, 'center');
-    doc.setFontSize(12);
+    doc.setFontSize(10);
     doc.text('zwischen', 105, 90, null, null, 'center');
     
     // Unternehmen
-    let y = 100;
+    let y = 50;
     doc.text(brandName, 105, y, null, null, 'center');
-    y += 10;
+    y += 6;
     doc.text(`${brandStreet} ${brandHouseNumber}`, 105, y, null, null, 'center');
-    y += 10;
+    y += 6;
     doc.text(`${brandPLZ} ${brandCity}`, 105, y, null, null, 'center');
-    y += 10;
+    y += 6;
     doc.text(brandCountry, 105, y, null, null, 'center');
-    y += 10;
+    y += 6;
     doc.text('- im Folgenden kurz "Unternehmen" genannt –', 105, y, null, null, 'center');
-    
+
+    doc.text('zwischen', 105, y, null, null, 'center');
     // Creator
     y += 20;
     doc.text(creatorName, 105, y, null, null, 'center');
-    y += 10;
+    y += 6;
     doc.text(`${creatorStreet} ${creatorHouseNumber}`, 105, y, null, null, 'center');
-    y += 10;
+    y += 6;
     doc.text(`${creatorPLZ} ${creatorCity}`, 105, y, null, null, 'center');
-    y += 10;
+    y += 6;
     doc.text(creatorCountry, 105, y, null, null, 'center');
-    y += 10;
+    y += 6;
     doc.text('- im Folgenden kurz "Creator" genannt -', 105, y, null, null, 'center');
     
     // Nächste Seite für Inhaltsverzeichnis und Vertragstext
