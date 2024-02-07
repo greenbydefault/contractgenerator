@@ -16,7 +16,7 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     doc.text('zwischen', 105, 90, null, null, 'center');
     
     // Unternehmen
-    let y = 50;
+    let y = 100;
     doc.text(brandName, 105, y, null, null, 'center');
     y += 6;
     doc.text(`${brandStreet} ${brandHouseNumber}`, 105, y, null, null, 'center');
@@ -24,7 +24,7 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     doc.text(`${brandPLZ} ${brandCity}`, 105, y, null, null, 'center');
     y += 6;
     doc.text(brandCountry, 105, y, null, null, 'center');
-    y += 6;
+    y += 20;
     doc.text('- im Folgenden kurz "Unternehmen" genannt –', 105, y, null, null, 'center');
 
     doc.text('zwischen', 105, y, null, null, 'center');
@@ -37,7 +37,7 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     doc.text(`${creatorPLZ} ${creatorCity}`, 105, y, null, null, 'center');
     y += 6;
     doc.text(creatorCountry, 105, y, null, null, 'center');
-    y += 6;
+    y += 20;
     doc.text('- im Folgenden kurz "Creator" genannt -', 105, y, null, null, 'center');
     
     // Nächste Seite für Inhaltsverzeichnis und Vertragstext
