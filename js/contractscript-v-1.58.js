@@ -9,8 +9,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     }
 function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, brandCity, brandCountry, creatorName, creatorStreet, creatorHouseNumber, creatorPLZ, creatorCity, creatorCountry) {
     doc.setFont("Helvetica");
-    doc.setFontSize(16);
-    doc.addPage(); // Fügt eine neue Seite für das Deckblatt hinzu
+    doc.setFontSize(22);
     doc.text('Kooperationsvertrag', 105, 80, null, null, 'center');
     doc.setFontSize(10);
     doc.text('zwischen', 105, 90, null, null, 'center');
@@ -24,12 +23,12 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     doc.text(`${brandPLZ} ${brandCity}`, 105, y, null, null, 'center');
     y += 6;
     doc.text(brandCountry, 105, y, null, null, 'center');
-    y += 20;
+    y += 10;
     doc.text('- im Folgenden kurz "Unternehmen" genannt –', 105, y, null, null, 'center');
-
-    doc.text('zwischen', 105, y, null, null, 'center');
+    y += 20;	
+    doc.text('und', 105, y, null, null, 'center');
     // Creator
-    y += 20;
+    y += 10;
     doc.text(creatorName, 105, y, null, null, 'center');
     y += 6;
     doc.text(`${creatorStreet} ${creatorHouseNumber}`, 105, y, null, null, 'center');
