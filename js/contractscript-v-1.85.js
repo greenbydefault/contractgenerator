@@ -429,7 +429,7 @@ const margin = 60; // 20mm auf jeder Seite
                 }
 
                doc.text(line, 30, y);
-                y += 6;
+                y += 5;
 		});
 
             addSignatureFields(doc);
