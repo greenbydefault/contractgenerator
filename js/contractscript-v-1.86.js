@@ -76,18 +76,18 @@ function addTableOfContents(doc, y) {
 
     const contents = [
         "1. Rechte und Pflichten des Creators								         3",
-            "	 1.1. Verpflichtung zur Erstellung von Content 						  3",
-	    "	 1.2. Verpflichtung zur Erstellung von Content 						  3",
+            "	 1.1. Verpflichtung zur Erstellung von Content 						   3",
+	    "	 1.2. Verpflichtung zur Erstellung von Content 						   3",
 	    "	 1.3. Verpflichtung zur Einhaltung von Deadlines 					      4",
 	    "	 1.4. Verpflichtung zur Erstellung von Skripten   					        4",
-		    "	 1.5. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos                 5",
-	    "	 1.6. Verpflichtung zur Anpassung am erstellten Inhalt 				      5",
+		    "	 1.5. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos                  5",
+	    "	 1.6. Verpflichtung zur Anpassung am erstellten Inhalt 				       5",
 	    "	 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung	          6",
 	 "2. Rechte und Pflichten des Unternehmens							        7",	
 	 "3. Vertragsdauer, Beendigung, Nutzungsrecht							   7",   
-	 "4. Vertraulichkeit, Geheimhaltung 								             8",
-	 "5. Datenschutz 											                  8", 
-         "6. Sonstiges												               8", 
+	 "4. Vertraulichkeit, Geheimhaltung 								              8",
+	 "5. Datenschutz 											                   8", 
+         "6. Sonstiges												                8", 
     ];
 
     doc.setFontSize(10);
@@ -98,9 +98,6 @@ function addTableOfContents(doc, y) {
     });
     return y;
 }
-
-const margin = 60; // 20mm auf jeder Seite
-
 	
     function generatePDF() {
         console.log('Starting PDF generation');
@@ -136,8 +133,6 @@ const margin = 60; // 20mm auf jeder Seite
 	    let y = 10;
             y = addTableOfContents(doc, y);
             doc.addPage();
-	    
-	    
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1. Rechte und Pflichten des Creators",
@@ -398,8 +393,6 @@ const margin = 60; // 20mm auf jeder Seite
 				`                 ${brandCity}`
 			];
 			
-			const maxWidth = doc.internal.pageSize.width - (margin * 2);
-			
 		contractText.forEach(line => {
                 if (y > 280) {
                     doc.addPage();
@@ -409,7 +402,7 @@ const margin = 60; // 20mm auf jeder Seite
 			const headlineBottomPadding = 4; // Abstand unter der Überschrift
 
                 // Formatierung für Überschriften
-                if (line.startsWith('1. Rechte und Pflichten des Creators') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
+                if (line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
                     	y += 5;
 			doc.setFontSize(14);
                     	doc.setFont("helvetica", "bold");
