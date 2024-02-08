@@ -8,10 +8,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
         console.log('jsPDF erfolgreich geladen.');
     }
 function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, brandCity, brandCountry, creatorName, creatorStreet, creatorHouseNumber, creatorPLZ, creatorCity, creatorCountry) {
-    doc.setFont("Helvetica");
-    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
     doc.text('Kooperationsvertrag', 105, 80, null, null, 'center');
-    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");	
+    doc.setFontSize(12);
     doc.text('zwischen', 105, 90, null, null, 'center');
     // Unternehmen
     let y = 100;
@@ -46,49 +47,49 @@ function addSignatureFields(doc) {
     //doc.addPage(); // Fügen Sie diese Zeile hinzu, wenn Sie möchten, dass die Unterschriftenseite eine eigene Seite ist
 
     // Setzen der Y-Position für den Beginn der Unterschriftenfelder
-    let y = doc.internal.pageSize.height - 100; // Beispiel: 100 Einheiten vom unteren Rand
+    let y = doc.internal.pageSize.height - 130; // Beispiel: 100 Einheiten vom unteren Rand
 
     // Allgemeine Einstellungen für die Position
-    const leftColumnX = 30; // X-Position für das linke Feld (Brand)
-    const rightColumnX = doc.internal.pageSize.width / 2 + 20; // X-Position für das rechte Feld (Creator), basierend auf der Seitenbreite
+    const leftColumnX = 30; // X-Position für das linke Feld (Ort)
+    const dateX = doc.internal.pageSize.width / 2 - 50; // X-Position für das mittlere Feld (Datum), passen Sie dies nach Bedarf an
 
-    // Text für das Brand
+    // Ort und Datum nebeneinander
     doc.text("Ort:", leftColumnX, y);
-    doc.text("Datum:", leftColumnX, y + 10);
-    doc.text("Unterschrift:", leftColumnX, y + 20);
-    // Linie für die Unterschrift des Brands
-    doc.line(leftColumnX, y + 25, leftColumnX + 60, y + 25); // Unterschriftlinie
+    doc.text("Datum:", dateX, y);
 
-    // Text für den Creator
-    doc.text("Ort:", rightColumnX, y);
-    doc.text("Datum:", rightColumnX, y + 10);
-    doc.text("Unterschrift:", rightColumnX, y + 20);
-    // Linie für die Unterschrift des Creators
-    doc.line(rightColumnX, y + 25, rightColumnX + 60, y + 25); // Unterschriftlinie
+    // Anpassung der Y-Position für die Unterschrift, um sie unter Ort und Datum zu setzen
+    let signatureY = y + 20; // Etwas Abstand unterhalb von Ort und Datum
+
+    // Unterschrift zentriert unter Ort und Datum
+    const signatureX = leftColumnX; // Sie können dies anpassen, um die Unterschrift zu zentrieren
+    doc.text("Unterschrift:", signatureX, signatureY);
+
+    // Linie für die Unterschrift
+    doc.line(signatureX, signatureY + 5, signatureX + 120, signatureY + 5); // Passen Sie die Länge der Linie nach Bedarf an
 }	
 function addTableOfContents(doc, y) {
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("Inhaltsverzeichnis", 30, y);
     y += 10;
 
     const contents = [
         "1. Rechte und Pflichten des Creators - 3",
-            "	 1.1. Verpflichtung zur Erstellung von Content -  3",
-	    "	 1.2. Verpflichtung zur Erstellung von Content -  3",
-	    "	 1.3. Verpflichtung zur Einhaltung von Deadlines -  4",
-	    "	 1.4. Verpflichtung zur Erstellung von Skripten -  4",
-	    "	 1.5. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos -  5",
-	    "	 1.6. Verpflichtung zur Anpassung am erstellten Inhalt -  5",
-	    "	 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung -  6",
-	 "2. Rechte und Pflichten des Unternehmens -  7",	
-	 "3. Vertragsdauer, Beendigung, Nutzungsrecht -  7",   
-	 "4. Vertraulichkeit, Geheimhaltung -  8",
-	 "5. Datenschutz -  8", 
-         "6. Sonstiges -  8", 
+            "	 1.1. Verpflichtung zur Erstellung von Content - ........................................ 3",
+	    "	 1.2. Verpflichtung zur Erstellung von Content - ........................................ 3",
+	    "	 1.3. Verpflichtung zur Einhaltung von Deadlines - ...................................... 4",
+	    "	 1.4. Verpflichtung zur Erstellung von Skripten - ....................................... 4",
+	    "	 1.5. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos - ..................... 5",
+	    "	 1.6. Verpflichtung zur Anpassung am erstellten Inhalt - ................................ 5",
+	    "	 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung - ....................... 6",
+	 "2. Rechte und Pflichten des Unternehmens - .................................................... 7",	
+	 "3. Vertragsdauer, Beendigung, Nutzungsrecht - ................................................. 7",   
+	 "4. Vertraulichkeit, Geheimhaltung - ........................................................... 8",
+	 "5. Datenschutz - .................... ..........................................................8", 
+         "6. Sonstiges - ................................................................................ 8", 
     ];
 
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
     contents.forEach(line => {
         doc.text(line, 30, y);
@@ -129,7 +130,7 @@ const margin = 60; // 20mm auf jeder Seite
 	    addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, brandCity, brandCountry, creatorName, creatorStreet, creatorHouseNumber, creatorPLZ, creatorCity, creatorCountry, jobBezahlung);
             console.log('jsPDF instance created');
             doc.setFont("Helvetica");
-            doc.setFontSize(10);
+            doc.setFontSize(11);
 	    doc.setCharSpace(5);
 	    let y = 10;
             y = addTableOfContents(doc, y);
@@ -409,7 +410,7 @@ const margin = 60; // 20mm auf jeder Seite
                 // Formatierung für Überschriften
                 if (line.startsWith('1. Rechte und Pflichten des Creators') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
                     	y += headlineTopPadding;
-			doc.setFontSize(14);
+			doc.setFontSize(16);
                     	doc.setFont("helvetica", "bold");
 			y += headlineBottomPadding;
                 } else if (line.startsWith('1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
@@ -419,7 +420,7 @@ const margin = 60; // 20mm auf jeder Seite
        			y += headlineBottomPadding;
                 } else {
                     // Standardformatierung
-                    doc.setFontSize(10);
+                    doc.setFontSize(11);
                     doc.setFont("helvetica", "normal");
                 }
 
