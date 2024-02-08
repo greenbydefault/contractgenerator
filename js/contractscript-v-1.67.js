@@ -47,7 +47,7 @@ function addSignatureFields(doc) {
     //doc.addPage(); // Fügen Sie diese Zeile hinzu, wenn Sie möchten, dass die Unterschriftenseite eine eigene Seite ist
 
     // Setzen der Y-Position für den Beginn der Unterschriftenfelder
-    let y = doc.internal.pageSize.height - 130; // Beispiel: 100 Einheiten vom unteren Rand
+    let y = doc.internal.pageSize.height - 100 // Beispiel: 100 Einheiten vom unteren Rand
 
     // Allgemeine Einstellungen für die Position
     const leftColumnX = 30; // X-Position für das linke Feld (Ort)
@@ -74,11 +74,11 @@ function addTableOfContents(doc, y) {
     y += 10;
 
     const contents = [
-        "1. Rechte und Pflichten des Creators - 3",
-            "	 1.1. Verpflichtung zur Erstellung von Content - ........................................ 3",
-	    "	 1.2. Verpflichtung zur Erstellung von Content - ........................................ 3",
-	    "	 1.3. Verpflichtung zur Einhaltung von Deadlines - ...................................... 4",
-	    "	 1.4. Verpflichtung zur Erstellung von Skripten - ....................................... 4",
+        "1. Rechte und Pflichten des Creators								  3",
+            "	 1.1. Verpflichtung zur Erstellung von Content 						  3",
+	    "	 1.2. Verpflichtung zur Erstellung von Content 						  3",
+	    "	 1.3. Verpflichtung zur Einhaltung von Deadlines 					  4",
+	    "	 1.4. Verpflichtung zur Erstellung von Skripten   					  4",
 	    "	 1.5. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos - ..................... 5",
 	    "	 1.6. Verpflichtung zur Anpassung am erstellten Inhalt - ................................ 5",
 	    "	 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung - ....................... 6",
