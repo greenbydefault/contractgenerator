@@ -68,25 +68,26 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     doc.line(rightColumnX, y + 25, rightColumnX + 60, y + 25); // Unterschriftlinie
 }	
 function addTableOfContents(doc, y) {
+    y += 30;
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("Inhaltsverzeichnis", 30, 40);
+    doc.text("Inhaltsverzeichnis", 30, y);
     y += 10;
 
     const contents = [
-        "1. Rechte und Pflichten des Creators								     3",
+        "1. Rechte und Pflichten des Creators								        3",
             "	 1.1. Verpflichtung zur Erstellung von Content 						  3",
 	    "	 1.2. Verpflichtung zur Erstellung von Content 						  3",
-	    "	 1.3. Verpflichtung zur Einhaltung von Deadlines 					    4",
-	    "	 1.4. Verpflichtung zur Erstellung von Skripten   					      4",
-		    "	 1.5. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos        5",
-	    "	 1.6. Verpflichtung zur Anpassung am erstellten Inhalt 				 5",
-	    "	 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung			 6",
-	 "2. Rechte und Pflichten des Unternehmens							 7",	
-	 "3. Vertragsdauer, Beendigung, Nutzungsrecht							7",   
-	 "4. Vertraulichkeit, Geheimhaltung 								8",
-	 "5. Datenschutz 											8", 
-         "6. Sonstiges												8", 
+	    "	 1.3. Verpflichtung zur Einhaltung von Deadlines 					     4",
+	    "	 1.4. Verpflichtung zur Erstellung von Skripten   					       4",
+		    "	 1.5. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos           5",
+	    "	 1.6. Verpflichtung zur Anpassung am erstellten Inhalt 				    5",
+	    "	 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung	      6",
+	 "2. Rechte und Pflichten des Unternehmens							    7",	
+	 "3. Vertragsdauer, Beendigung, Nutzungsrecht							   7",   
+	 "4. Vertraulichkeit, Geheimhaltung 								      8",
+	 "5. Datenschutz 											     8", 
+         "6. Sonstiges												    8", 
     ];
 
     doc.setFontSize(11);
