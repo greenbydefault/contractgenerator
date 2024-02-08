@@ -70,7 +70,7 @@ function addSignatureFields(doc) {
 function addTableOfContents(doc, y) {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Inhaltsverzeichnis", 60, y);
+    doc.text("Inhaltsverzeichnis", 40, y);
     y += 10;
 
     const contents = [
@@ -92,7 +92,7 @@ function addTableOfContents(doc, y) {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     contents.forEach(line => {
-        doc.text(line, 60, y);
+        doc.text(line, 40, y);
         y += 5;
     });
     return y;
