@@ -42,30 +42,30 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     // Nächste Seite für Inhaltsverzeichnis und Vertragstext
     doc.addPage();
 }
-function addSignatureFields(doc) {
+ function addSignatureFields(doc) {
     // Stellen Sie sicher, dass wir am Ende des Dokuments arbeiten
     //doc.addPage(); // Fügen Sie diese Zeile hinzu, wenn Sie möchten, dass die Unterschriftenseite eine eigene Seite ist
 
     // Setzen der Y-Position für den Beginn der Unterschriftenfelder
-    let y = doc.internal.pageSize.height - 100 // Beispiel: 100 Einheiten vom unteren Rand
+    let y = doc.internal.pageSize.height - 90; // Beispiel: 90 Einheiten vom unteren Rand
 
     // Allgemeine Einstellungen für die Position
-    const leftColumnX = 30; // X-Position für das linke Feld (Ort)
-    const dateX = doc.internal.pageSize.width / 2 - 50; // X-Position für das mittlere Feld (Datum), passen Sie dies nach Bedarf an
+    const leftColumnX = 30; // X-Position für das linke Feld (Brand)
+    const rightColumnX = doc.internal.pageSize.width / 2 + 20; // X-Position für das rechte Feld (Creator), basierend auf der Seitenbreite
 
-    // Ort und Datum nebeneinander
+    // Text für das Brand
     doc.text("Ort:", leftColumnX, y);
-    doc.text("Datum:", dateX, y);
+    doc.text("Datum:", leftColumnX, y + 10);
+    doc.text("Unterschrift:", leftColumnX, y + 20);
+    // Linie für die Unterschrift des Brands
+    doc.line(leftColumnX, y + 25, leftColumnX + 60, y + 25); // Unterschriftlinie
 
-    // Anpassung der Y-Position für die Unterschrift, um sie unter Ort und Datum zu setzen
-    let signatureY = y + 20; // Etwas Abstand unterhalb von Ort und Datum
-
-    // Unterschrift zentriert unter Ort und Datum
-    const signatureX = leftColumnX; // Sie können dies anpassen, um die Unterschrift zu zentrieren
-    doc.text("Unterschrift:", signatureX, signatureY);
-
-    // Linie für die Unterschrift
-    doc.line(signatureX, signatureY + 5, signatureX + 120, signatureY + 5); // Passen Sie die Länge der Linie nach Bedarf an
+    // Text für den Creator
+    doc.text("Ort:", rightColumnX, y);
+    doc.text("Datum:", rightColumnX, y + 10);
+    doc.text("Unterschrift:", rightColumnX, y + 20);
+    // Linie für die Unterschrift des Creators
+    doc.line(rightColumnX, y + 25, rightColumnX + 60, y + 25); // Unterschriftlinie
 }	
 function addTableOfContents(doc, y) {
     doc.setFontSize(14);
