@@ -413,18 +413,15 @@ const margin = 60; // 20mm auf jeder Seite
                     	y += 5;
 			doc.setFontSize(16);
                     	doc.setFont("helvetica", "bold");
-			y += 5;
-                }else if (line.startsWith('        1.1.1. Der Creator verpflichtet sich, gemäß dem Briefing für das') || 
-           line.startsWith('        1.2.1. Der Creator verpflichtet sich alle Deadlines einzuhalten. Das')) {
-    y += 6; // Größeres Padding Top für spezifische Unterabschnitte
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    // Kein zusätzliches y += 5 hier, da wir bereits einen größeren Abstand oben eingefügt haben
-} else if (line.startsWith('1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
+                }else if (line.startsWith('        1.1.1. Der Creator verpflichtet sich, gemäß dem Briefing für das') || line.startsWith('        1.2.1. Der Creator verpflichtet sich alle Deadlines einzuhalten. Das')) || line.startsWith('        1.3.1. Der Content Creator verpflichtet sich zur Erstellung eines detaillierten')) || line.startsWith('        1.4.1. Der Content Creator verpflichtet sich zur ordnungsgemäßen')) || line.startsWith('        1.5.1. Der Creator stellt sicher, dass in den Videos keine')) || line.startsWith('        1.6.1. Der Creator verpflichtet sich, Änderungen am erstellten Inhalt gemäß')) || line.startsWith('        1.7.1. Der Creator erhält die vereinbarte Vergütung nach erfolgreicher')) || line.startsWith('        2.1. Das Unternehmen unterstützt den Creator mit allen erforderlichen')) || line.startsWith('        3.1. Der Vertrag beginnt mit der beidseitigen Unterzeichnung und endet nach')) || line.startsWith('        4.1. Beide Parteien müssen vertrauliche Informationen vertraulich behandeln, es')) || line.startsWith('        5.1. Das Unternehmen erhebt, speichert und verwendet personenbezogene Daten')) || line.startsWith('        6.1. Weder das Unternehmen noch der Creator sind berechtigt, die andere Partei'))    {
+    			y += 5; // Größeres Padding Top für spezifische Unterabschnitte
+    			doc.setFontSize(10);
+    			doc.setFont("helvetica", "normal");
+    			// Kein zusätzliches y += 5 hier, da wir bereits einen größeren Abstand oben eingefügt haben
+		} else if (line.startsWith('1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
                     	y += 5;
 			doc.setFontSize(11);
                     	doc.setFont("helvetica", "bold");
-       			y += 5;
                 } else {
                     // Standardformatierung
                     doc.setFontSize(11);
