@@ -50,7 +50,7 @@ function addSignatureFields(doc) {
     let y = doc.internal.pageSize.height - 100; // Beispiel: 100 Einheiten vom unteren Rand
 
     // Allgemeine Einstellungen für die Position
-    const leftColumnX = 20; // X-Position für das linke Feld (Brand)
+    const leftColumnX = 60; // X-Position für das linke Feld (Brand)
     const rightColumnX = doc.internal.pageSize.width / 2 + 20; // X-Position für das rechte Feld (Creator), basierend auf der Seitenbreite
 
     // Text für das Brand
@@ -98,7 +98,7 @@ function addTableOfContents(doc, y) {
     return y;
 }
 
-const margin = 40; // 20mm auf jeder Seite
+const margin = 60; // 20mm auf jeder Seite
 
 	
     function generatePDF() {
