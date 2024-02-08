@@ -414,9 +414,15 @@ const margin = 60; // 20mm auf jeder Seite
 			doc.setFontSize(16);
                     	doc.setFont("helvetica", "bold");
 			y += 5;
-                } else if (line.startsWith('1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
+                }else if (line.startsWith('1.1.1. Der Creator verpflichtet sich') || 
+           line.startsWith('1.2.1. Der Creator verpflichtet sich alle Deadlines einzuhalten.')) {
+    y += 6; // Größeres Padding Top für spezifische Unterabschnitte
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    // Kein zusätzliches y += 5 hier, da wir bereits einen größeren Abstand oben eingefügt haben
+} else if (line.startsWith('1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
                     	y += 5;
-			doc.setFontSize(12);
+			doc.setFontSize(11);
                     	doc.setFont("helvetica", "bold");
        			y += 5;
                 } else {
