@@ -414,8 +414,8 @@ const margin = 60; // 20mm auf jeder Seite
 			doc.setFontSize(16);
                     	doc.setFont("helvetica", "bold");
 			y += 5;
-                }else if (line.startsWith('1.1.1. Der Creator verpflichtet sich') || 
-           line.startsWith('1.2.1. Der Creator verpflichtet sich alle Deadlines einzuhalten.')) {
+                }else if (line.startsWith('        1.1.1. Der Creator verpflichtet sich, gemäß dem Briefing für das') || 
+           line.startsWith('        1.2.1. Der Creator verpflichtet sich alle Deadlines einzuhalten. Das')) {
     y += 6; // Größeres Padding Top für spezifische Unterabschnitte
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
