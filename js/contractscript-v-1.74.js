@@ -47,7 +47,7 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     //doc.addPage(); // Fügen Sie diese Zeile hinzu, wenn Sie möchten, dass die Unterschriftenseite eine eigene Seite ist
 
     // Setzen der Y-Position für den Beginn der Unterschriftenfelder
-    let y = doc.internal.pageSize.height - 40; // Beispiel: 90 Einheiten vom unteren Rand
+    let y = doc.internal.pageSize.height - 150; // Beispiel: 90 Einheiten vom unteren Rand
 
     // Allgemeine Einstellungen für die Position
     const leftColumnX = 30; // X-Position für das linke Feld (Brand)
@@ -75,19 +75,19 @@ function addTableOfContents(doc, y) {
     y += 10;
 
     const contents = [
-        "1. Rechte und Pflichten des Creators								        3",
+        "1. Rechte und Pflichten des Creators								         3",
             "	 1.1. Verpflichtung zur Erstellung von Content 						  3",
 	    "	 1.2. Verpflichtung zur Erstellung von Content 						  3",
-	    "	 1.3. Verpflichtung zur Einhaltung von Deadlines 					      4",
-	    "	 1.4. Verpflichtung zur Erstellung von Skripten   					        4",
+	    "	 1.3. Verpflichtung zur Einhaltung von Deadlines 					     4",
+	    "	 1.4. Verpflichtung zur Erstellung von Skripten   					       4",
 		    "	 1.5. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos                5",
 	    "	 1.6. Verpflichtung zur Anpassung am erstellten Inhalt 				     5",
-	    "	 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung	        6",
+	    "	 1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung	         6",
 	 "2. Rechte und Pflichten des Unternehmens							      7",	
 	 "3. Vertragsdauer, Beendigung, Nutzungsrecht							 7",   
-	 "4. Vertraulichkeit, Geheimhaltung 								           8",
-	 "5. Datenschutz 											              8", 
-         "6. Sonstiges												             8", 
+	 "4. Vertraulichkeit, Geheimhaltung 								            8",
+	 "5. Datenschutz 											                8", 
+         "6. Sonstiges												              8", 
     ];
 
     doc.setFontSize(10);
