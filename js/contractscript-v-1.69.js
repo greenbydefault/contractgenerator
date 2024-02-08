@@ -52,7 +52,7 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     // Allgemeine Einstellungen für die Position
     const leftColumnX = 30; // X-Position für das linke Feld (Brand)
     const rightColumnX = doc.internal.pageSize.width / 2 + 20; // X-Position für das rechte Feld (Creator), basierend auf der Seitenbreite
-
+    doc.setFontSize(9);
     // Text für das Brand
     doc.text("Ort:", leftColumnX, y);
     doc.text("Datum:", leftColumnX, y + 10);
@@ -130,7 +130,7 @@ const margin = 60; // 20mm auf jeder Seite
 	    addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, brandCity, brandCountry, creatorName, creatorStreet, creatorHouseNumber, creatorPLZ, creatorCity, creatorCountry, jobBezahlung);
             console.log('jsPDF instance created');
             doc.setFont("Helvetica");
-            doc.setFontSize(11);
+            doc.setFontSize(10);
 	    doc.setCharSpace(5);
 	    let y = 10;
             y = addTableOfContents(doc, y);
@@ -404,20 +404,20 @@ const margin = 60; // 20mm auf jeder Seite
                     doc.addPage();
                     y = 10;
                 }
-			const headlineTopPadding = 3; // Abstand über der Überschrift
-			const headlineBottomPadding = 3; // Abstand unter der Überschrift
+			const headlineTopPadding = 4; // Abstand über der Überschrift
+			const headlineBottomPadding = 4; // Abstand unter der Überschrift
 
                 // Formatierung für Überschriften
                 if (line.startsWith('1. Rechte und Pflichten des Creators') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
-                    	y += headlineTopPadding;
+                    	y += 5;
 			doc.setFontSize(16);
                     	doc.setFont("helvetica", "bold");
-			y += headlineBottomPadding;
+			y += 5;
                 } else if (line.startsWith('1.1. Verpflichtung zur Erstellung von Content') || line.startsWith('1.2. Verpflichtung zur Einhaltung von Deadlines') || line.startsWith('1.3. Verpflichtung zur Erstellung von Skripten') || line.startsWith('1.4. Verpflichtung zur ordnungsgemäßen Bereitstellung der Videos') || line.startsWith('1.5. Verpflichtung zur Bewahrung der Rechte Dritter') || line.startsWith('1.6. Verpflichtung zur Anpassung am erstellten Inhalt') || line.startsWith('1.7. Verpflichtung zur ordnungsgemäßen Erstellung der Rechnung')) {
-                    	y += headlineTopPadding;
+                    	y += 5;
 			doc.setFontSize(12);
                     	doc.setFont("helvetica", "bold");
-       			y += headlineBottomPadding;
+       			y += 5;
                 } else {
                     // Standardformatierung
                     doc.setFontSize(11);
