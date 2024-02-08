@@ -47,7 +47,7 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     //doc.addPage(); // Fügen Sie diese Zeile hinzu, wenn Sie möchten, dass die Unterschriftenseite eine eigene Seite ist
 
     // Setzen der Y-Position für den Beginn der Unterschriftenfelder
-    let y = doc.internal.pageSize.height - 170; // Beispiel: 90 Einheiten vom unteren Rand
+    let y = doc.internal.pageSize.height - 160; // Beispiel: 90 Einheiten vom unteren Rand
 
     // Allgemeine Einstellungen für die Position
     const leftColumnX = 30; // X-Position für das linke Feld (Brand)
@@ -402,7 +402,7 @@ function addTableOfContents(doc, y) {
 			const headlineBottomPadding = 4; // Abstand unter der Überschrift
 
                 // Formatierung für Überschriften
-                if (line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
+                if (line.startsWith('1. Rechte und Pflichten des Creators') || line.startsWith('2. Rechte und Pflichten des Unternehmens') || line.startsWith('3. Vertragsdauer, Beendigung, Nutzungsrecht') || line.startsWith('4. Vertraulichkeit, Geheimhaltung') || line.startsWith('5. Datenschutz') || line.startsWith('6. Sonstiges')) {
                     	y += 5;
 			doc.setFontSize(14);
                     	doc.setFont("helvetica", "bold");
