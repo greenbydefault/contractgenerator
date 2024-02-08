@@ -13,7 +13,6 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     doc.text('Kooperationsvertrag', 105, 80, null, null, 'center');
     doc.setFontSize(10);
     doc.text('zwischen', 105, 90, null, null, 'center');
-    
     // Unternehmen
     let y = 100;
     doc.text(brandName, 105, y, null, null, 'center');
@@ -50,7 +49,7 @@ function addSignatureFields(doc) {
     let y = doc.internal.pageSize.height - 100; // Beispiel: 100 Einheiten vom unteren Rand
 
     // Allgemeine Einstellungen für die Position
-    const leftColumnX = 60; // X-Position für das linke Feld (Brand)
+    const leftColumnX = 30; // X-Position für das linke Feld (Brand)
     const rightColumnX = doc.internal.pageSize.width / 2 + 20; // X-Position für das rechte Feld (Creator), basierend auf der Seitenbreite
 
     // Text für das Brand
@@ -70,7 +69,7 @@ function addSignatureFields(doc) {
 function addTableOfContents(doc, y) {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Inhaltsverzeichnis", 40, y);
+    doc.text("Inhaltsverzeichnis", 30, y);
     y += 10;
 
     const contents = [
@@ -92,7 +91,7 @@ function addTableOfContents(doc, y) {
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     contents.forEach(line => {
-        doc.text(line, 40, y);
+        doc.text(line, 30, y);
         y += 5;
     });
     return y;
@@ -399,7 +398,6 @@ const margin = 60; // 20mm auf jeder Seite
 			
 			const maxWidth = doc.internal.pageSize.width - (margin * 2);
 			
-
 		contractText.forEach(line => {
                 if (y > 280) {
                     doc.addPage();
@@ -436,7 +434,6 @@ const margin = 60; // 20mm auf jeder Seite
             console.error('An error occurred during PDF generation:', error);
         }
     }
-
     const form = document.getElementById('vertragsgenerator-v2');
     if (form) {
         form.addEventListener('submit', function(e) {
