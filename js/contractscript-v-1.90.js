@@ -66,7 +66,40 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     doc.text("Unterschrift:", rightColumnX, y + 20);
     // Linie für die Unterschrift des Creators
     doc.line(rightColumnX, y + 25, rightColumnX + 60, y + 25); // Unterschriftlinie
-}	
+}
+
+document.getElementById('vertrag-type-select').addEventListener('change', function() {
+    if (this.value === 'Ja') {
+        updateContractForExternalCustomer();
+    }
+});
+function updateContractForExternalCustomer() {
+    // Kundendaten sammeln
+    const externalCustomerData = {
+        name: document.getElementById('vertrag-kunde-name').value,
+        street: document.getElementById('vertrag-kunde-street').value,
+        houseNumber: document.getElementById('vertrag-kunde-housenumber').value,
+	city: document.getElementById('vertrag-kunde-city').value,
+        plz: document.getElementById('vertrag-kunde-plz').value,
+        country: document.getElementById('vertrag-kunde-country').value
+    };
+
+    // Aktualisieren der globalen Variablen oder direkt der Inhalte, die ins PDF eingefügt werden
+    // Da Ihr Code diese Variablen nicht direkt zeigt, ist hier ein hypothetisches Beispiel,
+    // wie Sie die Daten in die PDF-Erstellung einfügen könnten:
+    // Diese Werte direkt in der generatePDF-Funktion oder einer anderen relevanten Stelle verwenden
+
+    // Beispiel: Setzen der Variablen für die PDF-Erstellung
+    brandName = externalCustomerData.name;
+    brandStreet = externalCustomerData.street;
+    brandHouseNumber = externalCustomerData.houseNumber;
+    brandPLZ = externalCustomerData.plz;
+    brandCity = 'Die Stadt des externen Kunden'; // Angenommen, Sie haben eine entsprechende Eingabe oder Logik dafür
+    brandCountry = externalCustomerData.country;
+
+    // Hinweis: Sie müssen sicherstellen, dass die Variablen im Scope Ihrer PDF-Erstellungsfunktion verfügbar sind.
+    // Es könnte erforderlich sein, sie als globale Variablen zu definieren oder ihre Werte durch Funktionen zu übergeben.
+}
 function addTableOfContents(doc, y) {
     y += 30;
     doc.setFontSize(14);
@@ -350,9 +383,11 @@ function addTableOfContents(doc, y) {
 				"        3.6. Der Creator gewährt dem Unternehmen das uneingeschränkte Recht, alle im",
 				"                  Rahmen dieses Vertrags erstellten Inhalte, einschließlich Bilder und Videos,",
 				"                  an den folgenden Kunden des Unternehmens zu übertragen:",
+				"                  ",
 				`                  ${brandName}`,
 				`                  ${brandStreet} ${brandHouseNumber}`,
-				`                  ${brandPLZ} ${brandCity}`,				
+				`                  ${brandPLZ} ${brandCity}`,
+				"                  ",
 				"        3.6.1. Die Übertragung dieser Rechte an den Kunden erfolgt unter der",
 				"                  edingung, dass alle Verpflichtungen, Rechte und Pflichten, die sich",
 				"                  aus diesem Vertrag ergeben, auf den Kunden in gleicher Weise",
