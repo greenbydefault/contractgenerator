@@ -467,7 +467,7 @@ function addTableOfContents(doc, y) {
 	    contractualRightsPLZ = externalCustomerData.plz;
 	    contractualRightsCity = externalCustomerData.city; // Angenommen, Sie haben eine entsprechende Eingabe oder Logik dafür
 	    contractualRightsCountry = externalCustomerData.country;
-	   console.log("Vertragsdaten für externen Kunden aktualisiert:", vertragsDaten);	
+	   	
 	    // Hinweis: Sie müssen sicherstellen, dass die Variablen im Scope Ihrer PDF-Erstellungsfunktion verfügbar sind.
 	    // Es könnte erforderlich sein, sie als globale Variablen zu definieren oder ihre Werte durch Funktionen zu übergeben.
 	}
