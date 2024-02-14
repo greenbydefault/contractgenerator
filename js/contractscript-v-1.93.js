@@ -104,7 +104,7 @@ function addTableOfContents(doc, y) {
     function generatePDF() {
         console.log('Starting PDF generation');
         try {
-            const brandName = document.getElementById('vertrag-brandname').value;
+            		const brandName = document.getElementById('vertrag-brandname').value;
 			const brandStreet = document.getElementById('vertrag-brand-street').value;
 			const brandHouseNumber = document.getElementById('vertrag-brand-housenumber').value;
 			const brandPLZ = document.getElementById('vertrag-brand-plz').value;
@@ -125,6 +125,13 @@ function addTableOfContents(doc, y) {
 			const creatorPLZ = document.getElementById('vertrag-creator-plz').value;
 			const creatorCity = document.getElementById('vertrag-creator-city').value;
 			const creatorCountry = document.getElementById('vertrag-creator-country').value;
+			//Adressdaten
+			const contractualRightName = document.getElementById('vertrag-brandname').value;
+			const contractualRightsStreet = document.getElementById('vertrag-brand-street').value;
+			const contractualRightsHouseNumber = document.getElementById('vertrag-brand-housenumber').value;
+			const contractualRightsPLZ = document.getElementById('vertrag-brand-plz').value;
+			const contractualRightsCity = document.getElementById('vertrag-brand-city').value;
+			const contractualRightsCountry = document.getElementById('vertrag-brand-country').value;
             // Fügen Sie hier alle weiteren Variablen ein, die Sie aus dem Formular holen möchten
 
             const doc = new jsPDF();
@@ -353,9 +360,9 @@ function addTableOfContents(doc, y) {
 				"                  Rahmen dieses Vertrags erstellten Inhalte, einschließlich Bilder und Videos,",
 				"                  an den folgenden Kunden des Unternehmens zu übertragen:",
 				"                  ",
-				`                  ${brandName}`,
-				`                  ${brandStreet} ${brandHouseNumber}`,
-				`                  ${brandPLZ} ${brandCity}`,
+				`                  ${contractualRightName}`,
+				`                  ${contractualRightsStreet} ${contractualRightsHouseNumber}`,
+				`                  ${contractualRightsPLZ} ${contractualRightsCity}`,
 				"                  ",
 				"        3.6.1. Die Übertragung dieser Rechte an den Kunden erfolgt unter der",
 				"                  edingung, dass alle Verpflichtungen, Rechte und Pflichten, die sich",
@@ -454,13 +461,13 @@ function addTableOfContents(doc, y) {
 	    // Diese Werte direkt in der generatePDF-Funktion oder einer anderen relevanten Stelle verwenden
 	
 	    // Beispiel: Setzen der Variablen für die PDF-Erstellung
-	    brandName = externalCustomerData.name;
-	    brandStreet = externalCustomerData.street;
-	    brandHouseNumber = externalCustomerData.houseNumber;
-	    brandPLZ = externalCustomerData.plz;
-	    brandCity = externalCustomerData.city; // Angenommen, Sie haben eine entsprechende Eingabe oder Logik dafür
-	    brandCountry = externalCustomerData.country;
-	
+	    contractualRightName = externalCustomerData.name;
+	    contractualRightsStreet = externalCustomerData.street;
+	    contractualRightsHouseNumber = externalCustomerData.houseNumber;
+	    contractualRightsPLZ = externalCustomerData.plz;
+	    contractualRightsCity = externalCustomerData.city; // Angenommen, Sie haben eine entsprechende Eingabe oder Logik dafür
+	    contractualRightsCountry = externalCustomerData.country;
+	   console.log("Vertragsdaten für externen Kunden aktualisiert:", vertragsDaten);	
 	    // Hinweis: Sie müssen sicherstellen, dass die Variablen im Scope Ihrer PDF-Erstellungsfunktion verfügbar sind.
 	    // Es könnte erforderlich sein, sie als globale Variablen zu definieren oder ihre Werte durch Funktionen zu übergeben.
 	}
