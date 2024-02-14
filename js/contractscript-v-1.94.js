@@ -471,16 +471,18 @@ function addTableOfContents(doc, y) {
 	    // Hinweis: Sie müssen sicherstellen, dass die Variablen im Scope Ihrer PDF-Erstellungsfunktion verfügbar sind.
 	    // Es könnte erforderlich sein, sie als globale Variablen zu definieren oder ihre Werte durch Funktionen zu übergeben.
 	}
-document.getElementById('vertrag-type-select').addEventListener('change', function() {
-    if (this.value === 'Ja') {
-        updateContractForExternalCustomer();
-    }
-});
     const form = document.getElementById('vertragsgenerator-v2');
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             console.log('Form submission intercepted');
+	    const selectValue = document.getElementById('vertrag-type-select').value;
+            if (selectValue === 'Ja') {
+                updateContractForExternalCustomer(); // Aktualisiert die Vertragsdaten für externe Kunden
+            } else {
+                // Optional: Logik für den Fall, dass "Nein" ausgewählt ist
+                // Zum Beispiel: Zurücksetzen auf Standarddaten oder eine spezielle Handhabung
+            }
             generatePDF();
         });
     } else {
