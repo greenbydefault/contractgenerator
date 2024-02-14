@@ -458,7 +458,7 @@ function addTableOfContents(doc, y) {
 	    brandStreet = externalCustomerData.street;
 	    brandHouseNumber = externalCustomerData.houseNumber;
 	    brandPLZ = externalCustomerData.plz;
-	    brandCity = externalCustomerData.city'; // Angenommen, Sie haben eine entsprechende Eingabe oder Logik dafür
+	    brandCity = externalCustomerData.city; // Angenommen, Sie haben eine entsprechende Eingabe oder Logik dafür
 	    brandCountry = externalCustomerData.country;
 	
 	    // Hinweis: Sie müssen sicherstellen, dass die Variablen im Scope Ihrer PDF-Erstellungsfunktion verfügbar sind.
