@@ -115,6 +115,7 @@ function addTableOfContents(doc, y) {
 			const abgabeKorrektur = document.getElementById('vertrag-abgabe-korrektur').value;
 			const abgabeZweiteKorrektur = document.getElementById('vertrag-abgabe-zweite-korrektur').value;
 			const jobBezahlung = document.getElementById('vertrag-job-bezahlung').value;
+			const jobDauer = document.getElementById('vertrag-video-nutzungsdauer').value;
 		        // Creator Daten
 			const creatorName = document.getElementById('vertrag-creator-name').value;
 			const creatorStreet = document.getElementById('vertrag-creator-street').value;
@@ -335,7 +336,7 @@ function addTableOfContents(doc, y) {
 				"        3.1. Der Vertrag beginnt mit der beidseitigen Unterzeichnung und endet nach",
 				"                  Abschluss der Content-Abnahme.",
 				"        3.2. Der Creator überträgt dem Unternehmen unwiderruflich, zeitlich und räumlich",
-				"                  uneingeschränkte Nutzungsrechte am erstellten Inhalt.",
+				`                  uneingeschränkte Nutzungsrechte am erstellten Inhalt für ${jobDauer}.`,
 				"        3.3. Das Unternehmen darf die erstellten Leistungen des Creators für eigene",
 				"                  Werbezwecke nutzen, einschließlich Übersetzungen, Umgestaltungen oder",
 				"                  Bearbeitungen.",
