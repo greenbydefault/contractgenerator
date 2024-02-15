@@ -12,8 +12,8 @@ function addWatermark(doc) {
 
     // Setze Schriftart und Größe für das Wasserzeichen
     doc.setFont('helvetica');
-    doc.setFontSize(10);
-    doc.setTextColor(150); // Graue Farbe für das Wasserzeichen
+    doc.setFontSize(7);
+    doc.setTextColor(130); // Graue Farbe für das Wasserzeichen
 
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
@@ -21,9 +21,6 @@ function addWatermark(doc) {
         const pageSize = doc.internal.pageSize;
         const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
         const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
-        
-        // Setze das Wasserzeichen in die untere linke Ecke
-        doc.text('Created with creatorjobs.com', 10, pageHeight - 10);
 
         // Optional: Setze das Wasserzeichen auch in die untere rechte Ecke
         const watermarkTextWidth = doc.getTextWidth('Created with creatorjobs.com');
