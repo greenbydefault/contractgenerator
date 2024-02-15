@@ -132,10 +132,10 @@ function addTableOfContents(doc, y) {
 			        // Verwende die Daten von 'vertrag-kunde-' Feldern für den unteren Teil
 			        contractualRightName = document.getElementById('vertrag-kunde-name').value;
 			        contractualRightsStreet = document.getElementById('vertrag-kunde-street').value;
-				creatorHouseNumber = document.getElementById('vertrag-kunde-housenumber').value;
-				creatorPLZ = document.getElementById('vertrag-kunde-plz').value;
-				creatorCity = document.getElementById('vertrag-kunde-city').value;
-				creatorCountry = document.getElementById('vertrag-kunde-country').value;
+				contractualRightsNumber = document.getElementById('vertrag-kunde-housenumber').value;
+				contractualRightsPLZ = document.getElementById('vertrag-kunde-plz').value;
+				contractualRightsCity = document.getElementById('vertrag-kunde-city').value;
+				contractualRightsCountry = document.getElementById('vertrag-kunde-country').value;
 			        // ...setze dies fort für die anderen benötigten Felder
 			} else {
 			        // Verwende die gleichen Daten wie für das Deckblatt
