@@ -462,11 +462,11 @@ function addTableOfContents(doc, y) {
 	
 	    // Beispiel: Setzen der Variablen für die PDF-Erstellung
 	    document.getElementById('vertrag-brandname').value = externalCustomerData.name;
-	    document.getElementById('vertrag-kunde-street').value = externalCustomerData.street;
-	    document.getElementById('vertrag-kunde-housenumber').value = externalCustomerData.houseNumber;
-	    document.getElementById('vertrag-kunde-city').value = externalCustomerData.city;
-	    document.getElementById('vertrag-kunde-plz').value = externalCustomerData.plz;
-	    document.getElementById('vertrag-kunde-country').value = externalCustomerData.country;
+	    document.getElementById('vertrag-brand-street').value = externalCustomerData.street;
+	    document.getElementById('vertrag-brand-housenumber').value = externalCustomerData.houseNumber;
+	    document.getElementById('vertrag-brand-city').value = externalCustomerData.city;
+	    document.getElementById('vertrag-brand-plz').value = externalCustomerData.plz;
+	    document.getElementById('vertrag-brand-country').value = externalCustomerData.country;
 	   	
 	    // Hinweis: Sie müssen sicherstellen, dass die Variablen im Scope Ihrer PDF-Erstellungsfunktion verfügbar sind.
 	    // Es könnte erforderlich sein, sie als globale Variablen zu definieren oder ihre Werte durch Funktionen zu übergeben.
