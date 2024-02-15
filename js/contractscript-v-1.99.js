@@ -104,6 +104,7 @@ function addTableOfContents(doc, y) {
     function generatePDF() {
         console.log('Starting PDF generation');
         try {
+			const selectValue = document.getElementById('vertrag-type-select').value;
             		const brandName = document.getElementById('vertrag-brandname').value;
 			const brandStreet = document.getElementById('vertrag-brand-street').value;
 			const brandHouseNumber = document.getElementById('vertrag-brand-housenumber').value;
@@ -126,12 +127,26 @@ function addTableOfContents(doc, y) {
 			const creatorCity = document.getElementById('vertrag-creator-city').value;
 			const creatorCountry = document.getElementById('vertrag-creator-country').value;
 			//Adressdaten
-			const contractualRightName = document.getElementById('vertrag-brandname').value;
-			const contractualRightsStreet = document.getElementById('vertrag-brand-street').value;
-			const contractualRightsHouseNumber = document.getElementById('vertrag-brand-housenumber').value;
-			const contractualRightsPLZ = document.getElementById('vertrag-brand-plz').value;
-			const contractualRightsCity = document.getElementById('vertrag-brand-city').value;
-			const contractualRightsCountry = document.getElementById('vertrag-brand-country').value;
+			let contractualRightName, contractualRightsStreet, contractualRightsHouseNumber, contractualRightsPLZ, contractualRightsCity, contractualRightsCountry;
+			if (selectValue === 'Ja') {
+			        // Verwende die Daten von 'vertrag-kunde-' Feldern für den unteren Teil
+			        contractualRightName = document.getElementById('vertrag-kunde-name').value;
+			        contractualRightsStreet = document.getElementById('vertrag-kunde-street').value;
+				creatorHouseNumber = document.getElementById('vertrag-kunde-housenumber').value;
+				creatorPLZ = document.getElementById('vertrag-kunde-plz').value;
+				creatorCity = document.getElementById('vertrag-kunde-city').value;
+				creatorCountry = document.getElementById('vertrag-kunde-country').value;
+			        // ...setze dies fort für die anderen benötigten Felder
+			} else {
+			        // Verwende die gleichen Daten wie für das Deckblatt
+			        contractualRightName = brandName;
+				contractualRightsStreet = brandStreet
+				contractualRightsHouseNumber = brandHouseNumber
+				contractualRightsPLZ = brandPLZ
+				contractualRightsCity = brandCity
+				contractualRightsCountry = brandCountry
+			        // ...setze dies fort für die anderen benötigten Felder
+		  	  }
             // Fügen Sie hier alle weiteren Variablen ein, die Sie aus dem Formular holen möchten
 
             const doc = new jsPDF();
@@ -444,33 +459,13 @@ function addTableOfContents(doc, y) {
             console.error('An error occurred during PDF generation:', error);
         }
     }
-    function updateContractForExternalCustomer() {
-    // Prüft, ob "Ja" ausgewählt ist
-    const selectValue = document.getElementById('vertrag-type-select').value;
-    if (selectValue === 'Ja') {
-        // Aktualisiere nur die Felder für den unteren Bereich des Dokuments
-        // Annahme: Es gibt spezifische IDs oder eine Methode, um diese Felder zu identifizieren
-        // Beispiel, wie man die Werte setzen könnte, wenn die IDs bekannt sind:
-        document.getElementById('vertrag-contractualright-name').value = document.getElementById('vertrag-kunde-name').value;
-        document.getElementById('vertrag-contractualright-street').value = document.getElementById('vertrag-kunde-street').value;
-        document.getElementById('vertrag-contractualright-housenumber').value = document.getElementById('vertrag-kunde-housenumber').value;
-        document.getElementById('vertrag-contractualright-plz').value = document.getElementById('vertrag-kunde-plz').value;
-        document.getElementById('vertrag-contractualright-city').value = document.getElementById('vertrag-kunde-city').value;
-        document.getElementById('vertrag-contractualright-country').value = document.getElementById('vertrag-kunde-country').value;
-    }
-}
+    
     const form = document.getElementById('vertragsgenerator-v2');
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             console.log('Form submission intercepted');
-	    const selectValue = document.getElementById('vertrag-type-select').value;
-            if (selectValue === 'Ja') {
-                updateContractForExternalCustomer(); // Aktualisiert die Vertragsdaten für externe Kunden
-            } else {
-                // Optional: Logik für den Fall, dass "Nein" ausgewählt ist
-                // Zum Beispiel: Zurücksetzen auf Standarddaten oder eine spezielle Handhabung
-            }
+	    
             generatePDF();
         });
     } else {
