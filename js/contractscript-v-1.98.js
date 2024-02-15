@@ -445,32 +445,20 @@ function addTableOfContents(doc, y) {
         }
     }
     function updateContractForExternalCustomer() {
-	    // Kundendaten sammeln
-	    const externalCustomerData = {
-	        name: document.getElementById('vertrag-kunde-name').value,
-	        street: document.getElementById('vertrag-kunde-street').value,
-	        houseNumber: document.getElementById('vertrag-kunde-housenumber').value,
-		city: document.getElementById('vertrag-kunde-city').value,
-	        plz: document.getElementById('vertrag-kunde-plz').value,
-	        country: document.getElementById('vertrag-kunde-country').value
-	    };
-	
-	    // Aktualisieren der globalen Variablen oder direkt der Inhalte, die ins PDF eingefügt werden
-	    // Da Ihr Code diese Variablen nicht direkt zeigt, ist hier ein hypothetisches Beispiel,
-	    // wie Sie die Daten in die PDF-Erstellung einfügen könnten:
-	    // Diese Werte direkt in der generatePDF-Funktion oder einer anderen relevanten Stelle verwenden
-	
-	    // Beispiel: Setzen der Variablen für die PDF-Erstellung
-	    document.getElementById('vertrag-brandname').value = externalCustomerData.name;
-	    document.getElementById('vertrag-brand-street').value = externalCustomerData.street;
-	    document.getElementById('vertrag-brand-housenumber').value = externalCustomerData.houseNumber;
-	    document.getElementById('vertrag-brand-city').value = externalCustomerData.city;
-	    document.getElementById('vertrag-brand-plz').value = externalCustomerData.plz;
-	    document.getElementById('vertrag-brand-country').value = externalCustomerData.country;
-	   	
-	    // Hinweis: Sie müssen sicherstellen, dass die Variablen im Scope Ihrer PDF-Erstellungsfunktion verfügbar sind.
-	    // Es könnte erforderlich sein, sie als globale Variablen zu definieren oder ihre Werte durch Funktionen zu übergeben.
-	}
+    // Prüft, ob "Ja" ausgewählt ist
+    const selectValue = document.getElementById('vertrag-type-select').value;
+    if (selectValue === 'Ja') {
+        // Aktualisiere nur die Felder für den unteren Bereich des Dokuments
+        // Annahme: Es gibt spezifische IDs oder eine Methode, um diese Felder zu identifizieren
+        // Beispiel, wie man die Werte setzen könnte, wenn die IDs bekannt sind:
+        document.getElementById('vertrag-contractualright-name').value = document.getElementById('vertrag-kunde-name').value;
+        document.getElementById('vertrag-contractualright-street').value = document.getElementById('vertrag-kunde-street').value;
+        document.getElementById('vertrag-contractualright-housenumber').value = document.getElementById('vertrag-kunde-housenumber').value;
+        document.getElementById('vertrag-contractualright-plz').value = document.getElementById('vertrag-kunde-plz').value;
+        document.getElementById('vertrag-contractualright-city').value = document.getElementById('vertrag-kunde-city').value;
+        document.getElementById('vertrag-contractualright-country').value = document.getElementById('vertrag-kunde-country').value;
+    }
+}
     const form = document.getElementById('vertragsgenerator-v2');
     if (form) {
         form.addEventListener('submit', function(e) {
