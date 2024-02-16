@@ -119,7 +119,7 @@ function addTableOfContents(doc, y) {
         y += 6;
     });
     return y;
-    doc.addPage();
+    
 }
 	
     function generatePDF() {
@@ -181,7 +181,8 @@ function addTableOfContents(doc, y) {
 	    doc.setCharSpace(5);
 	    let y = 10;
 	    y = addTableOfContents(doc, y);
-	    	
+	    doc.addPage();
+            y = 10;	
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1. Rechte und Pflichten des Creators",
