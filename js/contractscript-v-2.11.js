@@ -178,9 +178,9 @@ function addTableOfContents(doc, y) {
             doc.setFont("Helvetica");
             doc.setFontSize(10);
 	    doc.setCharSpace(5);
-	    let y = 10;
             y = addTableOfContents(doc, y);
             doc.addPage();
+	    let y = 10;	
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1. Rechte und Pflichten des Creators",
