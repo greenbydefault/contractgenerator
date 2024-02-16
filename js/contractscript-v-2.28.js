@@ -182,7 +182,7 @@ function addTableOfContents(doc, y) {
 	    let y = 10;
 	    y = addTableOfContents(doc, y);
 	    doc.addPage();
-            y = 30;	
+            y = 20;	
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1. Rechte und Pflichten des Creators",
@@ -448,7 +448,7 @@ function addTableOfContents(doc, y) {
 		contractText.forEach(line => {
                 if (y > 280) {
                     doc.addPage();
-                    y = 25;
+                    y = 20;
                 }
 			const headlineTopPadding = 4; // Abstand über der Überschrift
 			const headlineBottomPadding = 4; // Abstand unter der Überschrift
