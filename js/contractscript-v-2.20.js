@@ -90,7 +90,7 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
 
 	
 function addTableOfContents(doc, y) {
-    let y = 30;
+    
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("Inhaltsverzeichnis", 30, y);
@@ -179,9 +179,9 @@ function addTableOfContents(doc, y) {
             doc.setFontSize(10);
 	    doc.setCharSpace(5);
 	    
-	    addTableOfContents(doc, y);	
+	    y = addTableOfContents(doc, y);	
 	    doc.addPage();
-		let y = 10;	
+	    let y = 10;	
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1. Rechte und Pflichten des Creators",
