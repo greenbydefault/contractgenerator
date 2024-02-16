@@ -90,7 +90,7 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
 
 	
 function addTableOfContents(doc, y) {
-    y += 30;
+    let y = 30;
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("Inhaltsverzeichnis", 30, y);
