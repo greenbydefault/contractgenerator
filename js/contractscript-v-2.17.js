@@ -181,7 +181,6 @@ function addTableOfContents(doc, y) {
 	    let y = 10;	
 	    y = addTableOfContents(doc, y);
 	    doc.addPage();
-	    let y = 10;	
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1. Rechte und Pflichten des Creators",
