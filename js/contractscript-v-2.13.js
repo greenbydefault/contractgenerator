@@ -178,9 +178,6 @@ function addTableOfContents(doc, y) {
             doc.setFont("Helvetica");
             doc.setFontSize(10);
 	    doc.setCharSpace(5);
-           	
-            
-            doc.addPage();
 	    let y = 10;	
 	    y = addTableOfContents(doc, y);
 			// Define the static parts of the contract and insert dynamic values
