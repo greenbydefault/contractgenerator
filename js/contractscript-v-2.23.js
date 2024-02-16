@@ -119,6 +119,7 @@ function addTableOfContents(doc, y) {
         y += 6;
     });
     return y;
+    doc.addPage();
 }
 	
     function generatePDF() {
