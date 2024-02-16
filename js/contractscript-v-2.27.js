@@ -67,7 +67,7 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     //doc.addPage(); // Fügen Sie diese Zeile hinzu, wenn Sie möchten, dass die Unterschriftenseite eine eigene Seite ist
 
     // Setzen der Y-Position für den Beginn der Unterschriftenfelder
-    let y = doc.internal.pageSize.height - 60; // Beispiel: 90 Einheiten vom unteren Rand
+    let y = doc.internal.pageSize.height - 15; // Beispiel: 90 Einheiten vom unteren Rand
 
     // Allgemeine Einstellungen für die Position
     const leftColumnX = 30; // X-Position für das linke Feld (Brand)
