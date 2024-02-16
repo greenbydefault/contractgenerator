@@ -67,7 +67,7 @@ function addCoverPage(doc, brandName, brandStreet, brandHouseNumber, brandPLZ, b
     //doc.addPage(); // Fügen Sie diese Zeile hinzu, wenn Sie möchten, dass die Unterschriftenseite eine eigene Seite ist
 
     // Setzen der Y-Position für den Beginn der Unterschriftenfelder
-    let y = doc.internal.pageSize.height - 15; // Beispiel: 90 Einheiten vom unteren Rand
+    let y = doc.internal.pageSize.height - 30; // Beispiel: 90 Einheiten vom unteren Rand
 
     // Allgemeine Einstellungen für die Position
     const leftColumnX = 30; // X-Position für das linke Feld (Brand)
@@ -182,7 +182,7 @@ function addTableOfContents(doc, y) {
 	    let y = 10;
 	    y = addTableOfContents(doc, y);
 	    doc.addPage();
-            y = 20;	
+            y = 15;	
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1. Rechte und Pflichten des Creators",
@@ -448,7 +448,7 @@ function addTableOfContents(doc, y) {
 		contractText.forEach(line => {
                 if (y > 280) {
                     doc.addPage();
-                    y = 20;
+                    y = 15;
                 }
 			const headlineTopPadding = 4; // Abstand über der Überschrift
 			const headlineBottomPadding = 4; // Abstand unter der Überschrift
