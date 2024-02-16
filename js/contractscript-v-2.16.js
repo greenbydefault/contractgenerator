@@ -178,9 +178,10 @@ function addTableOfContents(doc, y) {
             doc.setFont("Helvetica");
             doc.setFontSize(10);
 	    doc.setCharSpace(5);
-	    doc.addPage();
 	    let y = 10;	
 	    y = addTableOfContents(doc, y);
+	    doc.addPage();
+	    let y = 10;	
 			// Define the static parts of the contract and insert dynamic values
 			const contractText = [
 				"1. Rechte und Pflichten des Creators",
@@ -483,7 +484,6 @@ function addTableOfContents(doc, y) {
             console.error('An error occurred during PDF generation:', error);
         }
     }
-    
     const form = document.getElementById('vertragsgenerator-v2');
     if (form) {
         form.addEventListener('submit', function(e) {
