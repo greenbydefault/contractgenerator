@@ -153,7 +153,7 @@ function addTableOfContents(doc, y) {
 			        // Verwende die Daten von 'vertrag-kunde-' Feldern für den unteren Teil
 			        contractualRightName = document.getElementById('vertrag-kunde-name').value;
 			        contractualRightsStreet = document.getElementById('vertrag-kunde-street').value;
-				contractualRightsNumber = document.getElementById('vertrag-kunde-housenumber').value;
+				contractualRightsHouseNumber = document.getElementById('vertrag-kunde-housenumber').value;
 				contractualRightsPLZ = document.getElementById('vertrag-kunde-plz').value;
 				contractualRightsCity = document.getElementById('vertrag-kunde-city').value;
 				contractualRightsCountry = document.getElementById('vertrag-kunde-country').value;
@@ -402,7 +402,7 @@ function addTableOfContents(doc, y) {
 				"                  an den folgenden Kunden des Unternehmens zu übertragen:",
 				"                  ",
 				`                  ${contractualRightName}`,
-				`                  ${contractualRightsStreet} ${contractualRightsNumber}`,
+				`                  ${contractualRightsStreet} ${contractualRightsHouseNumber}`,
 				`                  ${contractualRightsPLZ} ${contractualRightsCity}`,
 				"                  ",
 				"        3.6.1. Die Übertragung dieser Rechte an den Kunden erfolgt unter der",
