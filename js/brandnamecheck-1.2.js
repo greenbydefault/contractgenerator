@@ -1,6 +1,5 @@
 console.log('Das Script wurde geladen.');   
 import config from './config/config.js';
-
 // Debounce-Funktion
 function debounce(func, wait) {
     let timeout;
@@ -10,14 +9,13 @@ function debounce(func, wait) {
         timeout = setTimeout(() => func.apply(context, args), wait);
     };
 }
-
 // Eingabefeld-Event-Listener mit Debouncing
-const jobTitleInput = document.getElementById('brandname');
+const jobTitleInput = document.getElementById('signup-name');
 jobTitleInput.addEventListener('input', debounce(async function(e) {
     const jobTitle = e.target.value;
     // Asynchrone Anfrage, um den Jobtitel zu überprüfen
     const exists = await checkJobTitleExists(jobTitle);
-    const messageElement = document.getElementById('message');
+    const messageElement = document.getElementById('brand-name-msg');
     const submitButton = document.getElementById('submitButton');
     if (exists) {
         // Setze den roten Rahmen, wenn der Brandname bereits vorhanden ist
@@ -34,7 +32,6 @@ jobTitleInput.addEventListener('input', debounce(async function(e) {
 
     }
 }, 500)); // Wartezeit von 500ms
-
 // Funktion, um den Brandname zu überprüfen
 async function checkJobTitleExists(title) {
     const apiKey = config.apiKey;
