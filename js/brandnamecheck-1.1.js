@@ -40,7 +40,7 @@ async function checkJobTitleExists(title) {
     const apiKey = config.apiKey;
     const baseId = 'appVQBmxIpYuapHVR';
     const tableName = 'Members';
-    const dynamicFieldName = 'Name'; // Das Feld, nach dem gesucht wird
+    const dynamicFieldName = 'Member Name'; // Das Feld, nach dem gesucht wird
     const query = encodeURIComponent(`LOWER({${dynamicFieldName}})="${title.toLowerCase()}"`);
 
     const url = `https://api.airtable.com/v0/${baseId}/${tableName}?filterByFormula=${query}`;
