@@ -1,3 +1,4 @@
+import config from './config/config.js'; // Adjust the path as necessary
 const fetch = require('node-fetch');
 
 exports.handler = async (event, context) => {
@@ -5,7 +6,7 @@ exports.handler = async (event, context) => {
         const response = await fetch('https://api.memberstack.com/v1/members', {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer YOUR_MEMBERSTACK_API_KEY`, // Replace with your actual API key
+                'Authorization': `Bearer ${config.MEMBERSTACK_API_KEY}`, // Use the API key from the config
                 'Content-Type': 'application/json'
             }
         });
