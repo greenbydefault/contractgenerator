@@ -28,7 +28,7 @@ jobTitleInput.addEventListener('input', debounce(async function (e) {
     // Prüfen, ob der Jobtitel gültig ist
     if (!isValidJobTitle(jobTitle)) {
         jobTitleInput.style.border = '2px solid #D92415';
-        messageElement.textContent = 'Der Jobtitel enthält ungültige Zeichen. Erlaubt sind nur Buchstaben Zahlen und deutsche Umlaute.';
+        messageElement.textContent = 'Der Jobtitel enthält ungültige Zeichen. Erlaubt sind nur Buchstaben und Zahlen.';
         messageElement.style.color = 'red';
         submitButton.classList.add('hide');
         return;
