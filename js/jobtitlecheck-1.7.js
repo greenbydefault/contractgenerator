@@ -14,7 +14,7 @@ function debounce(func, wait) {
 // Funktion, um Sonderzeichen zu prüfen (nur erlaubte Zeichen: Buchstaben, Zahlen, deutsche Umlaute)
 function isValidJobTitle(title) {
     // Regex: erlaubt sind Buchstaben (A-Z, a-z), Zahlen (0-9), deutsche Umlaute (äöüÄÖÜß) und Leerzeichen
-    const regex = /^[a-zA-Z0-9äöüÄÖÜß\s]+$/;
+    const regex = /^[a-zA-Z0-9äöüÄÖÜß\s\-]+$/;
     return regex.test(title);
 }
 
@@ -28,7 +28,7 @@ jobTitleInput.addEventListener('input', debounce(async function (e) {
     // Prüfen, ob der Jobtitel gültig ist
     if (!isValidJobTitle(jobTitle)) {
         jobTitleInput.style.border = '2px solid #D92415';
-        messageElement.textContent = 'Der Jobtitel enthält ungültige Zeichen. Erlaubt sind nur Buchstaben, Zahlen und deutsche Umlaute.';
+        messageElement.textContent = 'Der Jobtitel enthält ungültige Zeichen. Erlaubt sind nur Buchstaben Zahlen und deutsche Umlaute.';
         messageElement.style.color = 'red';
         submitButton.classList.add('hide');
         return;
