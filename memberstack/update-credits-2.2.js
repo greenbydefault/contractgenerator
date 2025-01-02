@@ -2,6 +2,8 @@ console.log('Das Update Credits Script wurde geladen.');
 
 const testMemberId = 'mem_clpb097sl03cr0snweabfefx4'; // Use this ID for testing
 const BASE_URL = 'https://admin.memberstack.com/members';  // Admin URL
+const LIMIT = 100;  // Number of members per request
+const RATE_LIMIT_DELAY = 1000 / 25;  // 25 requests per second
 
 document.addEventListener('DOMContentLoaded', async function() {
     const button = document.getElementById('update-credits-button'); // Ensure your Webflow button has this ID
@@ -21,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 let count = 0;
 
                 while (hasMore) {
-                    const url = endCursor ? `${BASE_URL}?after=${endCursor}` : BASE_URL;
+                    const url = endCursor ? `${BASE_URL}?after=${endCursor}&limit=${LIMIT}` : `${BASE_URL}?limit=${LIMIT}`;
 
                     const response = await fetch(url, {
                         method: 'GET',
@@ -44,6 +46,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                     hasMore = hasNextPage;
                     endCursor = newEndCursor;
+
+                    // Respect rate limit by adding a delay between requests
+                    if (hasMore) {
+                        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY));
+                    }
                 }
 
                 alert(`Total eligible members: ${count}`);
