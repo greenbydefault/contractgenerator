@@ -1,10 +1,6 @@
-// script.js - Hosted on GitHub
-
 console.log('Das Update Credits Script wurde geladen.');
 
 const testMemberId = 'mem_clpb097sl03cr0snweabfefx4'; // Use this ID for testing
-const PROXY_URL = 'https://api.allorigins.win/get?url=';
-const BASE_URL = 'https://api.memberstack.io/v1';
 
 document.addEventListener('DOMContentLoaded', async function() {
     const button = document.getElementById('update-credits-button'); // Ensure your Webflow button has this ID
@@ -17,10 +13,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         button.addEventListener('click', async function() {
             const API_KEY = config.apiKey;
-            const targetUrl = `${BASE_URL}/members/${testMemberId}`;
+            const BASE_URL = 'https://api.memberstack.io/v1';
 
             try {
-                const response = await fetch(`${PROXY_URL}${encodeURIComponent(targetUrl)}`, {
+                const response = await fetch(`${BASE_URL}/members/${testMemberId}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${API_KEY}`
@@ -29,12 +25,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                 if (!response.ok) throw new Error('Failed to fetch member');
 
-                const data = await response.json();
-                const user = JSON.parse(data.contents);  // Parse the returned JSON string
-
+                const user = await response.json();
                 const newCredits = user.credits ? user.credits + 10 : 10;
 
-                const updateResponse = await fetch(`${PROXY_URL}${encodeURIComponent(`${BASE_URL}/members/${testMemberId}`)}`, {
+                const updateResponse = await fetch(`${BASE_URL}/members/${testMemberId}`, {
                     method: 'PATCH',
                     headers: {
                         'Authorization': `Bearer ${API_KEY}`,
