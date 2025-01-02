@@ -38,8 +38,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     body: JSON.stringify({ credits: newCredits })
                 });
 
-                if (!updateResponse.ok) throw new Error(`Failed to update user: ${user.auth.email}`);
-                console.log(`Updated credits for user: ${user.auth.email}`);
+                if (!updateResponse.ok) throw new Error('Failed to update user');
+                console.log(`Updated credits for user: ${user.auth ? user.auth.email : 'Unknown email'}`);
 
                 alert('Test member credits updated successfully!');
             } catch (error) {
