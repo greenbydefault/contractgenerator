@@ -16,11 +16,13 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         button.addEventListener('click', async function() {
             const API_KEY = config.apiKey;
+            let updatedMembers = 0;
+            let failedUpdates = 0;
+            let failedMemberIds = []; // Track failed member IDs
 
             try {
                 let hasMore = true;
                 let endCursor = null;
-                let count = 0;
 
                 while (hasMore) {
                     const url = endCursor ? `${BASE_URL}?after=${endCursor}&limit=${LIMIT}` : `${BASE_URL}?limit=${LIMIT}`;
@@ -51,21 +53,30 @@ document.addEventListener('DOMContentLoaded', async function() {
                             }
                         };
 
-                        const updateResponse = await fetch(`${BASE_URL}/${member.id}`, {
-                            method: 'PATCH',
-                            headers: {
-                                'X-API-KEY': API_KEY,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(updateData)
-                        });
+                        try {
+                            const updateResponse = await fetch(`${BASE_URL}/${member.id}`, {
+                                method: 'PATCH',
+                                headers: {
+                                    'X-API-KEY': API_KEY,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(updateData)
+                            });
 
-                        if (!updateResponse.ok) throw new Error(`Failed to update user: ${member.auth.email}`);
-                        console.log(`Updated credits for user: ${member.auth.email}`);
+                            if (!updateResponse.ok) {
+                                failedUpdates++;
+                                failedMemberIds.push(member.id);
+                                console.error(`Failed to update user: ${member.id}`);
+                            } else {
+                                updatedMembers++;
+                            }
+                        } catch (error) {
+                            failedUpdates++;
+                            console.error(`Error updating user: ${member.id}`, error);
+                        }
                     }
 
-                    count += filteredMembers.length;
-                    console.log(`Current batch count: ${filteredMembers.length}, Total so far: ${count}`);
+                    console.log(`Batch complete. Total so far: Updated: ${updatedMembers}, Failed: ${failedUpdates}`);
 
                     hasMore = hasNextPage;
                     endCursor = newEndCursor;
@@ -76,7 +87,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 }
 
-                alert(`Total eligible members updated: ${count}`);
+                alert(`Process complete. Updated members: ${updatedMembers}, Failed updates: ${failedUpdates}
+Failed Member IDs: ${failedMemberIds.join(', ')}`);
             } catch (error) {
                 console.error('Error updating members:', error);
                 alert('An error occurred while updating the members.');
