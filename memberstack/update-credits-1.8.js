@@ -27,7 +27,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (!response.ok) throw new Error('Failed to fetch member');
 
                 const user = await response.json();
-                const newCredits = user.credits ? user.credits + 10 : 10;
+                const newCredits = user.metaData && user.metaData.credits ? user.metaData.credits + 10 : 10;
+
+                const updateData = {
+                    metaData: {
+                        credits: newCredits
+                    }
+                };
 
                 const updateResponse = await fetch(targetUrl, {
                     method: 'PATCH',
@@ -35,13 +41,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                         'X-API-KEY': API_KEY,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ credits: newCredits })
+                    body: JSON.stringify(updateData)
                 });
 
                 if (!updateResponse.ok) throw new Error('Failed to update user');
-                console.log(`Updated credits for user: ${user.auth ? user.auth.email : 'Unknown email'}`);
+                const userEmail = user.auth && user.auth.email ? user.auth.email : 'Email not available';
+                console.log(`Updated credits for user: ${userEmail}`);
 
-                alert('Test member credits updated successfully!');
+                alert(`Test member credits updated successfully for ${userEmail}!`);
             } catch (error) {
                 console.error('Error updating test member:', error);
                 alert('An error occurred while updating the test member.');
@@ -52,3 +59,4 @@ document.addEventListener('DOMContentLoaded', async function() {
         alert('Config loading error.');
     }
 });
+
