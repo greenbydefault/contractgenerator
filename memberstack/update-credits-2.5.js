@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                     for (const member of filteredMembers) {
                         const currentCredits = member.metaData?.credits || 0;
-                        const newCredits = currentCredits + 3;  // Add 3 credits to the current amount
+                        const newCredits = currentCredits < 3 ? 3 : currentCredits;  // Add 3 credits to the current amount
 
                         const updateData = {
                             metaData: {
