@@ -41,6 +41,29 @@ document.addEventListener('DOMContentLoaded', async function() {
                         (!member.planConnections || member.planConnections.length === 0)
                     );
 
+                    for (const member of filteredMembers) {
+                        const currentCredits = member.metaData?.credits || 0;
+                        const newCredits = currentCredits + 3;  // Add 3 credits to the current amount
+
+                        const updateData = {
+                            metaData: {
+                                credits: newCredits
+                            }
+                        };
+
+                        const updateResponse = await fetch(`${BASE_URL}/${member.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'X-API-KEY': API_KEY,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(updateData)
+                        });
+
+                        if (!updateResponse.ok) throw new Error(`Failed to update user: ${member.auth.email}`);
+                        console.log(`Updated credits for user: ${member.auth.email}`);
+                    }
+
                     count += filteredMembers.length;
                     console.log(`Current batch count: ${filteredMembers.length}, Total so far: ${count}`);
 
@@ -53,10 +76,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 }
 
-                alert(`Total eligible members: ${count}`);
+                alert(`Total eligible members updated: ${count}`);
             } catch (error) {
-                console.error('Error counting members:', error);
-                alert('An error occurred while counting the members.');
+                console.error('Error updating members:', error);
+                alert('An error occurred while updating the members.');
             }
         });
     } catch (error) {
