@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (!response.ok) throw new Error('Failed to fetch member');
 
                 const user = await response.json();
-                const newCredits = user.metaData && user.metaData.credits ? user.metaData.credits + 10 : 10;
+                const currentCredits = user.metaData && user.metaData.credits ? user.metaData.credits : 0;
+                const newCredits = currentCredits + 3;  // Add 3 credits to the current amount
 
                 const updateData = {
                     metaData: {
@@ -59,4 +60,3 @@ document.addEventListener('DOMContentLoaded', async function() {
         alert('Config loading error.');
     }
 });
-
