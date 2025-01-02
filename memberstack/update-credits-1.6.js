@@ -1,6 +1,7 @@
 console.log('Das Update Credits Script wurde geladen.');
 
 const testMemberId = 'mem_clpb097sl03cr0snweabfefx4'; // Use this ID for testing
+const BASE_URL = 'https://admin.memberstack.com/members';  // Admin URL
 
 document.addEventListener('DOMContentLoaded', async function() {
     const button = document.getElementById('update-credits-button'); // Ensure your Webflow button has this ID
@@ -13,13 +14,13 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         button.addEventListener('click', async function() {
             const API_KEY = config.apiKey;
-            const BASE_URL = 'https://api.memberstack.io/v1';
+            const targetUrl = `${BASE_URL}/${testMemberId}`;
 
             try {
-                const response = await fetch(`${BASE_URL}/members/${testMemberId}`, {
+                const response = await fetch(targetUrl, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${API_KEY}`
+                        'X-API-KEY': API_KEY  // Memberstack expects this header
                     }
                 });
 
@@ -28,17 +29,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const user = await response.json();
                 const newCredits = user.credits ? user.credits + 10 : 10;
 
-                const updateResponse = await fetch(`${BASE_URL}/members/${testMemberId}`, {
+                const updateResponse = await fetch(targetUrl, {
                     method: 'PATCH',
                     headers: {
-                        'Authorization': `Bearer ${API_KEY}`,
+                        'X-API-KEY': API_KEY,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ credits: newCredits })
                 });
 
-                if (!updateResponse.ok) throw new Error(`Failed to update user: ${user.email}`);
-                console.log(`Updated credits for user: ${user.email}`);
+                if (!updateResponse.ok) throw new Error(`Failed to update user: ${user.auth.email}`);
+                console.log(`Updated credits for user: ${user.auth.email}`);
 
                 alert('Test member credits updated successfully!');
             } catch (error) {
