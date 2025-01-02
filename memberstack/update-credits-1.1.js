@@ -1,6 +1,6 @@
 // script.js - Hosted on GitHub
 
-console.log('Das Script wurde geladen.');
+console.log('Das Update Credits Script wurde geladen.');
 
 const testMemberId = 'mem_clpb097sl03cr0snweabfefx4'; // Use this ID for testing
 
