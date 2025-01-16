@@ -1,6 +1,6 @@
 console.log('Das Update Credits Script wurde geladen.');
 
-const testMemberId = 'mem_clpb097sl03cr0snweabfefx4'; // Use this ID for testing
+
 const BASE_URL = 'https://admin.memberstack.com/members';  // Admin URL
 const LIMIT = 100;  // Number of members per request
 const RATE_LIMIT_DELAY = 1000 / 25;  // 25 requests per second
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                     for (const member of filteredMembers) {
                         const currentCredits = member.metaData?.credits || 0;
-                        const newCredits = currentCredits < 3 ? 3 : currentCredits;  // Add 3 credits to the current amount
+                        const newCredits = currentCredits < 2 ? 2 : currentCredits;  // Add 3 credits to the current amount
 
                         const updateData = {
                             metaData: {
