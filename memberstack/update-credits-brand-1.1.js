@@ -6,7 +6,7 @@ const LIMIT = 100;  // Number of members per request
 const RATE_LIMIT_DELAY = 1000 / 25;  // 25 requests per second
 
 document.addEventListener('DOMContentLoaded', async function() {
-    const button = document.getElementById('update-credits-button'); // Ensure your Webflow button has this ID
+    const button = document.getElementById('update-credits-button-brands'); // Ensure your Webflow button has this ID
 
     if (!button) return;
 
