@@ -22,27 +22,39 @@ document.addEventListener('DOMContentLoaded', async function() {
             try {
                 while (hasMore) {
                     const url = endCursor ? `${BASE_URL}?after=${endCursor}&limit=${LIMIT}` : `${BASE_URL}?limit=${LIMIT}`;
-
+                    
+                    console.log("DEBUG: Starte API-Anfrage...");
                     const response = await fetch(url, {
                         method: 'GET',
                         headers: {
-                            'X-API-KEY': API_KEY  // Memberstack expects this header
+                            'X-API-KEY': API_KEY  
                         }
                     });
-
-                    if (!response.ok) throw new Error('Failed to fetch members');
-
+                    console.log("DEBUG: Antwort erhalten");
+                    
+                    if (!response.ok) {
+                        console.error("Fehlerhafte API-Antwort:", response.status, response.statusText);
+                        return;
+                    }
+                    
                     const { data: members, hasNextPage, endCursor: newEndCursor } = await response.json();
+                    console.log(`DEBUG: ${members.length} Mitglieder empfangen`);
+                    
+                    const filteredMembers = members.filter(member => {
+                        console.log("Prüfe Mitglied:", member.id, member.customFields);
+                        return (
+                            String(member.customFields?.['is-user-a-brand']) === 'false' &&
+                            String(member.customFields?.['plus-member']) === 'false' &&
+                            !!member.customFields?.['user-video-2'] &&
+                            !!member.customFields?.['user-video-3'] &&
+                            member.customFields?.['user-video-2'].trim().length > 0 &&
+                            member.customFields?.['user-video-3'].trim().length > 0
+                        );
+                    });
 
-                    const filteredMembers = members.filter(member => 
-                        member.customFields?.['is-user-a-brand'] === 'false' &&
-                        member.customFields?.['plus-member'] === 'false' &&
-                        member.customFields?.['user-video-2'] &&
-                        member.customFields?.['user-video-3']
-                    );
-
+                    console.log(`DEBUG: Gefilterte Mitglieder: ${filteredMembers.length}`);
                     totalAffectedUsers += filteredMembers.length;
-
+                    
                     hasMore = hasNextPage;
                     endCursor = newEndCursor;
 
@@ -80,10 +92,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const { data: members, hasNextPage, endCursor: newEndCursor } = await response.json();
                     
                     const filteredMembers = members.filter(member => 
-                        member.customFields?.['is-user-a-brand'] === 'false' &&
-                        member.customFields?.['plus-member'] === 'false' &&
-                        member.customFields?.['user-video-2'] &&
-                        member.customFields?.['user-video-3']
+                        String(member.customFields?.['is-user-a-brand']) === 'false' &&
+                        String(member.customFields?.['plus-member']) === 'false' &&
+                        !!member.customFields?.['user-video-2'] &&
+                        !!member.customFields?.['user-video-3'] &&
+                        member.customFields?.['user-video-2'].trim().length > 0 &&
+                        member.customFields?.['user-video-3'].trim().length > 0
                     );
                     
                     for (const member of filteredMembers) {
