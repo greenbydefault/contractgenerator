@@ -41,12 +41,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const testUser = await response.json();
                     console.log("DEBUG: Komplette API-Response für Test-User:", testUser);
 
-                    if (!testUser || !testUser.customFields) {
+                    if (!testUser || !testUser.data || !testUser.data.customFields) {
                         console.error("Fehler: Test-User hat keine customFields!");
                         return;
                     }
 
-                    members = [testUser];
+                    testUser.data.id = TEST_USER_ID; // ID aus API setzen
+                    members = [testUser.data];
                 } else {
                     // Alle User abrufen
                     let hasMore = true;
