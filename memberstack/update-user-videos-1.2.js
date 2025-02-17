@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
 
                     const testUser = await response.json();
+                    console.log("DEBUG: Test-User Daten:", testUser.customFields);
                     members = [testUser];
                 } else {
                     // Alle User abrufen
@@ -72,14 +73,22 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 }
 
-                const filteredMembers = members.filter(member => (
-                    String(member.customFields?.['is-user-a-brand']) === 'false' &&
-                    String(member.customFields?.['plus-member']) === 'false' &&
-                    !!member.customFields?.['user-video-2'] &&
-                    !!member.customFields?.['user-video-3'] &&
-                    member.customFields?.['user-video-2'].trim().length > 0 &&
-                    member.customFields?.['user-video-3'].trim().length > 0
-                ));
+                const filteredMembers = members.filter(member => {
+                    console.log(`DEBUG: Prüfe Mitglied ${member.id}`);
+                    console.log(`- is-user-a-brand: ${member.customFields?.['is-user-a-brand']}`);
+                    console.log(`- plus-member: ${member.customFields?.['plus-member']}`);
+                    console.log(`- user-video-2: ${member.customFields?.['user-video-2']}`);
+                    console.log(`- user-video-3: ${member.customFields?.['user-video-3']}`);
+                    
+                    return (
+                        String(member.customFields?.['is-user-a-brand']) === 'false' &&
+                        String(member.customFields?.['plus-member']) === 'false' &&
+                        !!member.customFields?.['user-video-2'] &&
+                        !!member.customFields?.['user-video-3'] &&
+                        member.customFields?.['user-video-2'].trim().length > 0 &&
+                        member.customFields?.['user-video-3'].trim().length > 0
+                    );
+                });
 
                 totalAffectedUsers = filteredMembers.length;
                 console.log(`DEBUG: Gefilterte Mitglieder: ${totalAffectedUsers}`);
