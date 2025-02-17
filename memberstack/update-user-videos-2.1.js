@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const filteredMembers = members.filter(member => {
                     const brandCheck = String(member.customFields?.['is-user-a-brand']) === 'false';
                     const plusMemberValue = member.customFields?.['plus-member'];
-                    const plusMemberCheck = plusMemberValue === '' || plusMemberValue === null || plusMemberValue === undefined || plusMemberValue === false;
+                    const plusMemberCheck = plusMemberValue !== true; // Alle Mitglieder außer denen, bei denen plus-member true ist
                     const video2Check = !!member.customFields?.['user-video-2'] && member.customFields?.['user-video-2'].trim().length > 0;
                     const video3Check = !!member.customFields?.['user-video-3'] && member.customFields?.['user-video-3'].trim().length > 0;
                     
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 console.log(`Gefundene Mitglieder: ${totalAffectedUsers}`);
                 console.log(`DEBUG: Ausschlussgründe:`);
                 console.log(`- is-user-a-brand nicht "false": ${exclusionCounts.brand}`);
-                console.log(`- plus-member gesetzt (nicht leer, undefined oder false): ${exclusionCounts.plusMember}`);
+                console.log(`- plus-member ist true: ${exclusionCounts.plusMember}`);
                 console.log(`- user-video-2 fehlt oder leer: ${exclusionCounts.video2}`);
                 console.log(`- user-video-3 fehlt oder leer: ${exclusionCounts.video3}`);
                 console.log(`DEBUG: Beispielwerte von 'plus-member':`, plusMemberSamples);
