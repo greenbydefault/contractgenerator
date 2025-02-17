@@ -2,8 +2,8 @@ console.log('Das Script wurde geladen.');
 
 const UPLOADCARE_API_URL = 'https://api.uploadcare.com/files/storage/';
 const UPLOADCARE_DELETE_URL = 'https://api.uploadcare.com/files/';
-const UPLOADCARE_PUBLIC_KEY = 'a6c530350c28177a0509'; // Setze hier deinen Uploadcare Public Key ein
-const UPLOADCARE_SECRET_KEY = '916eaf8ff038193ac62d'; // Setze hier deinen Uploadcare Secret Key ein
+const UPLOADCARE_PUBLIC_KEY = 'xx'; // Setze hier deinen Uploadcare Public Key ein
+const UPLOADCARE_SECRET_KEY = 'xx'; // Setze hier deinen Uploadcare Secret Key ein
 
 const FILE_UUIDS = [
     "2874ea3c-a559-421a-ba8d-c98bb7707da2",
