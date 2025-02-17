@@ -39,7 +39,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
 
                     const testUser = await response.json();
-                    console.log("DEBUG: Test-User Daten:", testUser.customFields);
+                    console.log("DEBUG: Komplette API-Response für Test-User:", testUser);
+
+                    if (!testUser || !testUser.customFields) {
+                        console.error("Fehler: Test-User hat keine customFields!");
+                        return;
+                    }
+
                     members = [testUser];
                 } else {
                     // Alle User abrufen
@@ -74,11 +80,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
 
                 const filteredMembers = members.filter(member => {
-                    console.log(`DEBUG: Prüfe Mitglied ${member.id}`);
-                    console.log(`- is-user-a-brand: ${member.customFields?.['is-user-a-brand']}`);
-                    console.log(`- plus-member: ${member.customFields?.['plus-member']}`);
-                    console.log(`- user-video-2: ${member.customFields?.['user-video-2']}`);
-                    console.log(`- user-video-3: ${member.customFields?.['user-video-3']}`);
+                    console.log(`DEBUG: Prüfe Mitglied ${member.id || 'undefined'}`);
+                    console.log(`- is-user-a-brand: ${member.customFields?.['is-user-a-brand'] || 'Fehlt!'}`);
+                    console.log(`- plus-member: ${member.customFields?.['plus-member'] || 'Fehlt!'}`);
+                    console.log(`- user-video-2: ${member.customFields?.['user-video-2'] || 'Fehlt!'}`);
+                    console.log(`- user-video-3: ${member.customFields?.['user-video-3'] || 'Fehlt!'}`);
                     
                     return (
                         String(member.customFields?.['is-user-a-brand']) === 'false' &&
