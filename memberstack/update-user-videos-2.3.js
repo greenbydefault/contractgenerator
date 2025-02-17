@@ -18,11 +18,15 @@ const FILE_UUIDS = [
 
 document.addEventListener('DOMContentLoaded', function() {
     const button = document.getElementById('delete-uploadcare-files-button'); // Ensure your Webflow button has this ID
-    if (!button) return;
+    if (!button) {
+        console.error("Button mit ID 'delete-uploadcare-files-button' nicht gefunden.");
+        return;
+    }
 
     button.addEventListener('click', async function() {
+        console.log(`Löschvorgang gestartet für ${FILE_UUIDS.length} Dateien...`);
+
         try {
-            console.log(`Starte Batch-Löschung von ${FILE_UUIDS.length} Dateien...`);
             const response = await fetch(UPLOADCARE_DELETE_URL, {
                 method: 'DELETE',
                 headers: {
@@ -34,7 +38,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             if (!response.ok) {
-                throw new Error(`Fehler beim Löschen: ${response.status} - ${response.statusText}`);
+                console.error(`Fehlerhafte Antwort: ${response.status} - ${response.statusText}`);
+                alert(`Fehler beim Löschen: ${response.statusText}. Siehe Konsole für Details.`);
+                return;
             }
 
             const result = await response.json();
