@@ -1,8 +1,8 @@
 // Webflow API Integration für GitHub-Hosting
 
 // Funktion zum Abrufen von Collection-Items
-async function fetchCollectionItem(collectionId, memberstackId) {
-    const apiUrl = `https://api.webflow.com/v2/collections/${collectionId}/items?live=true`;
+async function fetchCollectionItem(collectionId, webflowMemberId) {
+    const apiUrl = `https://api.webflow.com/v2/collections/${collectionId}/items/${webflowMemberId}/live`;
     const workerUrl = `https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(apiUrl)}`;
 
     console.log(`🌍 Worker-Anfrage: ${workerUrl}`);
@@ -14,8 +14,7 @@ async function fetchCollectionItem(collectionId, memberstackId) {
             throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
         }
 
-        const data = await response.json();
-        const userItem = data.items.find(item => item.fieldData?.['memberstack-id'] === memberstackId);
+        const userItem = await response.json();
         console.log(`✅ Erfolgreiche API-Antwort:`, userItem);
         return userItem;
     } catch (error) {
@@ -51,16 +50,16 @@ async function displayUserApplications() {
 
     try {
         const member = await window.$memberstackDom.getCurrentMember();
-        const memberstackId = member?.data?.id;
+        const webflowMemberId = member?.data?.customFields?.['webflow-member-id'];
 
-        if (!memberstackId) {
-            console.error("❌ Kein eingeloggter Benutzer gefunden.");
+        if (!webflowMemberId) {
+            console.error("❌ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
             return;
         }
 
-        console.log(`👤 Eingeloggte Memberstack-ID: ${memberstackId}`);
+        console.log(`👤 Eingeloggte Webflow Member-ID: ${webflowMemberId}`);
 
-        const userData = await fetchCollectionItem(collectionId, memberstackId);
+        const userData = await fetchCollectionItem(collectionId, webflowMemberId);
         const applications = userData?.fieldData?.["abgeschlossene-bewerbungen"] || [];
 
         const appContainer = document.getElementById("application-list");
