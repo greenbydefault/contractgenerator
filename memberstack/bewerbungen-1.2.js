@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Webflow API-Konfiguration
         const config = {
-            membersCollectionId: "6448faf9c5a8a15f6cc05526",
+            membersCollectionId: "6448faf9c5a8a15f6cc05526", // Stelle sicher, dass diese ID korrekt ist
             jobsCollectionId: "6448faf9c5a8a17455c05525"
         };
 
@@ -50,9 +50,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function fetchCollectionItem(collectionId, memberstackId) {
     try {
         console.log(`📡 Abrufen der Collection ${collectionId}...`);
-        const response = await fetch(`https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(`https://api.webflow.com/collections/${collectionId}/items?live=true`)}`);
+        const url = `https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(`https://api.webflow.com/collections/${collectionId}/items?live=true`)}`;
+        console.log("🌍 Anfrage-URL:", url);
 
-        if (!response.ok) throw new Error("Fehler beim Abrufen der Collection.");
+        const response = await fetch(url);
+
+        console.log("🔍 Response-Status:", response.status);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ Fehler-Details:", errorText);
+            throw new Error(`Fehler beim Abrufen der Collection: ${response.status} - ${errorText}`);
+        }
 
         const data = await response.json();
         console.log("🌐 API-Antwort der Members Collection:", data);
@@ -67,9 +75,17 @@ async function fetchCollectionItem(collectionId, memberstackId) {
 async function fetchJobs(collectionId, jobIds) {
     try {
         console.log("📡 Abrufen der Jobs...");
-        const response = await fetch(`https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(`https://api.webflow.com/collections/${collectionId}/items?live=true`)}`);
+        const url = `https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(`https://api.webflow.com/collections/${collectionId}/items?live=true`)}`;
+        console.log("🌍 Anfrage-URL:", url);
 
-        if (!response.ok) throw new Error("Fehler beim Abrufen der Jobs Collection.");
+        const response = await fetch(url);
+        console.log("🔍 Response-Status:", response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ Fehler-Details:", errorText);
+            throw new Error(`Fehler beim Abrufen der Jobs Collection: ${response.status} - ${errorText}`);
+        }
 
         const data = await response.json();
         console.log("🌐 API-Antwort der Jobs Collection:", data);
@@ -84,9 +100,17 @@ async function fetchJobs(collectionId, jobIds) {
 async function fetchJobDetails(collectionId, jobId) {
     try {
         console.log(`🔍 Abrufen der Details für Job ${jobId}...`);
-        const response = await fetch(`https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(`https://api.webflow.com/v2/collections/${collectionId}/items/${jobId}/live`)}`);
+        const url = `https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(`https://api.webflow.com/v2/collections/${collectionId}/items/${jobId}/live`)}`;
+        console.log("🌍 Anfrage-URL:", url);
 
-        if (!response.ok) throw new Error(`Fehler beim Abrufen der Details für Job ${jobId}.`);
+        const response = await fetch(url);
+        console.log("🔍 Response-Status:", response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ Fehler-Details:", errorText);
+            throw new Error(`Fehler beim Abrufen der Details für Job ${jobId}: ${response.status} - ${errorText}`);
+        }
 
         const jobDetails = await response.json();
         console.log(`📄 Details für Job ${jobId}:`, jobDetails);
