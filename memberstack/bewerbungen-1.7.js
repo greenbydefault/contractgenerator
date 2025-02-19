@@ -69,9 +69,16 @@ async function displayUserApplications() {
             console.log("🎯 Abgeschlossene Bewerbungen:", applications);
             for (const appId of applications) {
                 const jobName = await fetchJobName(appId);
-                const listItem = document.createElement("li");
-                listItem.textContent = `📝 ${jobName}`;
-                appContainer.appendChild(listItem);
+
+                const jobDiv = document.createElement("div");
+                jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
+
+                const nameDiv = document.createElement("div");
+                nameDiv.classList.add("db-table-row-item", "is-txt-16");
+                nameDiv.textContent = jobName;
+
+                jobDiv.appendChild(nameDiv);
+                appContainer.appendChild(jobDiv);
             }
         } else {
             appContainer.innerHTML = "<p>🚫 Keine abgeschlossenen Bewerbungen gefunden.</p>";
