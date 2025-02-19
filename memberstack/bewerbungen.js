@@ -15,13 +15,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Webflow API-Konfiguration
         const config = {
-            apiToken: "4d57119959ae31735992550e9e2113af6c7b7e46b0f2faad05daf8f31aeae731",
             membersCollectionId: "6448faf9c5a8a15f6cc05526",
             jobsCollectionId: "6448faf9c5a8a17455c05525"
         };
 
         // Mitglieder-Collection abrufen
-        const memberData = await fetchCollectionItem(config.membersCollectionId, config.apiToken, memberstackId);
+        const memberData = await fetchCollectionItem(config.membersCollectionId, memberstackId);
         if (!memberData) throw new Error("Kein passender Member-Eintrag gefunden.");
 
         console.log("✅ Gefundener Member-Eintrag:", memberData);
@@ -33,11 +32,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         // Jobs abrufen und filtern
-        const appliedJobs = await fetchJobs(config.jobsCollectionId, config.apiToken, jobIds);
+        const appliedJobs = await fetchJobs(config.jobsCollectionId, jobIds);
         console.log("📄 Gefundene Bewerbungen:", appliedJobs);
 
         // Detaillierte Job-Informationen abrufen
-        const detailedJobs = await Promise.all(appliedJobs.map(job => fetchJobDetails(config.jobsCollectionId, config.apiToken, job._id)));
+        const detailedJobs = await Promise.all(appliedJobs.map(job => fetchJobDetails(config.jobsCollectionId, job._id)));
         console.log("🔍 Detaillierte Bewerbungen:", detailedJobs);
 
         displayJobs(detailedJobs);
@@ -48,16 +47,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // Hilfsfunktion: Collection-Element abrufen
-async function fetchCollectionItem(collectionId, apiToken, memberstackId) {
+async function fetchCollectionItem(collectionId, memberstackId) {
     try {
         console.log(`📡 Abrufen der Collection ${collectionId}...`);
-        const response = await fetch(`https://api.webflow.com/collections/${collectionId}/items?live=true`, {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${apiToken}`,
-                "accept-version": "1.0.0"
-            }
-        });
+        const response = await fetch(`https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(`https://api.webflow.com/collections/${collectionId}/items?live=true`)}`);
 
         if (!response.ok) throw new Error("Fehler beim Abrufen der Collection.");
 
@@ -70,16 +63,10 @@ async function fetchCollectionItem(collectionId, apiToken, memberstackId) {
 }
 
 // Hilfsfunktion: Jobs abrufen
-async function fetchJobs(collectionId, apiToken, jobIds) {
+async function fetchJobs(collectionId, jobIds) {
     try {
         console.log("📡 Abrufen der Jobs...");
-        const response = await fetch(`https://api.webflow.com/collections/${collectionId}/items?live=true`, {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${apiToken}`,
-                "accept-version": "1.0.0"
-            }
-        });
+        const response = await fetch(`https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(`https://api.webflow.com/collections/${collectionId}/items?live=true`)}`);
 
         if (!response.ok) throw new Error("Fehler beim Abrufen der Jobs Collection.");
 
@@ -92,16 +79,10 @@ async function fetchJobs(collectionId, apiToken, jobIds) {
 }
 
 // Hilfsfunktion: Detaillierte Job-Informationen abrufen
-async function fetchJobDetails(collectionId, apiToken, jobId) {
+async function fetchJobDetails(collectionId, jobId) {
     try {
         console.log(`🔍 Abrufen der Details für Job ${jobId}...`);
-        const response = await fetch(`https://api.webflow.com/v2/collections/${collectionId}/items/${jobId}/live`, {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${apiToken}`,
-                "accept-version": "1.0.0"
-            }
-        });
+        const response = await fetch(`https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(`https://api.webflow.com/v2/collections/${collectionId}/items/${jobId}/live`)}`);
 
         if (!response.ok) throw new Error(`Fehler beim Abrufen der Details für Job ${jobId}.`);
 
