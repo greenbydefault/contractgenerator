@@ -67,15 +67,43 @@ async function displayUserApplications() {
 
         if (applications.length > 0) {
             console.log("🎯 Abgeschlossene Bewerbungen:", applications);
-            for (const appId of applications) {
-                const jobData = await fetchJobData(appId);
 
+            // 🚀 Parallel alle Job-Daten abrufen
+            const jobPromises = applications.map(async (appId) => {
+                const jobData = await fetchJobData(appId);
+                return { appId, jobData };
+            });
+
+            // 🟢 Alle Anfragen parallel abschließen
+            const jobResults = await Promise.all(jobPromises);
+
+            // 📄 Ergebnisse rendern
+            jobResults.forEach(({ jobData }) => {
                 const jobDiv = document.createElement("div");
                 jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
 
+                // Gemeinsames Div für Bild und Name
+                const jobInfoDiv = document.createElement("div");
+                jobInfoDiv.classList.add("db-table-row-item", "is-txt-16");
+
+                // Bild
+                const jobImage = document.createElement("img");
+                jobImage.classList.add("db-table-img");
+                jobImage.src = jobData["job-image"] || "https://via.placeholder.com/100";
+                jobImage.alt = jobData["name"] || "Job Bild";
+                jobImage.style.maxWidth = "100px";
+                jobInfoDiv.appendChild(jobImage);
+
+                // Name
+                const jobName = document.createElement("span");
+                jobName.classList.add("truncate");
+                jobName.textContent = jobData["name"] || "Unbekannter Job";
+                jobInfoDiv.appendChild(jobName);
+
+                jobDiv.appendChild(jobInfoDiv);
+
+                // Weitere Felder
                 const fields = [
-                    { key: "name", label: "Job-Name" },
-                    { key: "job-image", label: "Bild" },
                     { key: "job-payment", label: "Bezahlung" },
                     { key: "job-date-end", label: "Enddatum" },
                     { key: "fertigstellung-content", label: "Fertigstellung" }
@@ -86,12 +114,10 @@ async function displayUserApplications() {
                     const fieldDiv = document.createElement("div");
                     fieldDiv.classList.add("db-table-row-item", "is-txt-16");
 
-                    if (field.key === "job-image" && value.startsWith("http")) {
-                        const img = document.createElement("img");
-                        img.src = value;
-                        img.alt = field.label;
-                        img.style.maxWidth = "100px";
-                        fieldDiv.appendChild(img);
+                    // Datum formatieren
+                    if (field.key === "job-date-end" && value !== "Nicht verfügbar") {
+                        const date = new Date(value);
+                        fieldDiv.textContent = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
                     } else {
                         fieldDiv.textContent = value;
                     }
@@ -100,7 +126,7 @@ async function displayUserApplications() {
                 });
 
                 appContainer.appendChild(jobDiv);
-            }
+            });
         } else {
             appContainer.innerHTML = "<p>🚫 Keine abgeschlossenen Bewerbungen gefunden.</p>";
         }
