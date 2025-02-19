@@ -23,9 +23,9 @@ async function fetchCollectionItem(collectionId, webflowMemberId) {
     }
 }
 
-// Funktion zum Abrufen von Job-Namen
-async function fetchJobName(jobId) {
-    const jobCollectionId = "6448faf9c5a8a17455c05525"; // Ersetze mit der Job-Collection-ID
+// Funktion zum Abrufen von Job-Daten
+async function fetchJobData(jobId) {
+    const jobCollectionId = "6448faf9c5a8a17455c05525";
     const apiUrl = `https://api.webflow.com/v2/collections/${jobCollectionId}/items/${jobId}/live`;
     const workerUrl = `https://bewerbungen.oliver-258.workers.dev/?url=${encodeURIComponent(apiUrl)}`;
 
@@ -37,16 +37,16 @@ async function fetchJobName(jobId) {
         }
 
         const jobData = await response.json();
-        return jobData.fieldData?.name || "Unbekannter Job";
+        return jobData.fieldData || {};
     } catch (error) {
-        console.error(`❌ Fehler beim Abrufen des Job-Namens: ${error.message}`);
-        return "Fehler beim Abrufen";
+        console.error(`❌ Fehler beim Abrufen der Job-Daten: ${error.message}`);
+        return {};
     }
 }
 
 // Beispiel-Aufruf der Funktion
 async function displayUserApplications() {
-    const collectionId = "6448faf9c5a8a15f6cc05526"; // Webflow Collection ID
+    const collectionId = "6448faf9c5a8a15f6cc05526";
 
     try {
         const member = await window.$memberstackDom.getCurrentMember();
@@ -68,16 +68,37 @@ async function displayUserApplications() {
         if (applications.length > 0) {
             console.log("🎯 Abgeschlossene Bewerbungen:", applications);
             for (const appId of applications) {
-                const jobName = await fetchJobName(appId);
+                const jobData = await fetchJobData(appId);
 
                 const jobDiv = document.createElement("div");
                 jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
 
-                const nameDiv = document.createElement("div");
-                nameDiv.classList.add("db-table-row-item", "is-txt-16");
-                nameDiv.textContent = jobName;
+                const fields = [
+                    { key: "name", label: "Job-Name" },
+                    { key: "job-image", label: "Bild" },
+                    { key: "job-payment", label: "Bezahlung" },
+                    { key: "job-date-end", label: "Enddatum" },
+                    { key: "fertigstellung-content", label: "Fertigstellung" }
+                ];
 
-                jobDiv.appendChild(nameDiv);
+                fields.forEach(field => {
+                    const value = jobData[field.key] || "Nicht verfügbar";
+                    const fieldDiv = document.createElement("div");
+                    fieldDiv.classList.add("db-table-row-item", "is-txt-16");
+
+                    if (field.key === "job-image" && value.startsWith("http")) {
+                        const img = document.createElement("img");
+                        img.src = value;
+                        img.alt = field.label;
+                        img.style.maxWidth = "100px";
+                        fieldDiv.appendChild(img);
+                    } else {
+                        fieldDiv.textContent = value;
+                    }
+
+                    jobDiv.appendChild(fieldDiv);
+                });
+
                 appContainer.appendChild(jobDiv);
             }
         } else {
