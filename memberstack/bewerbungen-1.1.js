@@ -21,11 +21,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Mitglieder-Collection abrufen
         const memberData = await fetchCollectionItem(config.membersCollectionId, memberstackId);
-        if (!memberData) throw new Error("Kein passender Member-Eintrag gefunden.");
+        if (!memberData || !memberData.items) throw new Error("Kein passender Member-Eintrag gefunden oder leere Antwort.");
 
         console.log("✅ Gefundener Member-Eintrag:", memberData);
 
-        const jobIds = memberData.fieldData["abgeschlossene-bewerbungen"] || [];
+        const jobIds = memberData.items[0]?.fieldData?.["abgeschlossene-bewerbungen"] || [];
         if (jobIds.length === 0) {
             displayMessage("Keine abgeschlossenen Bewerbungen gefunden.");
             return;
@@ -55,7 +55,8 @@ async function fetchCollectionItem(collectionId, memberstackId) {
         if (!response.ok) throw new Error("Fehler beim Abrufen der Collection.");
 
         const data = await response.json();
-        return data.items.find(item => item.fieldData["memberstack-id"] === memberstackId);
+        console.log("🌐 API-Antwort der Members Collection:", data);
+        return data;
     } catch (error) {
         console.error("⚠️ Fehler beim Abrufen der Members Collection:", error);
         throw error;
@@ -71,7 +72,8 @@ async function fetchJobs(collectionId, jobIds) {
         if (!response.ok) throw new Error("Fehler beim Abrufen der Jobs Collection.");
 
         const data = await response.json();
-        return data.items.filter(job => jobIds.includes(job._id));
+        console.log("🌐 API-Antwort der Jobs Collection:", data);
+        return data.items ? data.items.filter(job => jobIds.includes(job._id)) : [];
     } catch (error) {
         console.error("⚠️ Fehler beim Abrufen der Jobs:", error);
         throw error;
@@ -87,6 +89,7 @@ async function fetchJobDetails(collectionId, jobId) {
         if (!response.ok) throw new Error(`Fehler beim Abrufen der Details für Job ${jobId}.`);
 
         const jobDetails = await response.json();
+        console.log(`📄 Details für Job ${jobId}:`, jobDetails);
         return jobDetails;
     } catch (error) {
         console.error("⚠️ Fehler beim Abrufen der Job-Details:", error);
