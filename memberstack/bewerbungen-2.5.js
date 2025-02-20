@@ -177,7 +177,10 @@ let observer = new IntersectionObserver((entries) => {
     });
 });
 
-observer.observe(document.getElementById("application-list"));
+if (document.getElementById("application-list") && !document.getElementById("application-list").hasAttribute("data-observed")) {
+    document.getElementById("application-list").setAttribute("data-observed", "true");
+    observer.observe(document.getElementById("application-list"));
+}
 
 // Start der Anwendung
 window.addEventListener("DOMContentLoaded", displayUserApplications);
