@@ -75,11 +75,8 @@ function renderJobs(jobs) {
     const jobsToShow = jobs.slice(0, endIndex);
 
     jobsToShow.forEach(({ jobData }, index) => {
-        
-
-        
+        const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
-        jobLink.appendChild(jobDiv);
         if (index === 0) jobDiv.classList.add("justify-left");
 
         // Gemeinsames Div für Bild und Name
