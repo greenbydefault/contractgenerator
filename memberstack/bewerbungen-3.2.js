@@ -44,23 +44,6 @@ async function fetchJobData(jobId) {
     }
 }
 
-// Deadline-Countdown berechnen
-function calculateDeadlineCountdown(endDate) {
-    const now = new Date();
-    const deadline = new Date(endDate);
-    const diff = deadline - now;
-
-    if (diff <= 0) return "⏳ Abgelaufen";
-
-    const minutes = Math.floor(diff / (1000 * 60));
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `Endet in ${days} Tag(en)`;
-    if (hours > 0) return `Endet in ${hours} Stunde(n)`;
-    return `Endet in ${minutes} Minute(n)`;
-}
-
 // Beispiel-Aufruf der Funktion
 async function displayUserApplications() {
     const collectionId = "6448faf9c5a8a15f6cc05526";
@@ -76,11 +59,11 @@ async function displayUserApplications() {
 
         console.log(`👤 Eingeloggte Webflow Member-ID: ${webflowMemberId}`);
 
-        const appContainer = document.getElementById("application-list");
-        appContainer.innerHTML = "";
-
         const userData = await fetchCollectionItem(collectionId, webflowMemberId);
         const applications = userData?.fieldData?.["abgeschlossene-bewerbungen"] || [];
+
+        const appContainer = document.getElementById("application-list");
+        appContainer.innerHTML = "";
 
         if (applications.length > 0) {
             console.log("🎯 Abgeschlossene Bewerbungen:", applications);
@@ -91,6 +74,7 @@ async function displayUserApplications() {
                 return { appId, jobData };
             });
 
+            // 🟢 Alle Anfragen parallel abschließen
             const jobResults = await Promise.all(jobPromises);
 
             // 📄 Ergebnisse rendern
@@ -126,23 +110,19 @@ async function displayUserApplications() {
                 ];
 
                 fields.forEach(field => {
-    const value = jobData[field.key] || "Nicht verfügbar";
-    const fieldDiv = document.createElement("div");
-    fieldDiv.classList.add("db-table-row-item", "is-txt-16");
+                    const value = jobData[field.key] || "Nicht verfügbar";
+                    const fieldDiv = document.createElement("div");
+                    fieldDiv.classList.add("db-table-row-item", "is-txt-16");
 
-    if ((field.key === "job-date-end" || field.key === "fertigstellung-content") && value !== "Nicht verfügbar") {
-        const date = new Date(value);
-        if (!isNaN(date.getTime())) {
-            fieldDiv.textContent = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
-        } else {
-            fieldDiv.textContent = "Ungültiges Datum";
-        }
-    } else {
-        fieldDiv.textContent = value;
-    }
+                    // Datum formatieren
+                    if (field.key === "job-date-end" && value !== "Nicht verfügbar") {
+                        const date = new Date(value);
+                        fieldDiv.textContent = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+                    } else {
+                        fieldDiv.textContent = value;
+                    }
 
-    jobDiv.appendChild(fieldDiv);
-});
+                    jobDiv.appendChild(fieldDiv);
                 });
 
                 appContainer.appendChild(jobDiv);
@@ -156,10 +136,4 @@ async function displayUserApplications() {
 }
 
 // Start der Anwendung
-window.addEventListener("DOMContentLoaded", () => {
-    const appContainer = document.getElementById("application-list");
-    if (appContainer) {
-        appContainer.innerHTML = "";
-        displayUserApplications();
-    }
-});
+window.addEventListener("DOMContentLoaded", displayUserApplications);
