@@ -95,7 +95,10 @@ async function displayUserApplications() {
             
 
             // 🟢 Alle Anfragen parallel abschließen
-            const jobResults = await Promise.all(jobPromises);
+const jobResults = await Promise.all(jobPromises);
+
+// 🔄 Nach Erstellungsdatum sortieren
+jobResults.sort((a, b) => new Date(b.jobData.createdOn) - new Date(a.jobData.createdOn));
             jobResults.sort((a, b) => new Date(b.jobData.createdOn) - new Date(a.jobData.createdOn));
 
             // 📄 Ergebnisse rendern
