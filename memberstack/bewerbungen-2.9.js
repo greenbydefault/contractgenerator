@@ -126,18 +126,19 @@ async function displayUserApplications() {
                 ];
 
                 fields.forEach(field => {
-                    const value = jobData[field.key] || "Nicht verfügbar";
-                    const fieldDiv = document.createElement("div");
-                    fieldDiv.classList.add("db-table-row-item", "is-txt-16");
+    const value = jobData[field.key] || "Nicht verfügbar";
+    const fieldDiv = document.createElement("div");
+    fieldDiv.classList.add("db-table-row-item", "is-txt-16");
 
-                    if (field.key === "job-date-end" && value !== "Nicht verfügbar") {
-                        const date = new Date(value);
-                        fieldDiv.textContent = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()} (${calculateDeadlineCountdown(value)})`;
-                    } else {
-                        fieldDiv.textContent = value;
-                    }
+    if ((field.key === "job-date-end" || field.key === "fertigstellung-content") && value !== "Nicht verfügbar") {
+        const date = new Date(value);
+        fieldDiv.textContent = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+    } else {
+        fieldDiv.textContent = value;
+    }
 
-                    jobDiv.appendChild(fieldDiv);
+    jobDiv.appendChild(fieldDiv);
+});
                 });
 
                 appContainer.appendChild(jobDiv);
