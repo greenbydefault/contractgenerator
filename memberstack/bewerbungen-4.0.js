@@ -92,10 +92,11 @@ async function displayUserApplications() {
             });
 
             // Nach CreatedOn sortieren
-            jobResults.sort((a, b) => new Date(b.jobData.createdOn) - new Date(a.jobData.createdOn));
+            
 
             // 🟢 Alle Anfragen parallel abschließen
             const jobResults = await Promise.all(jobPromises);
+            jobResults.sort((a, b) => new Date(b.jobData.createdOn) - new Date(a.jobData.createdOn));
 
             // 📄 Ergebnisse rendern
             jobResults.forEach(({ jobData }, index) => {
@@ -200,7 +201,6 @@ async function displayUserApplications() {
                     jobDiv.appendChild(fieldDiv);
                 });
                     jobDiv.appendChild(fieldDiv);
-                  
                 });
 
                 appContainer.appendChild(jobDiv);
