@@ -127,6 +127,47 @@ function renderJobs(jobs) {
             } else if (field.key === "fertigstellung-content" && value !== "Nicht verfügbar") {
                 const date = new Date(value);
                 fieldText.textContent = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+            } else if (field.key === "job-status" && jobData["job-date-end"] !== "Nicht verfügbar") {
+                const endDate = new Date(jobData["job-date-end"]);
+                const now = new Date();
+                const statusDiv = document.createElement("div");
+                const statusText = document.createElement("span");
+                statusText.classList.add("db-job-tag-txt");
+
+                if (endDate < now) {
+                    statusDiv.classList.add("job-tag", "is-bg-light-red");
+                    statusText.textContent = "Beendet";
+                } else {
+                    statusDiv.classList.add("job-tag", "is-bg-light-green");
+                    statusText.textContent = "Aktiv";
+                }
+                statusDiv.appendChild(statusText);
+                fieldDiv.appendChild(statusDiv);
+            } else if (field.key === "application-status") {
+                const bookedCreators = jobData["booked-creators"] || [];
+                const rejectedCreators = jobData["rejected-creators"] || [];
+                const endDate = new Date(jobData["job-date-end"]);
+                const now = new Date();
+                const statusDiv = document.createElement("div");
+                const statusText = document.createElement("span");
+                statusText.classList.add("db-job-tag-txt");
+
+                if (bookedCreators.includes(webflowMemberId)) {
+                    statusDiv.classList.add("job-tag", "is-bg-light-green");
+                    statusText.textContent = "Angenommen";
+                } else if (rejectedCreators.includes(webflowMemberId)) {
+                    statusDiv.classList.add("job-tag", "is-bg-light-red");
+                    statusText.textContent = "Abgelehnt";
+                } else if (endDate < now) {
+                    statusDiv.classList.add("job-tag", "is-bg-light-red");
+                    statusText.textContent = "Abgelehnt";
+                } else {
+                    statusDiv.classList.add("job-tag", "is-bg-light-blue");
+                    statusText.textContent = "Ausstehend";
+                }
+
+                statusDiv.appendChild(statusText);
+                fieldDiv.appendChild(statusDiv);
             } else {
                 fieldText.textContent = value;
             }
