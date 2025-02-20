@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Webflow API-Konfiguration
         const config = {
             membersCollectionId: "6448faf9c5a8a15f6cc05526",
-            jobsCollectionId: "YOUR_JOBS_COLLECTION_ID_HERE"
+            jobsCollectionId: "6448faf9c5a8a17455c05525"
         };
 
         // Mitglieder-Collection abrufen
