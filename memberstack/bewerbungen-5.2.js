@@ -75,8 +75,11 @@ function renderJobs(jobs) {
     const jobsToShow = jobs.slice(0, endIndex);
 
     jobsToShow.forEach(({ jobData }, index) => {
-        const jobDiv = document.createElement("div");
+        
+
+        
         jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
+        jobLink.appendChild(jobDiv);
         if (index === 0) jobDiv.classList.add("justify-left");
 
         // Gemeinsames Div für Bild und Name
@@ -98,6 +101,7 @@ function renderJobs(jobs) {
         const jobLink = document.createElement("a");
         jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
         jobLink.target = "_blank";
+        jobLink.classList.add("truncate");
         jobLink.appendChild(jobName);
         jobInfoDiv.appendChild(jobLink);
 
