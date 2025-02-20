@@ -124,7 +124,8 @@ async function displayUserApplications() {
                 const fields = [
                     { key: "job-payment", label: "Bezahlung" },
                     { key: "job-date-end", label: "Bewerbungsfrist" },
-                    { key: "fertigstellung-content", label: "Fertigstellung" }
+                    { key: "fertigstellung-content", label: "Contentdeadline" },
+                    { key: "job-status", label: "Job Status" }
                 ];
 
                 fields.forEach(field => {
@@ -134,11 +135,27 @@ async function displayUserApplications() {
 
                     const fieldText = document.createElement("span");
                     fieldText.classList.add("is-txt-16");
-                    
+
                     if (field.key === "job-payment" && value !== "Nicht verfügbar") {
                         fieldText.textContent = `${value} €`;
                     } else if (field.key === "job-date-end" && value !== "Nicht verfügbar") {
                         fieldText.textContent = calculateDeadlineCountdown(value);
+                    } else if (field.key === "fertigstellung-content" && value !== "Nicht verfügbar") {
+                        const date = new Date(value);
+                        fieldText.textContent = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+                    } else if (field.key === "job-status" && jobData["job-date-end"] !== "Nicht verfügbar") {
+                        const endDate = new Date(jobData["job-date-end"]);
+                        const now = new Date();
+                        const statusDiv = document.createElement("div");
+
+                        if (endDate < now) {
+                            statusDiv.classList.add("job-tag", "is-bg-light-red");
+                            statusDiv.textContent = "Beendet";
+                        } else {
+                            statusDiv.classList.add("job-tag", "is-bg-light-green");
+                            statusDiv.textContent = "Aktiv";
+                        }
+                        fieldDiv.appendChild(statusDiv);
                     } else {
                         fieldText.textContent = value;
                     }
