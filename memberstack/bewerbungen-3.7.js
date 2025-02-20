@@ -125,7 +125,8 @@ async function displayUserApplications() {
                     { key: "job-payment", label: "Bezahlung" },
                     { key: "job-date-end", label: "Bewerbungsfrist" },
                     { key: "fertigstellung-content", label: "Contentdeadline" },
-                    { key: "job-status", label: "Job Status" }
+                    { key: "job-status", label: "Job Status" },
+                    { key: "application-status", label: "Bewerbungsstatus" }
                 ];
 
                 fields.forEach(field => {
@@ -147,20 +148,49 @@ async function displayUserApplications() {
                         const endDate = new Date(jobData["job-date-end"]);
                         const now = new Date();
                         const statusDiv = document.createElement("div");
+                        const statusText = document.createElement("span");
+                        statusText.classList.add("db-job-tag-txt");
 
                         if (endDate < now) {
                             statusDiv.classList.add("job-tag", "is-bg-light-red");
-                            statusDiv.textContent = "Beendet";
+                            statusText.textContent = "Beendet";
                         } else {
                             statusDiv.classList.add("job-tag", "is-bg-light-green");
-                            statusDiv.textContent = "Aktiv";
+                            statusText.textContent = "Aktiv";
                         }
+                        statusDiv.appendChild(statusText);
+                        fieldDiv.appendChild(statusDiv);
+                    } else if (field.key === "application-status") {
+                        const bookedCreators = jobData["booked-creators"] || [];
+                        const rejectedCreators = jobData["rejected-creators"] || [];
+                        const endDate = new Date(jobData["job-date-end"]);
+                        const now = new Date();
+                        const statusDiv = document.createElement("div");
+                        const statusText = document.createElement("span");
+                        statusText.classList.add("db-job-tag-txt");
+
+                        if (bookedCreators.includes(webflowMemberId)) {
+                            statusDiv.classList.add("job-tag", "is-bg-light-green");
+                            statusText.textContent = "Angenommen";
+                        } else if (rejectedCreators.includes(webflowMemberId)) {
+                            statusDiv.classList.add("job-tag", "is-bg-light-red");
+                            statusText.textContent = "Abgelehnt";
+                        } else if (endDate < now) {
+                            statusDiv.classList.add("job-tag", "is-bg-light-red");
+                            statusText.textContent = "Abgelehnt";
+                        } else {
+                            statusDiv.classList.add("job-tag", "is-bg-light-blue");
+                            statusText.textContent = "Ausstehend";
+                        }
+
+                        statusDiv.appendChild(statusText);
                         fieldDiv.appendChild(statusDiv);
                     } else {
                         fieldText.textContent = value;
                     }
 
                     fieldDiv.appendChild(fieldText);
+                    jobDiv.appendChild(fieldDiv);
                     jobDiv.appendChild(fieldDiv);
                 });
 
