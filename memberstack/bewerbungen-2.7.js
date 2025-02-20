@@ -89,6 +89,7 @@ async function displayUserApplications() {
 
         const appContainer = document.getElementById("application-list");
         appContainer.innerHTML = "";
+        window.hasLoadedApplications = false;
 
         // Skeleton-Loader während des Ladens anzeigen
         const skeleton = createSkeletonLoader();
@@ -171,7 +172,10 @@ async function displayUserApplications() {
 let observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
-            displayUserApplications();
+            if (!window.hasLoadedApplications) {
+    window.hasLoadedApplications = true;
+    displayUserApplications();
+}
             observer.disconnect();
         }
     });
@@ -179,7 +183,10 @@ let observer = new IntersectionObserver((entries) => {
 
 if (document.getElementById("application-list") && !document.getElementById("application-list").hasAttribute("data-observed")) {
     document.getElementById("application-list").setAttribute("data-observed", "true");
+    if (!window.observerInitialized) {
+    window.observerInitialized = true;
     observer.observe(document.getElementById("application-list"));
+}
 }
 
 // Start der Anwendung
