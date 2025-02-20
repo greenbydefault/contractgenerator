@@ -200,7 +200,7 @@ async function displayUserApplications() {
                     jobDiv.appendChild(fieldDiv);
                 });
                     jobDiv.appendChild(fieldDiv);
-                    jobDiv.appendChild(fieldDiv);
+                  
                 });
 
                 appContainer.appendChild(jobDiv);
