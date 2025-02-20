@@ -183,4 +183,10 @@ if (document.getElementById("application-list") && !document.getElementById("app
 }
 
 // Start der Anwendung
-window.addEventListener("DOMContentLoaded", displayUserApplications);
+window.addEventListener("DOMContentLoaded", () => {
+    const appContainer = document.getElementById("application-list");
+    if (appContainer) {
+        appContainer.innerHTML = ""; // Vor dem Laden leeren, um Duplikate zu vermeiden
+        displayUserApplications();
+    }
+});
