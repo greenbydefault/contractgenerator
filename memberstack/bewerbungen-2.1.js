@@ -118,7 +118,7 @@ async function fetchJobDetails(collectionId, jobId) {
         }
 
         const jobDetails = await response.json();
-        console.log(`📄 Details für Job ${jobId}:", jobDetails);
+        console.log(`📄 Details für Job ${jobId}:`, jobDetails);
         return jobDetails;
     } catch (error) {
         console.error("⚠️ Fehler beim Abrufen der Job-Details:", error);
