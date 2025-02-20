@@ -131,8 +131,17 @@ async function displayUserApplications() {
     fieldDiv.classList.add("db-table-row-item", "is-txt-16");
 
     if ((field.key === "job-date-end" || field.key === "fertigstellung-content") && value !== "Nicht verfügbar") {
-        const date = new Date(value);
-        fieldDiv.textContent = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+        try {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+                fieldDiv.textContent = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+            } else {
+                fieldDiv.textContent = "Ungültiges Datum";
+            }
+        } catch (error) {
+            console.error(`❌ Fehler beim Formatieren des Datums für ${field.key}:`, error);
+            fieldDiv.textContent = "Formatierungsfehler";
+        }
     } else {
         fieldDiv.textContent = value;
     }
