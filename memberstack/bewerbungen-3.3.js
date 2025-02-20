@@ -44,6 +44,23 @@ async function fetchJobData(jobId) {
     }
 }
 
+// Deadline-Countdown berechnen
+function calculateDeadlineCountdown(endDate) {
+    const now = new Date();
+    const deadline = new Date(endDate);
+    const diff = deadline - now;
+
+    if (diff <= 0) return "⏳ Abgelaufen";
+
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `Endet in ${days} Tag(en)`;
+    if (hours > 0) return `Endet in ${hours} Stunde(n)`;
+    return `Endet in ${minutes} Minute(n)`;
+}
+
 // Beispiel-Aufruf der Funktion
 async function displayUserApplications() {
     const collectionId = "6448faf9c5a8a15f6cc05526";
@@ -78,17 +95,18 @@ async function displayUserApplications() {
             const jobResults = await Promise.all(jobPromises);
 
             // 📄 Ergebnisse rendern
-            jobResults.forEach(({ jobData }) => {
+            jobResults.forEach(({ jobData }, index) => {
                 const jobDiv = document.createElement("div");
                 jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
+                if (index === 0) jobDiv.classList.add("justify-left");
 
                 // Gemeinsames Div für Bild und Name
                 const jobInfoDiv = document.createElement("div");
-                jobInfoDiv.classList.add("db-table-row-item", "is-txt-16");
+                jobInfoDiv.classList.add("db-table-row-item");
 
                 // Bild
                 const jobImage = document.createElement("img");
-                jobImage.classList.add("db-table-img");
+                jobImage.classList.add("db-table-img", "is-margin-right-12");
                 jobImage.src = jobData["job-image"] || "https://via.placeholder.com/100";
                 jobImage.alt = jobData["name"] || "Job Bild";
                 jobImage.style.maxWidth = "100px";
@@ -105,19 +123,20 @@ async function displayUserApplications() {
                 // Weitere Felder
                 const fields = [
                     { key: "job-payment", label: "Bezahlung" },
-                    { key: "job-date-end", label: "Enddatum" },
+                    { key: "job-date-end", label: "Bewerbungsfrist" },
                     { key: "fertigstellung-content", label: "Fertigstellung" }
                 ];
 
                 fields.forEach(field => {
                     const value = jobData[field.key] || "Nicht verfügbar";
                     const fieldDiv = document.createElement("div");
-                    fieldDiv.classList.add("db-table-row-item", "is-txt-16");
+                    fieldDiv.classList.add("is-txt-16");
+                    fieldDiv.classList.add("db-table-row-item");
 
-                    // Datum formatieren
-                    if (field.key === "job-date-end" && value !== "Nicht verfügbar") {
-                        const date = new Date(value);
-                        fieldDiv.textContent = `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+                    if (field.key === "job-payment" && value !== "Nicht verfügbar") {
+                        fieldDiv.textContent = `${value} €`;
+                    } else if (field.key === "job-date-end" && value !== "Nicht verfügbar") {
+                        fieldDiv.textContent = calculateDeadlineCountdown(value);
                     } else {
                         fieldDiv.textContent = value;
                     }
