@@ -102,7 +102,7 @@ async function displayUserApplications() {
 
                 // Gemeinsames Div für Bild und Name
                 const jobInfoDiv = document.createElement("div");
-                jobInfoDiv.classList.add("db-table-row-item");
+                jobInfoDiv.classList.add("db-table-row-item", "justify-left");
 
                 // Bild
                 const jobImage = document.createElement("img");
@@ -130,17 +130,20 @@ async function displayUserApplications() {
                 fields.forEach(field => {
                     const value = jobData[field.key] || "Nicht verfügbar";
                     const fieldDiv = document.createElement("div");
-                    fieldDiv.classList.add("is-txt-16");
                     fieldDiv.classList.add("db-table-row-item");
 
+                    const fieldText = document.createElement("span");
+                    fieldText.classList.add("is-txt-16");
+                    
                     if (field.key === "job-payment" && value !== "Nicht verfügbar") {
-                        fieldDiv.textContent = `${value} €`;
+                        fieldText.textContent = `${value} €`;
                     } else if (field.key === "job-date-end" && value !== "Nicht verfügbar") {
-                        fieldDiv.textContent = calculateDeadlineCountdown(value);
+                        fieldText.textContent = calculateDeadlineCountdown(value);
                     } else {
-                        fieldDiv.textContent = value;
+                        fieldText.textContent = value;
                     }
 
+                    fieldDiv.appendChild(fieldText);
                     jobDiv.appendChild(fieldDiv);
                 });
 
