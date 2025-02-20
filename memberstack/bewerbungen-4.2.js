@@ -91,15 +91,8 @@ async function displayUserApplications() {
                 return { appId, jobData };
             });
 
-            // Nach CreatedOn sortieren
-            
-
             // 🟢 Alle Anfragen parallel abschließen
-const jobResults = await Promise.all(jobPromises);
-
-// 🔄 Nach Erstellungsdatum sortieren
-jobResults.sort((a, b) => new Date(b.jobData.createdOn) - new Date(a.jobData.createdOn));
-            jobResults.sort((a, b) => new Date(b.jobData.createdOn) - new Date(a.jobData.createdOn));
+            const jobResults = await Promise.all(jobPromises);
 
             // 📄 Ergebnisse rendern
             jobResults.forEach(({ jobData }, index) => {
@@ -122,11 +115,7 @@ jobResults.sort((a, b) => new Date(b.jobData.createdOn) - new Date(a.jobData.cre
                 // Name
                 const jobName = document.createElement("span");
                 jobName.classList.add("truncate");
-                const jobLink = document.createElement("a");
-                jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
-                jobLink.target = "_blank";
-                jobLink.appendChild(jobName);
-                jobInfoDiv.appendChild(jobLink);
+                jobName.textContent = jobData["name"] || "Unbekannter Job";
                 jobInfoDiv.appendChild(jobName);
 
                 jobDiv.appendChild(jobInfoDiv);
@@ -202,7 +191,6 @@ jobResults.sort((a, b) => new Date(b.jobData.createdOn) - new Date(a.jobData.cre
 
                     fieldDiv.appendChild(fieldText);
                     jobDiv.appendChild(fieldDiv);
-                });
                     jobDiv.appendChild(fieldDiv);
                 });
 
