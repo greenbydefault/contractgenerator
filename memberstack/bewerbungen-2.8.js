@@ -44,17 +44,6 @@ async function fetchJobData(jobId) {
     }
 }
 
-// Skeleton Loader erstellen
-function createSkeletonLoader() {
-    const skeleton = document.createElement("div");
-    skeleton.classList.add("skeleton-loader");
-    skeleton.style.height = "50px";
-    skeleton.style.margin = "10px 0";
-    skeleton.style.backgroundColor = "#e0e0e0";
-    skeleton.style.borderRadius = "4px";
-    return skeleton;
-}
-
 // Deadline-Countdown berechnen
 function calculateDeadlineCountdown(endDate) {
     const now = new Date();
@@ -89,16 +78,9 @@ async function displayUserApplications() {
 
         const appContainer = document.getElementById("application-list");
         appContainer.innerHTML = "";
-        window.hasLoadedApplications = false;
-
-        // Skeleton-Loader während des Ladens anzeigen
-        const skeleton = createSkeletonLoader();
-        appContainer.appendChild(skeleton);
 
         const userData = await fetchCollectionItem(collectionId, webflowMemberId);
         const applications = userData?.fieldData?.["abgeschlossene-bewerbungen"] || [];
-
-        appContainer.innerHTML = "";
 
         if (applications.length > 0) {
             console.log("🎯 Abgeschlossene Bewerbungen:", applications);
@@ -168,32 +150,11 @@ async function displayUserApplications() {
     }
 }
 
-// Lazy Loading
-let observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            if (!window.hasLoadedApplications) {
-    window.hasLoadedApplications = true;
-    displayUserApplications();
-}
-            observer.disconnect();
-        }
-    });
-});
-
-if (document.getElementById("application-list") && !document.getElementById("application-list").hasAttribute("data-observed")) {
-    document.getElementById("application-list").setAttribute("data-observed", "true");
-    if (!window.observerInitialized) {
-    window.observerInitialized = true;
-    observer.observe(document.getElementById("application-list"));
-}
-}
-
 // Start der Anwendung
 window.addEventListener("DOMContentLoaded", () => {
     const appContainer = document.getElementById("application-list");
     if (appContainer) {
-        appContainer.innerHTML = ""; // Vor dem Laden leeren, um Duplikate zu vermeiden
+        appContainer.innerHTML = "";
         displayUserApplications();
     }
 });
