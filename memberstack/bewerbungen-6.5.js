@@ -153,16 +153,18 @@ function renderJobs(jobs) {
                 statusDiv.appendChild(statusText);
                 fieldDiv.appendChild(statusDiv);
             } else if (field.key === "application-status") {
-                const webflowMemberId = String(jobData['webflow-member-id']);
-                const bookedCreators = jobData["booked-creators"]?.map(String) || [];
-                const rejectedCreators = jobData["rejected-creators"]?.map(String) || [];
+                const webflowMemberId = jobData['webflow-member-id'];
+                const bookedCreators = jobData["booked-creators"] || [];
+                const rejectedCreators = jobData["rejected-creators"] || [];
                 const endDate = new Date(jobData["job-date-end"]);
                 const now = new Date();
                 const statusDiv = document.createElement("div");
                 const statusText = document.createElement("span");
                 statusText.classList.add("db-job-tag-txt");
 
-                if (webflowMemberId && bookedCreators.includes(webflowMemberId)) {
+                console.log(`🔍 Überprüfung: MemberID: ${webflowMemberId}, Booked: ${bookedCreators}`);
+
+                if (bookedCreators.includes(webflowMemberId)) {
                     statusDiv.classList.add("job-tag", "is-bg-light-green");
                     statusText.textContent = "Angenommen";
                 } else if (rejectedCreators.includes(webflowMemberId) || endDate < now) {
