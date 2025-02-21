@@ -82,6 +82,11 @@ function renderJobs(jobs) {
     jobsToShow.forEach(({ jobData }, index) => {
         if (!jobData) return;
 
+        const jobLink = document.createElement("a");
+        jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
+        jobLink.target = "_blank";
+        jobLink.style.textDecoration = "none";
+
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
         if (index === 0) jobDiv.classList.add("justify-left");
@@ -97,11 +102,12 @@ function renderJobs(jobs) {
         jobImage.style.maxWidth = "100px";
         jobInfoDiv.appendChild(jobImage);
 
-        // Name
+        // Name mit Link
         const jobName = document.createElement("span");
         jobName.classList.add("truncate");
         jobName.textContent = jobData["name"] || "Unbekannter Job";
-        jobInfoDiv.appendChild(jobName);
+        jobLink.appendChild(jobName);
+        jobInfoDiv.appendChild(jobLink);
 
         jobDiv.appendChild(jobInfoDiv);
 
