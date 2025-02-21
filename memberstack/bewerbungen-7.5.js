@@ -60,7 +60,7 @@ function calculateDeadlineCountdown(endDate) {
     const deadline = new Date(endDate);
     const diff = deadline - now;
 
-    if (diff <= 0) return "⏳ Abgelaufen";
+    if (diff <= 0) return "Abgelaufen";
 
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(minutes / 60);
