@@ -13,6 +13,23 @@ let currentPageRejected = 1;
 let allJobResults = [];
 let currentWebflowMemberId = null;
 
+// 🕰️ Funktion zur Berechnung des Countdown bis zur Deadline
+function calculateDeadlineCountdown(endDate) {
+    const now = new Date();
+    const deadline = new Date(endDate);
+    const diff = deadline - now;
+
+    if (diff <= 0) return "⏳ Abgelaufen";
+
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `Endet in ${days} Tag(en)`;
+    if (hours > 0) return `Endet in ${hours} Stunde(n)`;
+    return `Endet in ${minutes} Minute(n)`;
+}
+
 // 🛠️ Hilfsfunktionen
 function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
