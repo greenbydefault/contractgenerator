@@ -79,6 +79,11 @@ function renderJobs(jobs) {
     const jobsToShow = jobs.slice(0, endIndex);
 
     jobsToShow.forEach(({ jobData }) => {
+        const jobLink = document.createElement("a");
+        jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
+        jobLink.target = "_blank";
+        jobLink.classList.add("job-link-wrapper");
+
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
 
@@ -93,11 +98,10 @@ function renderJobs(jobs) {
         jobImage.style.maxWidth = "100px";
         jobInfoDiv.appendChild(jobImage);
 
-        const jobLink = document.createElement("a");
-        jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
-        jobLink.target = "_blank";
-        jobLink.textContent = jobData["name"] || "Unbekannter Job";
-        jobInfoDiv.appendChild(jobLink);
+        const jobName = document.createElement("span");
+        jobName.classList.add("truncate");
+        jobName.textContent = jobData["name"] || "Unbekannter Job";
+        jobInfoDiv.appendChild(jobName);
 
         jobDiv.appendChild(jobInfoDiv);
 
@@ -106,8 +110,8 @@ function renderJobs(jobs) {
             { key: "job-payment", label: "Bezahlung", format: (val) => `${val} €` },
             { key: "job-date-end", label: "Bewerbungsfrist", format: calculateDeadlineCountdown },
             { key: "fertigstellung-content", label: "Content-Deadline", format: (val) => new Date(val).toLocaleDateString() },
-            { key: "job-status", label: "Job-Status", format: (val) => val },
-            { key: "application-status", label: "Bewerbungsstatus", format: (val) => val }
+            { key: "job-status", label: "Job-Status", format: (val) => jobData["job-date-end"] ? "Aktiv" : "Beendet" },
+            { key: "application-status", label: "Bewerbungsstatus", format: (val) => val || "Ausstehend" }
         ];
 
         fields.forEach(({ key, format }) => {
@@ -123,7 +127,8 @@ function renderJobs(jobs) {
             jobDiv.appendChild(fieldDiv);
         });
 
-        appContainer.appendChild(jobDiv);
+        jobLink.appendChild(jobDiv);
+        appContainer.appendChild(jobLink);
     });
 
     renderLoadMoreButton(jobs.length > endIndex);
