@@ -18,7 +18,7 @@ function buildWorkerUrl(apiUrl) {
 
 function showLoadingSpinner() {
     const appContainer = document.getElementById("application-list");
-    appContainer.innerHTML = '<div id="loading-spinner" style="text-align: center; padding: 20px;"><span class="spinner"></span> Lade Bewerbungen...</div>';
+    appContainer.innerHTML = '<div id="loading-spinner" style="text-align: center; padding: 20px;"><div class="spinner" style="border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #007aff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div></div>';
 }
 
 function hideLoadingSpinner() {
@@ -121,7 +121,7 @@ function renderJobs(jobs) {
             { key: "job-payment", label: "Bezahlung", format: (val) => `${val} €` },
             { key: "job-date-end", label: "Bewerbungsfrist", format: calculateDeadlineCountdown },
             { key: "fertigstellung-content", label: "Content-Deadline", format: (val) => new Date(val).toLocaleDateString() },
-            { key: "job-status", label: "Job-Status", format: () => jobData["job-date-end"] ? "Aktiv" : "Beendet" },
+            { key: "job-status", label: "Job-Status", format: () => getJobStatus(jobData) },
             { key: "application-status", label: "Bewerbungsstatus", format: () => getApplicationStatus(jobData) }
         ];
 
@@ -134,16 +134,18 @@ function renderJobs(jobs) {
             fieldText.classList.add("is-txt-16");
             fieldText.textContent = format(value);
 
-            if (key === "application-status") {
+            if (key === "job-status" || key === "application-status") {
                 const statusDiv = document.createElement("div");
                 statusDiv.classList.add("job-tag");
-                if (value === "Angenommen") {
+
+                if (value === "Aktiv" || value === "Angenommen") {
                     statusDiv.classList.add("is-bg-light-green");
-                } else if (value === "Abgelehnt") {
+                } else if (value === "Beendet" || value === "Abgelehnt") {
                     statusDiv.classList.add("is-bg-light-red");
                 } else {
                     statusDiv.classList.add("is-bg-light-blue");
                 }
+
                 statusDiv.appendChild(fieldText);
                 fieldDiv.appendChild(statusDiv);
             } else {
@@ -161,8 +163,26 @@ function renderJobs(jobs) {
 }
 
 function getApplicationStatus(jobData) {
-    const status = jobData["application-status"] || "Ausstehend";
-    return status;
+    const webflowMemberId = jobData["webflow-member-id"];
+    const bookedCreators = jobData["booked-creators"] || [];
+    const rejectedCreators = jobData["rejected-creators"] || [];
+
+    if (webflowMemberId && bookedCreators.includes(webflowMemberId)) {
+        return "Angenommen";
+    } else if (rejectedCreators.includes(webflowMemberId)) {
+        return "Abgelehnt";
+    }
+    return "Ausstehend";
+}
+
+function getJobStatus(jobData) {
+    const endDate = new Date(jobData["job-date-end"]);
+    const now = new Date();
+
+    if (endDate && endDate > now) {
+        return "Aktiv";
+    }
+    return "Beendet";
 }
 
 // 🔄 Load More Button
@@ -220,3 +240,13 @@ function debounce(func, delay) {
         timer = setTimeout(() => func.apply(this, args), delay);
     };
 }
+
+// 🔄 Spinner Animation
+const style = document.createElement('style');
+style.innerHTML = `
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+`;
+document.head.appendChild(style);
