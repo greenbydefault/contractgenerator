@@ -150,6 +150,33 @@ function renderJobs(jobs, containerId, currentPage) {
         jobDeadline.textContent = `📅 ${calculateDeadlineCountdown(jobData["job-date-end"] || "")}`;
         jobDiv.appendChild(jobDeadline);
 
+        // Contentdeadline
+        const contentDeadline = document.createElement("div");
+        const contentDate = jobData["fertigstellung-content"];
+        contentDeadline.textContent = contentDate ? `📅 ${new Date(contentDate).toLocaleDateString()}` : "Nicht verfügbar";
+        jobDiv.appendChild(contentDeadline);
+
+        // Job Status
+        const jobStatus = document.createElement("div");
+        const endDate = new Date(jobData["job-date-end"]);
+        const now = new Date();
+        jobStatus.textContent = endDate < now ? "Beendet" : "Aktiv";
+        jobDiv.appendChild(jobStatus);
+
+        // Bewerbungsstatus
+        const applicationStatus = document.createElement("div");
+        const bookedCreators = jobData["booked-creators"] || [];
+        const rejectedCreators = jobData["rejected-creators"] || [];
+
+        if (bookedCreators.includes(currentWebflowMemberId)) {
+            applicationStatus.textContent = "Angenommen";
+        } else if (rejectedCreators.includes(currentWebflowMemberId) || endDate < now) {
+            applicationStatus.textContent = "Abgelehnt";
+        } else {
+            applicationStatus.textContent = "Ausstehend";
+        }
+        jobDiv.appendChild(applicationStatus);
+
         container.appendChild(jobDiv);
     });
 
