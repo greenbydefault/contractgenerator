@@ -9,6 +9,7 @@ const JOBS_PER_PAGE = 15;
 
 let currentPage = 1;
 let allJobResults = [];
+let currentWebflowMemberId = null; // 💡 Hier wird die eingeloggte Member-ID gespeichert
 
 // 🛠️ Hilfsfunktionen
 function buildWorkerUrl(apiUrl) {
@@ -71,9 +72,11 @@ function calculateDeadlineCountdown(endDate) {
 }
 
 // 🖨️ Jobs rendern
-function renderJobs(jobs) {
+function renderJobs(jobs, webflowMemberId) {
     const appContainer = document.getElementById("application-list");
     appContainer.innerHTML = "";
+
+    console.log(`🟢 Eingeloggte Webflow Member-ID: ${webflowMemberId}`);
 
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
     const endIndex = startIndex + JOBS_PER_PAGE;
@@ -153,7 +156,6 @@ function renderJobs(jobs) {
                 statusDiv.appendChild(statusText);
                 fieldDiv.appendChild(statusDiv);
             } else if (field.key === "application-status") {
-                const webflowMemberId = jobData['webflow-member-id'];
                 const bookedCreators = jobData["booked-creators"] || [];
                 const rejectedCreators = jobData["rejected-creators"] || [];
                 const endDate = new Date(jobData["job-date-end"]);
@@ -162,8 +164,7 @@ function renderJobs(jobs) {
                 const statusText = document.createElement("span");
                 statusText.classList.add("db-job-tag-txt");
 
-                console.log(`🔍 Überprüfung: Aktuelle MemberID: ${webflowMemberId}`);
-                console.log(`👥 Booked Creators: ${JSON.stringify(bookedCreators)}`);
+                console.log(`🔍 Überprüfung: MemberID: ${webflowMemberId}, Booked: ${JSON.stringify(bookedCreators)}`);
 
                 if (bookedCreators.includes(webflowMemberId)) {
                     statusDiv.classList.add("job-tag", "is-bg-light-green");
@@ -199,7 +200,7 @@ function renderJobs(jobs) {
         loadMoreButton.classList.add("load-more-btn");
         loadMoreButton.addEventListener("click", () => {
             currentPage++;
-            renderJobs(allJobResults);
+            renderJobs(allJobResults, webflowMemberId);
         });
         loadMoreContainer.appendChild(loadMoreButton);
     }
@@ -211,16 +212,16 @@ async function displayUserApplications() {
 
     try {
         const member = await window.$memberstackDom.getCurrentMember();
-        const webflowMemberId = member?.data?.customFields?.['webflow-member-id'];
+        currentWebflowMemberId = member?.data?.customFields?.['webflow-member-id'];
 
-        if (!webflowMemberId) {
+        if (!currentWebflowMemberId) {
             console.error("❌ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
             return;
         }
 
-        console.log(`👤 Aktuelle eingeloggte Webflow Member-ID: ${webflowMemberId}`);
+        console.log(`👤 Aktuelle eingeloggte Webflow Member-ID: ${currentWebflowMemberId}`);
 
-        const userData = await fetchCollectionItem(collectionId, webflowMemberId);
+        const userData = await fetchCollectionItem(collectionId, currentWebflowMemberId);
         const applications = userData?.fieldData?.["abgeschlossene-bewerbungen"] || [];
 
         if (applications.length > 0) {
@@ -230,7 +231,7 @@ async function displayUserApplications() {
             });
 
             allJobResults = await Promise.all(jobPromises);
-            renderJobs(allJobResults);
+            renderJobs(allJobResults, currentWebflowMemberId);
         } else {
             appContainer.innerHTML = "<p>🚫 Keine abgeschlossenen Bewerbungen gefunden.</p>";
         }
