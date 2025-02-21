@@ -131,19 +131,29 @@ function renderJobs(jobs) {
             fieldDiv.classList.add("db-table-row-item");
 
             const fieldText = document.createElement("span");
-            fieldText.classList.add("is-txt-16");
+            fieldText.classList.add("db-job-tag-txt");
             fieldText.textContent = format(value);
 
             if (key === "job-status" || key === "application-status") {
                 const statusDiv = document.createElement("div");
                 statusDiv.classList.add("job-tag");
 
-                if (value === "Aktiv" || value === "Angenommen") {
-                    statusDiv.classList.add("is-bg-light-green");
-                } else if (value === "Beendet" || value === "Abgelehnt") {
-                    statusDiv.classList.add("is-bg-light-red");
-                } else {
-                    statusDiv.classList.add("is-bg-light-blue");
+                if (key === "job-status") {
+                    if (value === "Aktiv") {
+                        statusDiv.classList.add("is-bg-light-green");
+                    } else {
+                        statusDiv.classList.add("is-bg-light-red");
+                    }
+                }
+
+                if (key === "application-status") {
+                    if (value === "Angenommen") {
+                        statusDiv.classList.add("is-bg-light-green");
+                    } else if (value === "Abgelehnt") {
+                        statusDiv.classList.add("is-bg-light-red");
+                    } else {
+                        statusDiv.classList.add("is-bg-light-blue");
+                    }
                 }
 
                 statusDiv.appendChild(fieldText);
@@ -166,12 +176,21 @@ function getApplicationStatus(jobData) {
     const webflowMemberId = jobData["webflow-member-id"];
     const bookedCreators = jobData["booked-creators"] || [];
     const rejectedCreators = jobData["rejected-creators"] || [];
+    const endDate = new Date(jobData["job-date-end"]);
+    const now = new Date();
 
-    if (webflowMemberId && bookedCreators.includes(webflowMemberId)) {
+    if (bookedCreators.includes(webflowMemberId)) {
         return "Angenommen";
-    } else if (rejectedCreators.includes(webflowMemberId)) {
+    }
+
+    if (endDate < now) {
         return "Abgelehnt";
     }
+
+    if (rejectedCreators.includes(webflowMemberId)) {
+        return "Abgelehnt";
+    }
+
     return "Ausstehend";
 }
 
@@ -201,52 +220,3 @@ function renderLoadMoreButton(hasMore) {
         loadMoreContainer.appendChild(loadMoreButton);
     }
 }
-
-// 🚀 Hauptfunktion
-async function displayUserApplications() {
-    showLoadingSpinner();
-    try {
-        const member = await window.$memberstackDom.getCurrentMember();
-        const webflowMemberId = member?.data?.customFields?.['webflow-member-id'];
-
-        if (!webflowMemberId) throw new Error("Kein 'webflow-member-id' gefunden.");
-        console.log(`👤 Webflow Member-ID: ${webflowMemberId}`);
-
-        const userData = await fetchCollectionItem(USER_COLLECTION_ID, webflowMemberId);
-        const applications = userData?.fieldData?.["abgeschlossene-bewerbungen"] || [];
-
-        allJobResults = await Promise.all(applications.map(async (appId) => {
-            const jobData = await fetchJobData(appId);
-            return { appId, jobData };
-        }));
-
-        hideLoadingSpinner();
-        renderJobs(allJobResults);
-    } catch (error) {
-        console.error("❌ Fehler beim Laden der Bewerbungen:", error);
-        document.getElementById("application-list").innerHTML = "🚫 Keine abgeschlossenen Bewerbungen gefunden.";
-        hideLoadingSpinner();
-    }
-}
-
-// 📅 Event Listener
-window.addEventListener("DOMContentLoaded", displayUserApplications);
-
-// 🕰️ Debouncing
-function debounce(func, delay) {
-    let timer;
-    return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => func.apply(this, args), delay);
-    };
-}
-
-// 🔄 Spinner Animation
-const style = document.createElement('style');
-style.innerHTML = `
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-`;
-document.head.appendChild(style);
