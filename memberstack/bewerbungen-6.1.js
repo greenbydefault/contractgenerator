@@ -40,30 +40,42 @@ async function fetchWithCache(url, context = "") {
         }
 
         const data = await response.json();
+        if (!data) throw new Error("Leere Antwort vom Server.");
+
         cache.set(url, data);
         return data;
     } catch (error) {
         console.error(`❌ Fehler in ${context}: ${error.message}`);
-        throw error;
+        return null;
     }
 }
 
 // 📥 API-Aufrufe
 async function fetchCollectionItem(collectionId, memberId) {
+    if (!collectionId || !memberId) {
+        console.error("❌ Ungültige Collection-ID oder Member-ID.");
+        return null;
+    }
     const apiUrl = `${API_BASE_URL}/${collectionId}/items/${memberId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
     return fetchWithCache(workerUrl, "fetchCollectionItem");
 }
 
 async function fetchJobData(jobId) {
+    if (!jobId) {
+        console.error("❌ Ungültige Job-ID.");
+        return null;
+    }
     const apiUrl = `${API_BASE_URL}/${JOB_COLLECTION_ID}/items/${jobId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
     const jobData = await fetchWithCache(workerUrl, `fetchJobData (${jobId})`);
-    return jobData.fieldData || {};
+    return jobData?.fieldData || {};
 }
 
 // ⏳ Countdown-Berechnung
 function calculateDeadlineCountdown(endDate) {
+    if (!endDate) return "⏳ Abgelaufen";
+
     const now = new Date();
     const deadline = new Date(endDate);
     const diff = deadline - now;
@@ -83,6 +95,11 @@ function calculateDeadlineCountdown(endDate) {
 function renderJobs(jobs) {
     const appContainer = document.getElementById("application-list");
     appContainer.innerHTML = "";
+
+    if (!jobs || jobs.length === 0) {
+        appContainer.innerHTML = "<p>🚫 Keine Jobs gefunden.</p>";
+        return;
+    }
 
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
     const endIndex = startIndex + JOBS_PER_PAGE;
@@ -120,9 +137,9 @@ function renderJobs(jobs) {
 
         // 📊 Weitere Felder
         const fields = [
-            { key: "job-payment", label: "Bezahlung", format: (val) => `${val} €` },
+            { key: "job-payment", label: "Bezahlung", format: (val) => `${val || 0} €` },
             { key: "job-date-end", label: "Bewerbungsfrist", format: calculateDeadlineCountdown },
-            { key: "fertigstellung-content", label: "Content-Deadline", format: (val) => new Date(val).toLocaleDateString() },
+            { key: "fertigstellung-content", label: "Content-Deadline", format: (val) => val ? new Date(val).toLocaleDateString() : "Nicht verfügbar" },
             { key: "job-status", label: "Job-Status", format: () => getJobStatus(jobData) },
             { key: "application-status", label: "Bewerbungsstatus", format: () => getApplicationStatus(jobData) }
         ];
@@ -175,13 +192,13 @@ function renderJobs(jobs) {
 }
 
 function getApplicationStatus(jobData) {
+    if (!jobData) return "Ausstehend";
+
     const webflowMemberId = jobData["webflow-member-id"];
     const bookedCreators = jobData["booked-creators"] || [];
     const rejectedCreators = jobData["rejected-creators"] || [];
     const endDate = new Date(jobData["job-date-end"]);
     const now = new Date();
-
-    if (!webflowMemberId) return "Ausstehend";
 
     if (bookedCreators.includes(webflowMemberId)) {
         return "Angenommen";
@@ -199,10 +216,12 @@ function getApplicationStatus(jobData) {
 }
 
 function getJobStatus(jobData) {
+    if (!jobData) return "Beendet";
+
     const endDate = new Date(jobData["job-date-end"]);
     const now = new Date();
 
-    if (endDate && endDate > now) {
+    if (endDate > now) {
         return "Aktiv";
     }
     return "Beendet";
