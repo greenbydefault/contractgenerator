@@ -16,6 +16,16 @@ function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
 
+function showLoadingSpinner() {
+    const appContainer = document.getElementById("application-list");
+    appContainer.innerHTML = '<div id="loading-spinner" style="text-align: center; padding: 20px;"><span class="spinner"></span> Lade Bewerbungen...</div>';
+}
+
+function hideLoadingSpinner() {
+    const spinner = document.getElementById("loading-spinner");
+    if (spinner) spinner.remove();
+}
+
 async function fetchWithCache(url, context = "") {
     if (cache.has(url)) {
         console.log(`📦 Cache-Treffer für: ${context}`);
@@ -83,6 +93,7 @@ function renderJobs(jobs) {
         jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
         jobLink.target = "_blank";
         jobLink.classList.add("job-link-wrapper");
+        jobLink.style.textDecoration = "none";
 
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
@@ -110,8 +121,8 @@ function renderJobs(jobs) {
             { key: "job-payment", label: "Bezahlung", format: (val) => `${val} €` },
             { key: "job-date-end", label: "Bewerbungsfrist", format: calculateDeadlineCountdown },
             { key: "fertigstellung-content", label: "Content-Deadline", format: (val) => new Date(val).toLocaleDateString() },
-            { key: "job-status", label: "Job-Status", format: (val) => jobData["job-date-end"] ? "Aktiv" : "Beendet" },
-            { key: "application-status", label: "Bewerbungsstatus", format: (val) => val || "Ausstehend" }
+            { key: "job-status", label: "Job-Status", format: () => jobData["job-date-end"] ? "Aktiv" : "Beendet" },
+            { key: "application-status", label: "Bewerbungsstatus", format: () => getApplicationStatus(jobData) }
         ];
 
         fields.forEach(({ key, format }) => {
@@ -123,7 +134,22 @@ function renderJobs(jobs) {
             fieldText.classList.add("is-txt-16");
             fieldText.textContent = format(value);
 
-            fieldDiv.appendChild(fieldText);
+            if (key === "application-status") {
+                const statusDiv = document.createElement("div");
+                statusDiv.classList.add("job-tag");
+                if (value === "Angenommen") {
+                    statusDiv.classList.add("is-bg-light-green");
+                } else if (value === "Abgelehnt") {
+                    statusDiv.classList.add("is-bg-light-red");
+                } else {
+                    statusDiv.classList.add("is-bg-light-blue");
+                }
+                statusDiv.appendChild(fieldText);
+                fieldDiv.appendChild(statusDiv);
+            } else {
+                fieldDiv.appendChild(fieldText);
+            }
+
             jobDiv.appendChild(fieldDiv);
         });
 
@@ -132,6 +158,11 @@ function renderJobs(jobs) {
     });
 
     renderLoadMoreButton(jobs.length > endIndex);
+}
+
+function getApplicationStatus(jobData) {
+    const status = jobData["application-status"] || "Ausstehend";
+    return status;
 }
 
 // 🔄 Load More Button
@@ -153,6 +184,7 @@ function renderLoadMoreButton(hasMore) {
 
 // 🚀 Hauptfunktion
 async function displayUserApplications() {
+    showLoadingSpinner();
     try {
         const member = await window.$memberstackDom.getCurrentMember();
         const webflowMemberId = member?.data?.customFields?.['webflow-member-id'];
@@ -168,10 +200,12 @@ async function displayUserApplications() {
             return { appId, jobData };
         }));
 
+        hideLoadingSpinner();
         renderJobs(allJobResults);
     } catch (error) {
         console.error("❌ Fehler beim Laden der Bewerbungen:", error);
         document.getElementById("application-list").innerHTML = "🚫 Keine abgeschlossenen Bewerbungen gefunden.";
+        hideLoadingSpinner();
     }
 }
 
