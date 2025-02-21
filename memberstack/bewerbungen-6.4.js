@@ -91,6 +91,8 @@ function renderJobs(jobs) {
         jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
         if (index === 0) jobDiv.classList.add("justify-left");
 
+        jobLink.appendChild(jobDiv);
+
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
 
@@ -102,12 +104,11 @@ function renderJobs(jobs) {
         jobImage.style.maxWidth = "100px";
         jobInfoDiv.appendChild(jobImage);
 
-        // Name mit Link
+        // Name
         const jobName = document.createElement("span");
         jobName.classList.add("truncate");
         jobName.textContent = jobData["name"] || "Unbekannter Job";
-        jobLink.appendChild(jobName);
-        jobInfoDiv.appendChild(jobLink);
+        jobInfoDiv.appendChild(jobName);
 
         jobDiv.appendChild(jobInfoDiv);
 
@@ -152,9 +153,9 @@ function renderJobs(jobs) {
                 statusDiv.appendChild(statusText);
                 fieldDiv.appendChild(statusDiv);
             } else if (field.key === "application-status") {
-                const webflowMemberId = jobData['webflow-member-id'];
-                const bookedCreators = jobData["booked-creators"] || [];
-                const rejectedCreators = jobData["rejected-creators"] || [];
+                const webflowMemberId = String(jobData['webflow-member-id']);
+                const bookedCreators = jobData["booked-creators"]?.map(String) || [];
+                const rejectedCreators = jobData["rejected-creators"]?.map(String) || [];
                 const endDate = new Date(jobData["job-date-end"]);
                 const now = new Date();
                 const statusDiv = document.createElement("div");
@@ -182,7 +183,7 @@ function renderJobs(jobs) {
             jobDiv.appendChild(fieldDiv);
         });
 
-        appContainer.appendChild(jobDiv);
+        appContainer.appendChild(jobLink);
     });
 
     // Load More Button
