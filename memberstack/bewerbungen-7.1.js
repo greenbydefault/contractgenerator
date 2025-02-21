@@ -156,25 +156,34 @@ function renderJobs(jobs, containerId, currentPage) {
         contentDeadline.textContent = contentDate ? `📅 ${new Date(contentDate).toLocaleDateString()}` : "Nicht verfügbar";
         jobDiv.appendChild(contentDeadline);
 
-        // Job Status
+        // Job Status mit Styling-Tag
         const jobStatus = document.createElement("div");
         const endDate = new Date(jobData["job-date-end"]);
         const now = new Date();
-        jobStatus.textContent = endDate < now ? "Beendet" : "Aktiv";
+        const statusTag = document.createElement("span");
+        statusTag.classList.add("job-tag", endDate < now ? "is-bg-light-red" : "is-bg-light-green");
+        statusTag.textContent = endDate < now ? "Beendet" : "Aktiv";
+        jobStatus.appendChild(statusTag);
         jobDiv.appendChild(jobStatus);
 
-        // Bewerbungsstatus
+        // Bewerbungsstatus mit Styling-Tag
         const applicationStatus = document.createElement("div");
         const bookedCreators = jobData["booked-creators"] || [];
         const rejectedCreators = jobData["rejected-creators"] || [];
+        const statusSpan = document.createElement("span");
+        statusSpan.classList.add("job-tag");
 
         if (bookedCreators.includes(currentWebflowMemberId)) {
-            applicationStatus.textContent = "Angenommen";
+            statusSpan.classList.add("is-bg-light-green");
+            statusSpan.textContent = "Angenommen";
         } else if (rejectedCreators.includes(currentWebflowMemberId) || endDate < now) {
-            applicationStatus.textContent = "Abgelehnt";
+            statusSpan.classList.add("is-bg-light-red");
+            statusSpan.textContent = "Abgelehnt";
         } else {
-            applicationStatus.textContent = "Ausstehend";
+            statusSpan.classList.add("is-bg-light-blue");
+            statusSpan.textContent = "Ausstehend";
         }
+        applicationStatus.appendChild(statusSpan);
         jobDiv.appendChild(applicationStatus);
 
         container.appendChild(jobDiv);
