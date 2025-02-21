@@ -162,7 +162,8 @@ function renderJobs(jobs) {
                 const statusText = document.createElement("span");
                 statusText.classList.add("db-job-tag-txt");
 
-                console.log(`🔍 Überprüfung: MemberID: ${webflowMemberId}, Booked: ${bookedCreators}`);
+                console.log(`🔍 Überprüfung: Aktuelle MemberID: ${webflowMemberId}`);
+                console.log(`👥 Booked Creators: ${JSON.stringify(bookedCreators)}`);
 
                 if (bookedCreators.includes(webflowMemberId)) {
                     statusDiv.classList.add("job-tag", "is-bg-light-green");
@@ -216,6 +217,8 @@ async function displayUserApplications() {
             console.error("❌ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
             return;
         }
+
+        console.log(`👤 Aktuelle eingeloggte Webflow Member-ID: ${webflowMemberId}`);
 
         const userData = await fetchCollectionItem(collectionId, webflowMemberId);
         const applications = userData?.fieldData?.["abgeschlossene-bewerbungen"] || [];
