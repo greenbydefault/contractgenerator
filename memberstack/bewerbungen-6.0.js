@@ -89,6 +89,8 @@ function renderJobs(jobs) {
     const jobsToShow = jobs.slice(0, endIndex);
 
     jobsToShow.forEach(({ jobData }) => {
+        if (!jobData) return; // Sicherstellen, dass jobData vorhanden ist
+
         const jobLink = document.createElement("a");
         jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
         jobLink.target = "_blank";
@@ -178,6 +180,8 @@ function getApplicationStatus(jobData) {
     const rejectedCreators = jobData["rejected-creators"] || [];
     const endDate = new Date(jobData["job-date-end"]);
     const now = new Date();
+
+    if (!webflowMemberId) return "Ausstehend";
 
     if (bookedCreators.includes(webflowMemberId)) {
         return "Angenommen";
