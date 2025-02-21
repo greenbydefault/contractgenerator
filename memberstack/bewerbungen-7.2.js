@@ -13,13 +13,13 @@ let currentPageRejected = 1;
 let allJobResults = [];
 let currentWebflowMemberId = null;
 
-// 🕰️ Funktion zur Berechnung des Countdown bis zur Deadline
+// Funktion zur Berechnung des Countdown bis zur Deadline
 function calculateDeadlineCountdown(endDate) {
     const now = new Date();
     const deadline = new Date(endDate);
     const diff = deadline - now;
 
-    if (diff <= 0) return "⏳ Abgelaufen";
+    if (diff <= 0) return "Abgelaufen";
 
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(minutes / 60);
@@ -30,7 +30,7 @@ function calculateDeadlineCountdown(endDate) {
     return `Endet in ${minutes} Minute(n)`;
 }
 
-// 🛠️ Hilfsfunktionen
+// Hilfsfunktionen
 function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
@@ -49,7 +49,7 @@ async function fetchCollectionItem(collectionId, memberId) {
         const userItem = await response.json();
         return userItem;
     } catch (error) {
-        console.error(`❌ Fehler beim Abrufen der Collection: ${error.message}`);
+        console.error(`Fehler beim Abrufen der Collection: ${error.message}`);
         return null;
     }
 }
@@ -68,12 +68,12 @@ async function fetchJobData(jobId) {
         const jobData = await response.json();
         return jobData?.fieldData || {};
     } catch (error) {
-        console.error(`❌ Fehler beim Abrufen der Job-Daten: ${error.message}`);
+        console.error(`Fehler beim Abrufen der Job-Daten: ${error.message}`);
         return {};
     }
 }
 
-// 🕰️ Sortierfunktion nach Bewerbungsfrist
+// Sortierfunktion nach Bewerbungsfrist
 function sortByDeadline(jobs) {
     return jobs.sort((a, b) => {
         const dateA = new Date(a.jobData["job-date-end"]);
@@ -82,7 +82,7 @@ function sortByDeadline(jobs) {
     });
 }
 
-// 🔍 Joblisten nach Status
+// Joblisten nach Status
 function categorizeJobs(jobs, memberId) {
     const accepted = [];
     const pending = [];
@@ -106,85 +106,84 @@ function categorizeJobs(jobs, memberId) {
     return { accepted, pending, rejected };
 }
 
-// 🖨️ Jobs rendern
+// Jobs rendern
 function renderJobs(jobs, containerId, currentPage) {
     const container = document.getElementById(containerId);
     container.innerHTML = "";
 
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
     const endIndex = startIndex + JOBS_PER_PAGE;
-    const jobsToShow = jobs.slice(0, endIndex);
+    const jobsToShow = jobs.slice(startIndex, endIndex);
 
     jobsToShow.forEach(({ jobData }) => {
         if (!jobData) return;
 
-        const jobDiv = document.createElement("div");
+        const jobDiv = document.createElement("a");
         jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
+        jobDiv.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
+        jobDiv.target = "_blank";
+        jobDiv.style.textDecoration = "none";
 
-        const jobInfoDiv = document.createElement("div");
-        jobInfoDiv.classList.add("db-table-row-item", "justify-left");
+        const fields = [
+            { key: "job-image", type: "image", class: "db-table-row-item" },
+            { key: "name", class: "db-table-row-item truncate" },
+            { key: "job-payment", class: "db-table-row-item", prefix: "€" },
+            { key: "job-date-end", class: "db-table-row-item", transform: calculateDeadlineCountdown },
+            { key: "fertigstellung-content", class: "db-table-row-item", transform: (date) => new Date(date).toLocaleDateString() || "Nicht verfügbar" }
+        ];
 
-        // Bild
-        const jobImage = document.createElement("img");
-        jobImage.classList.add("db-table-img", "is-margin-right-12");
-        jobImage.src = jobData["job-image"] || "https://via.placeholder.com/100";
-        jobImage.alt = jobData["name"] || "Job Bild";
-        jobImage.style.maxWidth = "100px";
-        jobInfoDiv.appendChild(jobImage);
+        fields.forEach(field => {
+            const value = jobData[field.key] || "Nicht verfügbar";
+            const fieldDiv = document.createElement("div");
+            fieldDiv.classList.add(field.class);
 
-        // Name
-        const jobName = document.createElement("span");
-        jobName.classList.add("truncate");
-        jobName.textContent = jobData["name"] || "Unbekannter Job";
-        jobInfoDiv.appendChild(jobName);
+            if (field.type === "image") {
+                const img = document.createElement("img");
+                img.src = value || "https://via.placeholder.com/100";
+                img.alt = jobData["name"] || "Job Bild";
+                img.style.maxWidth = "100px";
+                fieldDiv.appendChild(img);
+            } else {
+                fieldDiv.textContent = field.prefix ? `${value} ${field.prefix}` : (field.transform ? field.transform(value) : value);
+            }
 
-        jobDiv.appendChild(jobInfoDiv);
+            jobDiv.appendChild(fieldDiv);
+        });
 
-        // Bezahlung
-        const jobPayment = document.createElement("div");
-        jobPayment.textContent = `💰 ${jobData["job-payment"] || "Nicht verfügbar"} €`;
-        jobDiv.appendChild(jobPayment);
+        // Job-Status
+        const jobStatusDiv = document.createElement("div");
+        jobStatusDiv.classList.add("db-table-row-item");
+        const jobStatusTag = document.createElement("div");
+        jobStatusTag.classList.add("job-tag", new Date(jobData["job-date-end"]) < new Date() ? "is-bg-light-red" : "is-bg-light-green");
+        const jobStatusText = document.createElement("span");
+        jobStatusText.classList.add("db-job-tag-txt");
+        jobStatusText.textContent = new Date(jobData["job-date-end"]) < new Date() ? "Beendet" : "Aktiv";
+        jobStatusTag.appendChild(jobStatusText);
+        jobStatusDiv.appendChild(jobStatusTag);
+        jobDiv.appendChild(jobStatusDiv);
 
-        // Bewerbungsfrist
-        const jobDeadline = document.createElement("div");
-        jobDeadline.textContent = `📅 ${calculateDeadlineCountdown(jobData["job-date-end"] || "")}`;
-        jobDiv.appendChild(jobDeadline);
+        // Bewerbungsstatus
+        const applicationStatusDiv = document.createElement("div");
+        applicationStatusDiv.classList.add("db-table-row-item");
+        const appStatusTag = document.createElement("div");
+        const appStatusText = document.createElement("span");
+        appStatusTag.classList.add("job-tag");
+        appStatusText.classList.add("db-job-tag-txt");
 
-        // Contentdeadline
-        const contentDeadline = document.createElement("div");
-        const contentDate = jobData["fertigstellung-content"];
-        contentDeadline.textContent = contentDate ? `📅 ${new Date(contentDate).toLocaleDateString()}` : "Nicht verfügbar";
-        jobDiv.appendChild(contentDeadline);
-
-        // Job Status mit Styling-Tag
-        const jobStatus = document.createElement("div");
-        const endDate = new Date(jobData["job-date-end"]);
-        const now = new Date();
-        const statusTag = document.createElement("span");
-        statusTag.classList.add("job-tag", endDate < now ? "is-bg-light-red" : "is-bg-light-green");
-        statusTag.textContent = endDate < now ? "Beendet" : "Aktiv";
-        jobStatus.appendChild(statusTag);
-        jobDiv.appendChild(jobStatus);
-
-        // Bewerbungsstatus mit Styling-Tag
-        const applicationStatus = document.createElement("div");
-        const bookedCreators = jobData["booked-creators"] || [];
-        const rejectedCreators = jobData["rejected-creators"] || [];
-        const statusSpan = document.createElement("span");
-        statusSpan.classList.add("job-tag");
-
-        if (bookedCreators.includes(currentWebflowMemberId)) {
-            statusSpan.classList.add("is-bg-light-green");
-            statusSpan.textContent = "Angenommen";
-        } else if (rejectedCreators.includes(currentWebflowMemberId) || endDate < now) {
-            statusSpan.classList.add("is-bg-light-red");
-            statusSpan.textContent = "Abgelehnt";
+        if (jobData["booked-creators"]?.includes(currentWebflowMemberId)) {
+            appStatusTag.classList.add("is-bg-light-green");
+            appStatusText.textContent = "Angenommen";
+        } else if (jobData["rejected-creators"]?.includes(currentWebflowMemberId) || new Date(jobData["job-date-end"]) < new Date()) {
+            appStatusTag.classList.add("is-bg-light-red");
+            appStatusText.textContent = "Abgelehnt";
         } else {
-            statusSpan.classList.add("is-bg-light-blue");
-            statusSpan.textContent = "Ausstehend";
+            appStatusTag.classList.add("is-bg-light-blue");
+            appStatusText.textContent = "Ausstehend";
         }
-        applicationStatus.appendChild(statusSpan);
-        jobDiv.appendChild(applicationStatus);
+
+        appStatusTag.appendChild(appStatusText);
+        applicationStatusDiv.appendChild(appStatusTag);
+        jobDiv.appendChild(applicationStatusDiv);
 
         container.appendChild(jobDiv);
     });
@@ -201,29 +200,24 @@ function renderJobs(jobs, containerId, currentPage) {
             if (containerId === "accepted-jobs") currentPageAccepted++;
             if (containerId === "pending-jobs") currentPagePending++;
             if (containerId === "rejected-jobs") currentPageRejected++;
-
             renderJobs(jobs, containerId, currentPage + 1);
         });
         loadMoreContainer.appendChild(loadMoreButton);
     }
 }
 
-// 🌟 Hauptfunktion
+// Hauptfunktion
 async function displayUserApplications() {
-    const collectionId = USER_COLLECTION_ID;
-
     try {
         const member = await window.$memberstackDom.getCurrentMember();
         currentWebflowMemberId = member?.data?.customFields?.['webflow-member-id'];
 
         if (!currentWebflowMemberId) {
-            console.error("❌ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
+            console.error("Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
             return;
         }
 
-        console.log(`👤 Aktuelle eingeloggte Webflow Member-ID: ${currentWebflowMemberId}`);
-
-        const userData = await fetchCollectionItem(collectionId, currentWebflowMemberId);
+        const userData = await fetchCollectionItem(USER_COLLECTION_ID, currentWebflowMemberId);
         const applications = userData?.fieldData?.["abgeschlossene-bewerbungen"] || [];
 
         if (applications.length > 0) {
@@ -240,12 +234,12 @@ async function displayUserApplications() {
             renderJobs(pending, "pending-jobs", currentPagePending);
             renderJobs(rejected, "rejected-jobs", currentPageRejected);
         } else {
-            document.getElementById("application-list").innerHTML = "<p>🚫 Keine abgeschlossenen Bewerbungen gefunden.</p>";
+            document.getElementById("application-list").innerHTML = "<p>Keine abgeschlossenen Bewerbungen gefunden.</p>";
         }
     } catch (error) {
-        console.error("❌ Fehler beim Laden der Bewerbungen:", error);
+        console.error("Fehler beim Laden der Bewerbungen:", error);
     }
 }
 
-// 🌟 Start der Anwendung
+// Start der Anwendung
 window.addEventListener("DOMContentLoaded", displayUserApplications);
