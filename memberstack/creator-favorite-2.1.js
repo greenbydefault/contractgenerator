@@ -4,7 +4,8 @@
 const API_BASE_URL = "https://api.webflow.com/v2/collections";
 const WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url=";
 const USER_COLLECTION_ID = "6448faf9c5a8a15f6cc05526";
-const BATCH_SIZE = 500; // Anzahl gleichzeitiger API-Anfragen
+const BATCH_SIZE = 100; // Anzahl gleichzeitiger API-Anfragen
+const RATE_LIMIT_DELAY = 500; // Wartezeit zwischen den Anfragen in Millisekunden
 
 // 🛠️ Hilfsfunktion für Worker-URL
 function buildWorkerUrl(apiUrl) {
@@ -17,43 +18,53 @@ async function fetchAllUsers() {
     let offset = 0;
     const limit = 100;
 
-    try {
-        const fetchPage = async (offset) => {
-            let apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/live?limit=${limit}&offset=${offset}`;
-            const workerUrl = buildWorkerUrl(apiUrl);
+    async function fetchPage(offset) {
+        let apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/live?limit=${limit}&offset=${offset}`;
+        const workerUrl = buildWorkerUrl(apiUrl);
 
-            const response = await fetch(workerUrl);
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
+        for (let retry = 0; retry < 5; retry++) {
+            try {
+                console.log(`🔄 Abruf der Seite mit Offset ${offset}`);
+                const response = await fetch(workerUrl);
+
+                if (response.ok) {
+                    const { items } = await response.json();
+                    console.log(`✅ Abgerufen: ${items.length} Nutzer bei Offset ${offset}`);
+                    return items;
+                }
+
+                if (response.status === 429) {
+                    console.warn(`⚠️ Rate Limit erreicht. Warte ${RATE_LIMIT_DELAY}ms...`);
+                    await new Promise(res => setTimeout(res, RATE_LIMIT_DELAY * (retry + 1))); // Exponentielles Backoff
+                } else {
+                    throw new Error(`API-Fehler: ${response.status}`);
+                }
+            } catch (error) {
+                console.error(`❌ Fehler bei Offset ${offset}: ${error.message}`);
             }
-
-            const { items } = await response.json();
-            return items;
-        };
-
-        const fetchBatch = async (start) => {
-            const promises = [];
-            for (let i = start; i < start + BATCH_SIZE; i += limit) {
-                promises.push(fetchPage(i));
-            }
-            const results = await Promise.all(promises);
-            results.forEach(page => users.push(...page));
-        };
-
-        while (true) {
-            const initialCount = users.length;
-            await fetchBatch(offset);
-            if (users.length === initialCount) break;
-            offset += BATCH_SIZE;
         }
 
-        console.log(`✅ Gesamtanzahl der abgerufenen Nutzer: ${users.length}`);
-        return users;
-    } catch (error) {
-        console.error("❌ Fehler beim Abrufen der Nutzer:", error.message);
         return [];
     }
+
+    while (true) {
+        const batchPromises = [];
+        for (let i = 0; i < BATCH_SIZE; i++) {
+            batchPromises.push(fetchPage(offset));
+            offset += limit;
+        }
+
+        const batchResults = await Promise.all(batchPromises);
+        const batchUsers = batchResults.flat();
+
+        users.push(...batchUsers);
+        console.log(`📦 Aktuell gesammelte Nutzer: ${users.length}`);
+
+        if (batchUsers.length < BATCH_SIZE * limit) break; // Ende, wenn weniger als erwartet zurückkommt
+    }
+
+    console.log(`🏁 Gesamte Nutzeranzahl: ${users.length}`);
+    return users;
 }
 
 // 🔍 Filtern und Rendern der Nutzer
