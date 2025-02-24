@@ -13,11 +13,16 @@ function buildWorkerUrl(apiUrl) {
 // 📥 Alle Seiten der User-Collection abrufen und filtern
 async function fetchAllUsers() {
     let users = [];
-    let nextPage = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/live?limit=100`;
+    let endCursor = null;
 
     try {
-        while (nextPage) {
-            const workerUrl = buildWorkerUrl(nextPage);
+        do {
+            let apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/live?limit=100`;
+            if (endCursor) {
+                apiUrl += `&after=${endCursor}`;
+            }
+
+            const workerUrl = buildWorkerUrl(apiUrl);
             console.log(`🔄 Abruf der Seite: ${workerUrl}`);
 
             const response = await fetch(workerUrl);
@@ -30,9 +35,9 @@ async function fetchAllUsers() {
             console.log(`🔍 Abgerufene Nutzer auf dieser Seite: ${items.length}`);
             users = users.concat(items);
 
-            // Pagination-URL für die nächste Seite
-            nextPage = pagination?.nextPage ? `${API_BASE_URL}/${USER_COLLECTION_ID}/items?after=${pagination.nextPage}&limit=100` : null;
-        }
+            // Nächste Seite abrufen, falls vorhanden
+            endCursor = pagination?.endCursor || null;
+        } while (endCursor);
 
         console.log(`✅ Gesamtanzahl der abgerufenen Nutzer: ${users.length}`);
         return users;
