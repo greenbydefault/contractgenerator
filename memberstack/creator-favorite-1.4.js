@@ -13,7 +13,7 @@ function buildWorkerUrl(apiUrl) {
 // 📥 Alle Seiten der User-Collection abrufen und filtern
 async function fetchAllUsers() {
     let users = [];
-    let nextPage = `${API_BASE_URL}/${USER_COLLECTION_ID}/items?limit=100`;
+    let nextPage = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/live?limit=100`;
 
     try {
         while (nextPage) {
