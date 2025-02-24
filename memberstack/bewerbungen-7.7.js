@@ -141,6 +141,8 @@ class JobRenderer {
 }
 
 // Main Application Class
+// ... (vorheriger Code bleibt gleich bis zur ApplicationManager Klasse)
+
 class ApplicationManager {
   constructor() {
     this.state = new ApplicationState();
@@ -180,9 +182,32 @@ class ApplicationManager {
     await this.loadJobData(applications);
   }
 
-  // Error Handler
+  // Hier ist die fehlende loadJobData Methode
+  async loadJobData(applications) {
+    try {
+      const jobPromises = applications.map(async (appId) => {
+        const jobData = await this.apiService.fetchJobData(appId);
+        return { appId, jobData };
+      });
+
+      this.state.allJobResults = await Promise.all(jobPromises);
+      this.renderer.renderJobs(
+        this.state.allJobResults, 
+        this.state.currentWebflowMemberId, 
+        this.state.currentPage
+      );
+    } catch (error) {
+      console.error("Fehler beim Laden der Job-Daten:", error);
+      this.handleError(error);
+    }
+  }
+
+  showNoApplicationsMessage() {
+    const container = document.querySelector(CONFIG.SELECTORS.APP_CONTAINER);
+    container.innerHTML = "<p>🚫 Keine abgeschlossenen Bewerbungen gefunden.</p>";
+  }
+
   handleError(error) {
-    // Implementiere benutzerfreundliche Fehlerbehandlung
     const errorContainer = document.createElement("div");
     errorContainer.classList.add("error-message");
     errorContainer.textContent = `Ein Fehler ist aufgetreten: ${error.message}`;
