@@ -60,27 +60,36 @@ function renderJobs(jobs, containerId) {
         if (!jobData) return;
 
         const jobDiv = document.createElement("div");
-        jobDiv.classList.add("job-card");
+        jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
+
+        const jobInfoDiv = document.createElement("div");
+        jobInfoDiv.classList.add("db-table-row-item", "justify-left");
 
         // Bild
         const jobImage = document.createElement("img");
+        jobImage.classList.add("db-table-img", "is-margin-right-12");
         jobImage.src = jobData["job-image"] || "https://via.placeholder.com/100";
         jobImage.alt = jobData["name"] || "Job Bild";
         jobImage.style.maxWidth = "100px";
-        jobDiv.appendChild(jobImage);
+        jobInfoDiv.appendChild(jobImage);
 
         // Name
-        const jobName = document.createElement("h3");
+        const jobName = document.createElement("span");
+        jobName.classList.add("truncate");
         jobName.textContent = jobData["name"] || "Unbekannter Job";
-        jobDiv.appendChild(jobName);
+        jobInfoDiv.appendChild(jobName);
+
+        jobDiv.appendChild(jobInfoDiv);
 
         // Budget
-        const jobBudget = document.createElement("p");
+        const jobBudget = document.createElement("div");
+        jobBudget.classList.add("db-table-row-item");
         jobBudget.textContent = `Budget: ${jobData["job-payment"] || "Nicht verfügbar"} €`;
         jobDiv.appendChild(jobBudget);
 
         // Kategorie
-        const jobCategory = document.createElement("p");
+        const jobCategory = document.createElement("div");
+        jobCategory.classList.add("db-table-row-item");
         jobCategory.textContent = `Kategorie: ${jobData["job-category"] || "Nicht verfügbar"}`;
         jobDiv.appendChild(jobCategory);
 
