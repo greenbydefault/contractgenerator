@@ -18,6 +18,8 @@ async function fetchAllUsers() {
     try {
         while (nextPage) {
             const workerUrl = buildWorkerUrl(nextPage);
+            console.log(`🔄 Abruf der Seite: ${workerUrl}`);
+
             const response = await fetch(workerUrl);
             if (!response.ok) {
                 const errorText = await response.text();
@@ -25,10 +27,11 @@ async function fetchAllUsers() {
             }
 
             const { items, pagination } = await response.json();
-            console.log(`🔍 Abgerufene Nutzer: ${items.length}`);
+            console.log(`🔍 Abgerufene Nutzer auf dieser Seite: ${items.length}`);
             users = users.concat(items);
 
-            nextPage = pagination?.nextPage ? `${API_BASE_URL}/${USER_COLLECTION_ID}/items?after=${pagination.nextPage}` : null;
+            // Pagination-URL für die nächste Seite
+            nextPage = pagination?.nextPage ? `${API_BASE_URL}/${USER_COLLECTION_ID}/items?after=${pagination.nextPage}&limit=100` : null;
         }
 
         console.log(`✅ Gesamtanzahl der abgerufenen Nutzer: ${users.length}`);
@@ -65,7 +68,7 @@ function renderUsers(users) {
 
     users.forEach(user => {
         const userData = user.fieldData;
-        const userSlug = user.slug || user._id; // Sicherstellen, dass der Slug vorhanden ist
+        const userSlug = user.slug || user._id;
 
         console.log(`👤 Nutzer: ${userData.name || 'Unbekannt'}, Slug: ${userSlug}`);
 
