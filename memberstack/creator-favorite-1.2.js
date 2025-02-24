@@ -25,10 +25,13 @@ async function fetchAllUsers() {
             }
 
             const { items, pagination } = await response.json();
+            console.log(`🔍 Abgerufene Nutzer: ${items.length}`);
             users = users.concat(items);
+
             nextPage = pagination?.nextPage ? `${API_BASE_URL}/${USER_COLLECTION_ID}/items?after=${pagination.nextPage}` : null;
         }
 
+        console.log(`✅ Gesamtanzahl der abgerufenen Nutzer: ${users.length}`);
         return users;
     } catch (error) {
         console.error("❌ Fehler beim Abrufen der Nutzer:", error.message);
@@ -46,6 +49,7 @@ async function fetchAndFilterUsers() {
         (user?.fieldData?.likes || 0) > 0
     );
 
+    console.log(`🎛️ Gefilterte Nutzer: ${filteredUsers.length}`);
     renderUsers(filteredUsers);
 }
 
@@ -62,6 +66,8 @@ function renderUsers(users) {
     users.forEach(user => {
         const userData = user.fieldData;
         const userSlug = user.slug || user._id; // Sicherstellen, dass der Slug vorhanden ist
+
+        console.log(`👤 Nutzer: ${userData.name || 'Unbekannt'}, Slug: ${userSlug}`);
 
         const userDiv = document.createElement("div");
         userDiv.classList.add("user-item");
