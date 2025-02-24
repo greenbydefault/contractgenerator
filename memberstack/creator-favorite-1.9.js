@@ -33,22 +33,11 @@ async function fetchAllUsers() {
             return items;
         };
 
-        const promises = [];
         while (true) {
-            promises.push(fetchPage(offset));
+            const pageItems = await fetchPage(offset);
+            users.push(...pageItems);
+            if (pageItems.length < limit) break;
             offset += limit;
-            if (promises.length >= 10) { // Limitiert gleichzeitige Anfragen
-                const results = await Promise.all(promises);
-                results.forEach(pageItems => users.push(...pageItems));
-                promises.length = 0;
-                if (results.some(pageItems => pageItems.length < limit)) break;
-            }
-        }
-
-        // Verbleibende Anfragen verarbeiten
-        if (promises.length > 0) {
-            const results = await Promise.all(promises);
-            results.forEach(pageItems => users.push(...pageItems));
         }
 
         console.log(`✅ Gesamtanzahl der abgerufenen Nutzer: ${users.length}`);
@@ -90,7 +79,7 @@ function renderUsers(users) {
         console.log(`👤 Nutzer: ${userData.name || 'Unbekannt'}, Slug: ${userSlug}`);
 
         const userDiv = document.createElement("div");
-        userDiv.classList.add("user-item");
+        userDiv.classList.add("db-table-row");
 
         // Hidden Input für Jetboost
         const jetboostInput = document.createElement("input");
@@ -101,10 +90,10 @@ function renderUsers(users) {
 
         // Nutzerdetails
         userDiv.innerHTML += `
-            <p><strong>Name:</strong> ${userData.name || "Unbekannt"}</p>
-            <p><strong>Kategorie:</strong> ${userData['creator-main-categorie'] || "Nicht angegeben"}</p>
-            <p><strong>Typ:</strong> ${userData['creator-type'] || "Nicht angegeben"}</p>
-            <p><strong>Stadt:</strong> ${userData['user-city-2'] || "Nicht angegeben"}</p>
+            <div class="db-table-row-item is-txt-16"><strong>Name:</strong> ${userData.name || "Unbekannt"}</div>
+            <div class="db-table-row-item is-txt-16"><strong>Kategorie:</strong> ${userData['creator-main-categorie'] || "Nicht angegeben"}</div>
+            <div class="db-table-row-item is-txt-16"><strong>Typ:</strong> ${userData['creator-type'] || "Nicht angegeben"}</div>
+            <div class="db-table-row-item is-txt-16"><strong>Stadt:</strong> ${userData['user-city-2'] || "Nicht angegeben"}</div>
         `;
 
         container.appendChild(userDiv);
