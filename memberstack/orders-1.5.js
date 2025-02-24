@@ -14,6 +14,8 @@ function buildWorkerUrl(apiUrl) {
 }
 
 function calculateCountdown(endDate) {
+    if (!endDate) return "K.A.";
+
     const now = new Date();
     const deadline = new Date(endDate);
     const diff = deadline - now;
@@ -79,9 +81,13 @@ function renderJobs(jobs, containerId) {
         jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
         jobLink.target = "_blank";
         jobLink.style.textDecoration = "none";
+        jobLink.style.color = "#040e1a";
 
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-booked");
+        if (containerId === "rejected-jobs-list") {
+            jobDiv.classList.add("rejected");
+        }
 
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
@@ -122,21 +128,17 @@ function renderJobs(jobs, containerId) {
 
         // Deadlines für booked-jobs
         if (containerId === "booked-jobs-list") {
-            const contentCountdown = calculateCountdown(jobData["fertigstellung-content"] || "");
-            if (contentCountdown !== "Abgelaufen") {
-                const contentDeadline = document.createElement("div");
-                contentDeadline.classList.add("db-table-row-item");
-                contentDeadline.textContent = contentCountdown;
-                jobDiv.appendChild(contentDeadline);
-            }
+            const contentCountdown = calculateCountdown(jobData["fertigstellung-content"]);
+            const contentDeadline = document.createElement("div");
+            contentDeadline.classList.add("db-table-row-item");
+            contentDeadline.textContent = contentCountdown;
+            jobDiv.appendChild(contentDeadline);
 
-            const scriptCountdown = calculateCountdown(jobData["job-scriptdeadline"] || "");
-            if (scriptCountdown !== "Abgelaufen") {
-                const scriptDeadline = document.createElement("div");
-                scriptDeadline.classList.add("db-table-row-item");
-                scriptDeadline.textContent = scriptCountdown;
-                jobDiv.appendChild(scriptDeadline);
-            }
+            const scriptCountdown = calculateCountdown(jobData["job-scriptdeadline"]);
+            const scriptDeadline = document.createElement("div");
+            scriptDeadline.classList.add("db-table-row-item");
+            scriptDeadline.textContent = scriptCountdown;
+            jobDiv.appendChild(scriptDeadline);
         }
 
         jobLink.appendChild(jobDiv);
