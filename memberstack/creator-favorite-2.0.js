@@ -4,6 +4,7 @@
 const API_BASE_URL = "https://api.webflow.com/v2/collections";
 const WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url=";
 const USER_COLLECTION_ID = "6448faf9c5a8a15f6cc05526";
+const BATCH_SIZE = 500; // Anzahl gleichzeitiger API-Anfragen
 
 // 🛠️ Hilfsfunktion für Worker-URL
 function buildWorkerUrl(apiUrl) {
@@ -20,7 +21,6 @@ async function fetchAllUsers() {
         const fetchPage = async (offset) => {
             let apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/live?limit=${limit}&offset=${offset}`;
             const workerUrl = buildWorkerUrl(apiUrl);
-            console.log(`🔄 Abruf der Seite mit Offset ${offset}: ${workerUrl}`);
 
             const response = await fetch(workerUrl);
             if (!response.ok) {
@@ -29,15 +29,23 @@ async function fetchAllUsers() {
             }
 
             const { items } = await response.json();
-            console.log(`🔍 Abgerufene Nutzer auf dieser Seite: ${items.length}`);
             return items;
         };
 
+        const fetchBatch = async (start) => {
+            const promises = [];
+            for (let i = start; i < start + BATCH_SIZE; i += limit) {
+                promises.push(fetchPage(i));
+            }
+            const results = await Promise.all(promises);
+            results.forEach(page => users.push(...page));
+        };
+
         while (true) {
-            const pageItems = await fetchPage(offset);
-            users.push(...pageItems);
-            if (pageItems.length < limit) break;
-            offset += limit;
+            const initialCount = users.length;
+            await fetchBatch(offset);
+            if (users.length === initialCount) break;
+            offset += BATCH_SIZE;
         }
 
         console.log(`✅ Gesamtanzahl der abgerufenen Nutzer: ${users.length}`);
@@ -75,8 +83,6 @@ function renderUsers(users) {
     users.forEach(user => {
         const userData = user.fieldData;
         const userSlug = user.slug || user._id;
-
-        console.log(`👤 Nutzer: ${userData.name || 'Unbekannt'}, Slug: ${userSlug}`);
 
         const userDiv = document.createElement("div");
         userDiv.classList.add("db-table-row");
