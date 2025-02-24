@@ -81,7 +81,7 @@ function renderJobs(jobs, containerId) {
         jobLink.style.textDecoration = "none";
 
         const jobDiv = document.createElement("div");
-        jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
+        jobDiv.classList.add("db-table-row", "db-table-booked");
 
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
@@ -100,13 +100,13 @@ function renderJobs(jobs, containerId) {
         jobName.textContent = jobData["name"] || "Unbekannter Job";
         jobInfoDiv.appendChild(jobName);
 
+        jobDiv.appendChild(jobInfoDiv);
+
         // Brand Name
         const brandNameDiv = document.createElement("div");
         brandNameDiv.classList.add("db-table-row-item");
         brandNameDiv.textContent = jobData["brand-name"] || "Keine Marke";
         jobDiv.appendChild(brandNameDiv);
-
-        jobDiv.appendChild(jobInfoDiv);
 
         // Budget
         const jobBudget = document.createElement("div");
@@ -120,7 +120,7 @@ function renderJobs(jobs, containerId) {
         jobCategory.textContent = jobData["industrie-kategorie"] || "Nicht verfügbar";
         jobDiv.appendChild(jobCategory);
 
-        // Fertigstellung-Content und Script-Deadline für booked-jobs
+        // Deadlines für booked-jobs
         if (containerId === "booked-jobs-list") {
             const contentCountdown = calculateCountdown(jobData["fertigstellung-content"] || "");
             if (contentCountdown !== "Abgelaufen") {
