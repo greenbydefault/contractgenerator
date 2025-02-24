@@ -13,17 +13,14 @@ function buildWorkerUrl(apiUrl) {
 // 📥 Alle Seiten der User-Collection abrufen und filtern
 async function fetchAllUsers() {
     let users = [];
-    let endCursor = null;
+    let offset = 0;
+    const limit = 100;
 
     try {
-        do {
-            let apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/live?limit=100`;
-            if (endCursor) {
-                apiUrl += `&after=${endCursor}`;
-            }
-
+        while (true) {
+            let apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/live?limit=${limit}&offset=${offset}`;
             const workerUrl = buildWorkerUrl(apiUrl);
-            console.log(`🔄 Abruf der Seite: ${workerUrl}`);
+            console.log(`🔄 Abruf der Seite mit Offset ${offset}: ${workerUrl}`);
 
             const response = await fetch(workerUrl);
             if (!response.ok) {
@@ -31,14 +28,16 @@ async function fetchAllUsers() {
                 throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
             }
 
-            const { items, pagination } = await response.json();
+            const { items } = await response.json();
             console.log(`🔍 Abgerufene Nutzer auf dieser Seite: ${items.length}`);
             users = users.concat(items);
 
-            // Nächste Seite abrufen, falls vorhanden
-            endCursor = pagination?.endCursor || null;
-            console.log(`➡️ Nächster Cursor: ${endCursor}`);
-        } while (endCursor);
+            if (items.length < limit) {
+                break; // Keine weiteren Seiten mehr
+            }
+
+            offset += limit;
+        }
 
         console.log(`✅ Gesamtanzahl der abgerufenen Nutzer: ${users.length}`);
         return users;
