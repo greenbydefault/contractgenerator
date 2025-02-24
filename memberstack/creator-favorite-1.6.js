@@ -37,6 +37,7 @@ async function fetchAllUsers() {
 
             // Nächste Seite abrufen, falls vorhanden
             endCursor = pagination?.endCursor || null;
+            console.log(`➡️ Nächster Cursor: ${endCursor}`);
         } while (endCursor);
 
         console.log(`✅ Gesamtanzahl der abgerufenen Nutzer: ${users.length}`);
