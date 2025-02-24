@@ -29,6 +29,37 @@ function calculateCountdown(endDate) {
     return { text: `${days} Tag(e)`, class: "job-tag is-bg-light-red" };
 }
 
+function showSkeletonLoader(containerId) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+
+    for (let i = 0; i < 5; i++) {
+        const skeletonRow = document.createElement("div");
+        skeletonRow.classList.add("db-table-row", "skeleton-loader");
+        skeletonRow.innerHTML = `
+            <div class="db-table-row-item">
+                <div class="skeleton-box" style="width: 100px; height: 100px;"></div>
+            </div>
+            <div class="db-table-row-item">
+                <div class="skeleton-box" style="width: 150px; height: 20px;"></div>
+            </div>
+            <div class="db-table-row-item">
+                <div class="skeleton-box" style="width: 120px; height: 20px;"></div>
+            </div>
+            <div class="db-table-row-item">
+                <div class="skeleton-box" style="width: 80px; height: 20px;"></div>
+            </div>
+            <div class="db-table-row-item">
+                <div class="skeleton-box" style="width: 100px; height: 20px;"></div>
+            </div>
+            <div class="db-table-row-item">
+                <div class="skeleton-box" style="width: 100px; height: 20px;"></div>
+            </div>
+        `;
+        container.appendChild(skeletonRow);
+    }
+}
+
 async function fetchCollectionItem(collectionId, memberId) {
     const apiUrl = `${API_BASE_URL}/${collectionId}/items/${memberId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
@@ -123,22 +154,28 @@ function renderJobs(jobs, containerId) {
 
         // Deadlines mit farbigen Tags
         const contentDeadline = calculateCountdown(jobData["fertigstellung-content"]);
+        const contentDeadlineDiv = document.createElement("div");
+        contentDeadlineDiv.classList.add("db-table-row-item");
         const contentTag = document.createElement("div");
         contentTag.classList.add(...contentDeadline.class.split(" "));
         const contentText = document.createElement("span");
         contentText.classList.add("db-job-tag-txt");
         contentText.textContent = contentDeadline.text;
         contentTag.appendChild(contentText);
-        jobDiv.appendChild(contentTag);
+        contentDeadlineDiv.appendChild(contentTag);
+        jobDiv.appendChild(contentDeadlineDiv);
 
         const scriptDeadline = calculateCountdown(jobData["job-scriptdeadline"]);
+        const scriptDeadlineDiv = document.createElement("div");
+        scriptDeadlineDiv.classList.add("db-table-row-item");
         const scriptTag = document.createElement("div");
         scriptTag.classList.add(...scriptDeadline.class.split(" "));
         const scriptText = document.createElement("span");
         scriptText.classList.add("db-job-tag-txt");
         scriptText.textContent = scriptDeadline.text;
         scriptTag.appendChild(scriptText);
-        jobDiv.appendChild(scriptTag);
+        scriptDeadlineDiv.appendChild(scriptTag);
+        jobDiv.appendChild(scriptDeadlineDiv);
 
         jobLink.appendChild(jobDiv);
         container.appendChild(jobLink);
@@ -147,6 +184,9 @@ function renderJobs(jobs, containerId) {
 
 // 🌟 Hauptfunktion
 async function displayUserJobs() {
+    const containerId = "booked-jobs-list";
+    showSkeletonLoader(containerId);
+
     try {
         const member = await window.$memberstackDom.getCurrentMember();
         currentWebflowMemberId = member?.data?.customFields?.['webflow-member-id'];
@@ -161,7 +201,7 @@ async function displayUserJobs() {
 
         const bookedJobs = await Promise.all(bookedJobIds.map(fetchJobData));
 
-        renderJobs(bookedJobs, "booked-jobs-list");
+        renderJobs(bookedJobs, containerId);
     } catch (error) {
         console.error("❌ Fehler beim Laden der Jobs:", error);
     }
