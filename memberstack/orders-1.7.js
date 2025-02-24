@@ -14,21 +14,19 @@ function buildWorkerUrl(apiUrl) {
 }
 
 function calculateCountdown(endDate) {
-    if (!endDate) return "K.A.";
+    if (!endDate) return { text: "K.A.", class: "job-tag" };
 
     const now = new Date();
     const deadline = new Date(endDate);
     const diff = deadline - now;
 
-    if (diff <= 0) return "Abgelaufen";
+    if (diff <= 0) return { text: "Abgelaufen", class: "job-tag is-bg-light-red" };
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    if (days > 0) return `${days} Tag(e)`;
-    if (hours > 0) return `${hours} Stunde(n)`;
-    return `${minutes} Minute(n)`;
+    if (days > 10) return { text: `${days} Tag(e)`, class: "job-tag" };
+    if (days > 4) return { text: `${days} Tag(e)`, class: "job-tag is-bg-light-yellow" };
+    return { text: `${days} Tag(e)`, class: "job-tag is-bg-light-red" };
 }
 
 async function fetchCollectionItem(collectionId, memberId) {
@@ -85,9 +83,6 @@ function renderJobs(jobs, containerId) {
 
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-booked");
-        if (containerId === "rejected-jobs-list") {
-            jobDiv.classList.add("rejected");
-        }
 
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
@@ -126,20 +121,24 @@ function renderJobs(jobs, containerId) {
         jobCategory.textContent = jobData["industrie-kategorie"] || "Nicht verfügbar";
         jobDiv.appendChild(jobCategory);
 
-        // Deadlines für booked-jobs
-        if (containerId === "booked-jobs-list") {
-            const contentCountdown = calculateCountdown(jobData["fertigstellung-content"]);
-            const contentDeadline = document.createElement("div");
-            contentDeadline.classList.add("db-table-row-item");
-            contentDeadline.textContent = contentCountdown;
-            jobDiv.appendChild(contentDeadline);
+        // Deadlines mit farbigen Tags
+        const contentDeadline = calculateCountdown(jobData["fertigstellung-content"]);
+        const contentTag = document.createElement("div");
+        contentTag.classList.add(...contentDeadline.class.split(" "));
+        const contentText = document.createElement("span");
+        contentText.classList.add("db-job-tag-txt");
+        contentText.textContent = contentDeadline.text;
+        contentTag.appendChild(contentText);
+        jobDiv.appendChild(contentTag);
 
-            const scriptCountdown = calculateCountdown(jobData["job-scriptdeadline"]);
-            const scriptDeadline = document.createElement("div");
-            scriptDeadline.classList.add("db-table-row-item");
-            scriptDeadline.textContent = scriptCountdown;
-            jobDiv.appendChild(scriptDeadline);
-        }
+        const scriptDeadline = calculateCountdown(jobData["job-scriptdeadline"]);
+        const scriptTag = document.createElement("div");
+        scriptTag.classList.add(...scriptDeadline.class.split(" "));
+        const scriptText = document.createElement("span");
+        scriptText.classList.add("db-job-tag-txt");
+        scriptText.textContent = scriptDeadline.text;
+        scriptTag.appendChild(scriptText);
+        jobDiv.appendChild(scriptTag);
 
         jobLink.appendChild(jobDiv);
         container.appendChild(jobLink);
@@ -159,13 +158,10 @@ async function displayUserJobs() {
 
         const userData = await fetchCollectionItem(USER_COLLECTION_ID, currentWebflowMemberId);
         const bookedJobIds = userData?.fieldData?.["booked-jobs"] || [];
-        const rejectedJobIds = userData?.fieldData?.["rejected-jobs"] || [];
 
         const bookedJobs = await Promise.all(bookedJobIds.map(fetchJobData));
-        const rejectedJobs = await Promise.all(rejectedJobIds.map(fetchJobData));
 
         renderJobs(bookedJobs, "booked-jobs-list");
-        renderJobs(rejectedJobs, "rejected-jobs-list");
     } catch (error) {
         console.error("❌ Fehler beim Laden der Jobs:", error);
     }
