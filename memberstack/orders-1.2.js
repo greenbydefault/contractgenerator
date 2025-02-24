@@ -13,6 +13,22 @@ function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
 
+function calculateCountdown(endDate) {
+    const now = new Date();
+    const deadline = new Date(endDate);
+    const diff = deadline - now;
+
+    if (diff <= 0) return "Abgelaufen";
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) return `${days} Tag(e)`;
+    if (hours > 0) return `${hours} Stunde(n)`;
+    return `${minutes} Minute(n)`;
+}
+
 async function fetchCollectionItem(collectionId, memberId) {
     const apiUrl = `${API_BASE_URL}/${collectionId}/items/${memberId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
@@ -59,6 +75,11 @@ function renderJobs(jobs, containerId) {
     jobs.forEach(jobData => {
         if (!jobData) return;
 
+        const jobLink = document.createElement("a");
+        jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
+        jobLink.target = "_blank";
+        jobLink.style.textDecoration = "none";
+
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
 
@@ -79,21 +100,41 @@ function renderJobs(jobs, containerId) {
         jobName.textContent = jobData["name"] || "Unbekannter Job";
         jobInfoDiv.appendChild(jobName);
 
+        // Brand Name
+        const brandName = document.createElement("span");
+        brandName.classList.add("db-table-row-item");
+        brandName.textContent = jobData["brand-name"] || "Keine Marke";
+        jobInfoDiv.appendChild(brandName);
+
         jobDiv.appendChild(jobInfoDiv);
 
         // Budget
         const jobBudget = document.createElement("div");
         jobBudget.classList.add("db-table-row-item");
-        jobBudget.textContent = `Budget: ${jobData["job-payment"] || "Nicht verfügbar"} €`;
+        jobBudget.textContent = jobData["job-payment"] || "Nicht verfügbar";
         jobDiv.appendChild(jobBudget);
 
-        // Kategorie
+        // Industrie-Kategorie
         const jobCategory = document.createElement("div");
         jobCategory.classList.add("db-table-row-item");
-        jobCategory.textContent = `Kategorie: ${jobData["job-category"] || "Nicht verfügbar"}`;
+        jobCategory.textContent = jobData["industrie-kategorie"] || "Nicht verfügbar";
         jobDiv.appendChild(jobCategory);
 
-        container.appendChild(jobDiv);
+        // Fertigstellung-Content und Script-Deadline für booked-jobs
+        if (containerId === "booked-jobs-list") {
+            const contentDeadline = document.createElement("div");
+            contentDeadline.classList.add("db-table-row-item");
+            contentDeadline.textContent = `Content-Deadline: ${calculateCountdown(jobData["fertigstellung-content"] || "")}`;
+            jobDiv.appendChild(contentDeadline);
+
+            const scriptDeadline = document.createElement("div");
+            scriptDeadline.classList.add("db-table-row-item");
+            scriptDeadline.textContent = `Script-Deadline: ${calculateCountdown(jobData["job-scriptdeadline"] || "")}`;
+            jobDiv.appendChild(scriptDeadline);
+        }
+
+        jobLink.appendChild(jobDiv);
+        container.appendChild(jobLink);
     });
 }
 
