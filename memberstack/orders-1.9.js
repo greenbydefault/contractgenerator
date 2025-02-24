@@ -29,37 +29,6 @@ function calculateCountdown(endDate) {
     return { text: `${days} Tag(e)`, class: "job-tag is-bg-light-red" };
 }
 
-function showSkeletonLoader(containerId) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = "";
-
-    for (let i = 0; i < 5; i++) {
-        const skeletonRow = document.createElement("div");
-        skeletonRow.classList.add("db-table-row", "skeleton-loader");
-        skeletonRow.innerHTML = `
-            <div class="db-table-row-item">
-                <div class="skeleton-box" style="width: 100px; height: 100px;"></div>
-            </div>
-            <div class="db-table-row-item">
-                <div class="skeleton-box" style="width: 150px; height: 20px;"></div>
-            </div>
-            <div class="db-table-row-item">
-                <div class="skeleton-box" style="width: 120px; height: 20px;"></div>
-            </div>
-            <div class="db-table-row-item">
-                <div class="skeleton-box" style="width: 80px; height: 20px;"></div>
-            </div>
-            <div class="db-table-row-item">
-                <div class="skeleton-box" style="width: 100px; height: 20px;"></div>
-            </div>
-            <div class="db-table-row-item">
-                <div class="skeleton-box" style="width: 100px; height: 20px;"></div>
-            </div>
-        `;
-        container.appendChild(skeletonRow);
-    }
-}
-
 async function fetchCollectionItem(collectionId, memberId) {
     const apiUrl = `${API_BASE_URL}/${collectionId}/items/${memberId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
@@ -102,6 +71,14 @@ async function fetchJobData(jobId) {
 function renderJobs(jobs, containerId) {
     const container = document.getElementById(containerId);
     container.innerHTML = "";
+
+    if (jobs.length === 0) {
+        const noJobsMessage = document.createElement("p");
+        noJobsMessage.textContent = "Es sieht so aus, als wäre aktuell noch kein Auftrag für dich bestätigt worden.";
+        noJobsMessage.classList.add("no-jobs-message");
+        container.appendChild(noJobsMessage);
+        return;
+    }
 
     jobs.forEach(jobData => {
         if (!jobData) return;
@@ -185,7 +162,6 @@ function renderJobs(jobs, containerId) {
 // 🌟 Hauptfunktion
 async function displayUserJobs() {
     const containerId = "booked-jobs-list";
-    showSkeletonLoader(containerId);
 
     try {
         const member = await window.$memberstackDom.getCurrentMember();
