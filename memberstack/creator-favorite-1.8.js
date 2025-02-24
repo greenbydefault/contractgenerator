@@ -17,7 +17,7 @@ async function fetchAllUsers() {
     const limit = 100;
 
     try {
-        while (true) {
+        const fetchPage = async (offset) => {
             let apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/live?limit=${limit}&offset=${offset}`;
             const workerUrl = buildWorkerUrl(apiUrl);
             console.log(`🔄 Abruf der Seite mit Offset ${offset}: ${workerUrl}`);
@@ -30,13 +30,25 @@ async function fetchAllUsers() {
 
             const { items } = await response.json();
             console.log(`🔍 Abgerufene Nutzer auf dieser Seite: ${items.length}`);
-            users = users.concat(items);
+            return items;
+        };
 
-            if (items.length < limit) {
-                break; // Keine weiteren Seiten mehr
-            }
-
+        const promises = [];
+        while (true) {
+            promises.push(fetchPage(offset));
             offset += limit;
+            if (promises.length >= 10) { // Limitiert gleichzeitige Anfragen
+                const results = await Promise.all(promises);
+                results.forEach(pageItems => users.push(...pageItems));
+                promises.length = 0;
+                if (results.some(pageItems => pageItems.length < limit)) break;
+            }
+        }
+
+        // Verbleibende Anfragen verarbeiten
+        if (promises.length > 0) {
+            const results = await Promise.all(promises);
+            results.forEach(pageItems => users.push(...pageItems));
         }
 
         console.log(`✅ Gesamtanzahl der abgerufenen Nutzer: ${users.length}`);
