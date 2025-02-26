@@ -96,8 +96,7 @@ function renderUsers(users) {
         const userSlug = user.slug || user._id;
 
         const userDiv = document.createElement("div");
-        userDiv.classList.add("favorites-list--collection-wrapper");
-        userDiv.setAttribute("data-jetboost-favorite", userSlug);
+        userDiv.classList.add("db-table-row");
 
         // Hidden Input für Jetboost
         const jetboostInput = document.createElement("input");
