@@ -82,6 +82,7 @@ function sendInvite() {
         alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
         return;
     }
+    }
     
     const userName = creatorProfile.getAttribute("data-user-name");
     const userEmail = creatorProfile.getAttribute("data-user-email");
@@ -102,54 +103,6 @@ function sendInvite() {
         userName,
         userEmail,
         memberstackId,
-        jobId: selectedJobId
-    };
-
-    fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userData)
-    })
-    .then(response => response.json())
-    .then(() => {
-        alert("Einladung erfolgreich gesendet!");
-        closeModal();
-    })
-    .catch(error => console.error("❌ Fehler beim Senden der Einladung:", error));
-}onen fehlen. Eine Einladung ist nicht möglich.");
-        return;
-    }
-    }
-    }
-    const creatorProfile = document.getElementById("creator-profile");
-    if (!creatorProfile) {
-        alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
-        return;
-    }
-    }
-    }
-
-    const userName = creatorProfile.getAttribute("data-user-name");
-    const userEmail = creatorProfile.getAttribute("data-user-email");
-    const memberstackId = creatorProfile.getAttribute("data-memberstack-id");
-    const selectedJobId = document.getElementById("job-select").value;
-
-    if (!userName || !userEmail || !memberstackId) {
-        alert("❌ Fehler: Nicht alle Benutzerinformationen sind verfügbar. Eine Einladung ist nicht möglich.");
-        return;
-    }
-    
-    if (!selectedJobId) {
-        alert("Bitte einen Job auswählen.");
-        return;
-    }
-    
-
-    
-    const userData = {
-        userName: creatorProfile.getAttribute("data-user-name"),
-        userEmail: creatorProfile.getAttribute("data-user-email"),
-        memberstackId: creatorProfile.getAttribute("data-memberstack-id"),
         jobId: selectedJobId
     };
 
@@ -189,14 +142,6 @@ function renderInviteModal(jobs) {
         <button onclick="sendInvite()">Einladung senden</button>
         <button onclick="closeModal()">Abbrechen</button>
     `;
-        <h2>Wähle einen Job aus</h2>
-        <select id="job-select">
-            <option value="">-- Job auswählen --</option>
-            ${jobs.map(job => `<option value="${job.id}">${job.name}</option>`).join("")}
-        </select>
-        <button onclick="sendInvite()">Einladung senden</button>
-        <button onclick="closeModal()">Abbrechen</button>
-    `;
 
     document.body.appendChild(modal);
 }
@@ -207,8 +152,6 @@ function closeModal() {
     if (modal) {
         modal.remove();
     }
-}
-    document.getElementById("invite-modal")?.remove();
 }
 
 // 🎯 Event Listener für den Invite-Button
