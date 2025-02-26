@@ -78,10 +78,7 @@ async function fetchAndDisplayUserJobs() {
 // 📩 Einladung senden (Webhook an Zapier)
 function sendInvite() {
     const creatorProfile = document.getElementById("creator-profile");
-    if (!creatorProfile) {
-        alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
-        return;
-    }
+    
     }
     
     const userName = creatorProfile.getAttribute("data-user-name");
@@ -89,10 +86,7 @@ function sendInvite() {
     const memberstackId = creatorProfile.getAttribute("data-memberstack-id");
     const selectedJobId = document.getElementById("job-select").value;
 
-    if (!userName || !userEmail || !memberstackId) {
-        alert("❌ Fehler: Nicht alle Benutzerinformationen sind verfügbar. Eine Einladung ist nicht möglich.");
-        return;
-    }
+    
     
     if (!selectedJobId) {
         alert("Bitte einen Job auswählen.");
