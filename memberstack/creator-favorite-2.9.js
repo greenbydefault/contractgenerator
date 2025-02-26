@@ -85,7 +85,8 @@ async function fetchAndFilterUsers() {
 function renderUsers(users) {
     const container = document.getElementById("user-list");
     container.innerHTML = "";
-    container.setAttribute("role", "list"); // Setzt die Struktur für Jetboost
+    container.setAttribute("role", "list");
+    container.classList.add("w-dyn-list"); // Setzt die Struktur für Jetboost
 
     if (users.length === 0) {
         container.innerHTML = "<p>Keine passenden Mitglieder gefunden.</p>";
@@ -97,7 +98,7 @@ function renderUsers(users) {
         const userSlug = userData.slug;
 
         const userDiv = document.createElement("div");
-        userDiv.classList.add("db-table-coll-item");
+        userDiv.classList.add("db-table-coll-item", "w-dyn-item");
         userDiv.setAttribute("data-jetboost-favorite", userSlug);
         userDiv.setAttribute("role", "listitem"); // Setzt die Struktur für Jetboost
         userDiv.setAttribute("favorite", "true"); // Markiert als Favorit
