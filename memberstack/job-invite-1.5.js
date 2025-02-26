@@ -77,15 +77,55 @@ async function fetchAndDisplayUserJobs() {
 
 // 📩 Einladung senden (Webhook an Zapier)
 function sendInvite() {
+    const creatorProfile = document.getElementById("creator-profile");
+    if (!creatorProfile) {
+        alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
+        return;
+    }
     
+    const userName = creatorProfile.getAttribute("data-user-name");
+    const userEmail = creatorProfile.getAttribute("data-user-email");
+    const memberstackId = creatorProfile.getAttribute("data-memberstack-id");
+    const selectedJobId = document.getElementById("job-select").value;
+
+    if (!userName || !userEmail || !memberstackId) {
+        alert("❌ Fehler: Nicht alle Benutzerinformationen sind verfügbar. Eine Einladung ist nicht möglich.");
+        return;
+    }
+    
+    if (!selectedJobId) {
+        alert("Bitte einen Job auswählen.");
+        return;
+    }
+    
+    const userData = {
+        userName,
+        userEmail,
+        memberstackId,
+        jobId: selectedJobId
+    };
+
+    fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData)
+    })
+    .then(response => response.json())
+    .then(() => {
+        alert("Einladung erfolgreich gesendet!");
+        closeModal();
+    })
+    .catch(error => console.error("❌ Fehler beim Senden der Einladung:", error));
+}onen fehlen. Eine Einladung ist nicht möglich.");
+        return;
+    }
+    }
+    }
+    const creatorProfile = document.getElementById("creator-profile");
     if (!creatorProfile) {
         alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
         return;
     }
-    }
-    if (!creatorProfile) {
-        alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
-        return;
     }
     }
 
