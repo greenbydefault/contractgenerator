@@ -91,17 +91,12 @@ function renderUsers(users) {
         return;
     }
 
-    // Erstelle den Collection Wrapper nur einmal
-    const wrapperDiv = document.createElement("div");
-    wrapperDiv.classList.add("db-favorite-list");
-
     users.forEach(user => {
         const userData = user.fieldData;
         const userSlug = user.slug || user._id;
 
         const userDiv = document.createElement("div");
-        userDiv.classList.add("db-table-coll-item");
-        userDiv.setAttribute("data-jetboost-favorite", userSlug);
+        userDiv.classList.add("db-table-row");
 
         // Hidden Input für Jetboost
         const jetboostInput = document.createElement("input");
@@ -110,22 +105,16 @@ function renderUsers(users) {
         jetboostInput.value = userSlug;
         userDiv.appendChild(jetboostInput);
 
-        // Nutzer Details mit Struktur
-        const userRow = document.createElement("div");
-        userRow.classList.add("db-table-row", "db-table-fav");
-
-        userRow.innerHTML = `
+        // Nutzerdetails
+        userDiv.innerHTML += `
             <div class="db-table-row-item is-txt-16"><strong>Name:</strong> ${userData.name || "Unbekannt"}</div>
             <div class="db-table-row-item is-txt-16"><strong>Kategorie:</strong> ${userData['creator-main-categorie'] || "Nicht angegeben"}</div>
             <div class="db-table-row-item is-txt-16"><strong>Typ:</strong> ${userData['creator-type'] || "Nicht angegeben"}</div>
             <div class="db-table-row-item is-txt-16"><strong>Stadt:</strong> ${userData['user-city-2'] || "Nicht angegeben"}</div>
         `;
 
-        userDiv.appendChild(userRow);
-        wrapperDiv.appendChild(userDiv);
+        container.appendChild(userDiv);
     });
-
-    container.appendChild(wrapperDiv);
 }
 
 // 🌟 Start der Anwendung
