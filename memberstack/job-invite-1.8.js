@@ -79,8 +79,6 @@ async function fetchAndDisplayUserJobs() {
 function sendInvite() {
     const creatorProfile = document.getElementById("creator-profile");
     
-    }
-    
     const userName = creatorProfile.getAttribute("data-user-name");
     const userEmail = creatorProfile.getAttribute("data-user-email");
     const memberstackId = creatorProfile.getAttribute("data-memberstack-id");
