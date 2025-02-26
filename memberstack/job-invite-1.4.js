@@ -77,14 +77,16 @@ async function fetchAndDisplayUserJobs() {
 
 // 📩 Einladung senden (Webhook an Zapier)
 function sendInvite() {
-    const creatorProfile = document.getElementById("creator-profile");
+    
     if (!creatorProfile) {
         alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
         return;
     }
+    }
     if (!creatorProfile) {
         alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
         return;
+    }
     }
 
     const userName = creatorProfile.getAttribute("data-user-name");
@@ -103,7 +105,7 @@ function sendInvite() {
     }
     
 
-    const creatorProfile = document.getElementById("creator-profile");
+    
     const userData = {
         userName: creatorProfile.getAttribute("data-user-name"),
         userEmail: creatorProfile.getAttribute("data-user-email"),
