@@ -77,6 +77,26 @@ async function fetchAndDisplayUserJobs() {
 
 // 📩 Einladung senden (Webhook an Zapier)
 function sendInvite() {
+    const creatorProfile = document.getElementById("creator-profile");
+    if (!creatorProfile) {
+        alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
+        return;
+    }
+
+    const userName = creatorProfile.getAttribute("data-user-name");
+    const userEmail = creatorProfile.getAttribute("data-user-email");
+    const memberstackId = creatorProfile.getAttribute("data-memberstack-id");
+    const selectedJobId = document.getElementById("job-select").value;
+
+    if (!userName || !userEmail || !memberstackId) {
+        alert("❌ Fehler: Nicht alle Benutzerinformationen sind verfügbar. Eine Einladung ist nicht möglich.");
+        return;
+    }
+    
+    if (!selectedJobId) {
+        alert("Bitte einen Job auswählen.");
+        return;
+    }
     const selectedJobId = document.getElementById("job-select").value;
     if (!selectedJobId) return alert("Bitte einen Job auswählen.");
 
@@ -116,6 +136,15 @@ function renderInviteModal(jobs) {
 
     modal.innerHTML = `
         <h2>Wähle einen Job aus</h2>
+        <p id="error-message" style="color: red; display: none;">❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.</p>
+        <select id="job-select">
+            <option value="">-- Job auswählen --</option>
+            ${jobs.map(job => `<option value="${job.id}">${job.name}</option>`).join("")}
+        </select>
+        <button onclick="sendInvite()">Einladung senden</button>
+        <button onclick="closeModal()">Abbrechen</button>
+    `;
+        <h2>Wähle einen Job aus</h2>
         <select id="job-select">
             <option value="">-- Job auswählen --</option>
             ${jobs.map(job => `<option value="${job.id}">${job.name}</option>`).join("")}
@@ -129,6 +158,11 @@ function renderInviteModal(jobs) {
 
 // 🛑 Modal schließen
 function closeModal() {
+    const modal = document.getElementById("invite-modal");
+    if (modal) {
+        modal.remove();
+    }
+}
     document.getElementById("invite-modal")?.remove();
 }
 
