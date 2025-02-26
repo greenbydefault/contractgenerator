@@ -82,6 +82,10 @@ function sendInvite() {
         alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
         return;
     }
+    if (!creatorProfile) {
+        alert("❌ Fehler: Creator-Informationen fehlen. Eine Einladung ist nicht möglich.");
+        return;
+    }
 
     const userName = creatorProfile.getAttribute("data-user-name");
     const userEmail = creatorProfile.getAttribute("data-user-email");
@@ -97,8 +101,7 @@ function sendInvite() {
         alert("Bitte einen Job auswählen.");
         return;
     }
-    const selectedJobId = document.getElementById("job-select").value;
-    if (!selectedJobId) return alert("Bitte einen Job auswählen.");
+    
 
     const creatorProfile = document.getElementById("creator-profile");
     const userData = {
