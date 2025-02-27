@@ -86,6 +86,27 @@
         }
     }
 
+    function showLoader() {
+        const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
+        if (loader) {
+            loader.style.display = "block";
+        }
+    }
+
+    function hideLoader() {
+        const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
+        if (loader) {
+            loader.style.display = "none";
+        }
+    }
+
+    function updateStatusMessage(message) {
+        const statusMessage = document.getElementById(CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE);
+        if (statusMessage) {
+            statusMessage.textContent = message;
+        }
+    }
+
     function renderInviteModal() {
         logDebug("Rendering modal with jobs", cachedJobs);
         const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
@@ -132,7 +153,7 @@
         try {
             const response = await fetch(CONFIG.WEBHOOK_URL, {
                 method: "POST",
-                headers: {  },
+                headers: { },
                 body: JSON.stringify(userData)
             });
 
