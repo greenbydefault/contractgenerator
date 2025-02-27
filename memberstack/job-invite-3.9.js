@@ -26,6 +26,7 @@
     };
 
     let cachedJobs = [];
+    let inviteInProgress = false;
 
     function logDebug(message, data = null) {
         if (CONFIG.DEBUG) {
@@ -44,6 +45,12 @@
         }
     }
 
+    function hideStatusMessage() {
+        setTimeout(() => {
+            updateStatusMessage("");
+        }, 10000);
+    }
+
     async function fetchUserJobs(memberId) {
         try {
             logDebug("Fetching jobs for user", memberId);
@@ -57,47 +64,22 @@
         }
     }
 
-    async function fetchJobDetails(jobId) {
-        try {
-            logDebug("Fetching job details", jobId);
-            const response = await fetch(`${CONFIG.WORKER_BASE_URL}${CONFIG.API_BASE_URL}/${CONFIG.JOB_COLLECTION_ID}/items/${jobId}/live`);
-            if (!response.ok) throw new Error(`API-Fehler: ${response.status}`);
-            const jobData = await response.json();
-            return jobData?.fieldData || {};
-        } catch (error) {
-            console.error(`❌ Fehler beim Abrufen der Job-Details: ${error.message}`);
-            return {};
-        }
-    }
-
-    async function preloadUserJobs() {
-        try {
-            logDebug("Preloading user jobs...");
-            const member = await window.$memberstackDom.getCurrentMember();
-            const memberId = member?.data?.customFields?.['webflow-member-id'];
-            if (!memberId) throw new Error("Kein 'webflow-member-id' gefunden.");
-            
-            const jobIds = await fetchUserJobs(memberId);
-            cachedJobs = (await Promise.all(jobIds.map(fetchJobDetails)))
-                .filter(job => new Date(job["job-date-end"]) > new Date()); // Nur aktive Jobs
-            logDebug("Preloading completed", cachedJobs);
-        } catch (error) {
-            console.error("❌ Fehler beim Vorladen der Jobs:", error);
-        }
-    }
-
     function showLoader() {
-        const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
-        if (loader) {
-            loader.style.display = "block";
+        if (!inviteInProgress) {
+            const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
+            if (loader) {
+                loader.style.display = "block";
+            }
         }
     }
 
     function hideLoader() {
-        const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
-        if (loader) {
-            loader.style.display = "none";
-        }
+        setTimeout(() => {
+            const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
+            if (loader) {
+                loader.style.display = "none";
+            }
+        }, 3000);
     }
 
     function updateStatusMessage(message) {
@@ -107,45 +89,32 @@
         }
     }
 
-    function renderInviteModal() {
-        logDebug("Rendering modal with jobs", cachedJobs);
-        const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
-        const modalTitle = modal?.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
-        const jobSelect = modal?.querySelector(`#${CONFIG.DATA_ATTRIBUTES.JOB_SELECT}`);
-
-        if (!modal || !modalTitle || !jobSelect) {
-            console.error("❌ Modal-Elemente fehlen");
-            return;
-        }
-
-        modalTitle.textContent = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE).getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME);
-        jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
-            cachedJobs.map(job => `<option value="${job.slug}">${job.name}</option>`).join("");
-        
-        modal.style.display = "flex";
-        modal.style.opacity = "0";
-        modal.style.transform = "scale(0.95)";
+    function resetStatusMessage() {
         setTimeout(() => {
-            modal.style.opacity = "1";
-            modal.style.transform = "scale(1)";
-            modal.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-        }, 10);
-        logDebug("Modal sichtbar gemacht");
+            const statusMessage = document.getElementById(CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE);
+            if (statusMessage.textContent === "Vielen Dank! Die Einladung wurde an den Creator gesendet.") {
+                statusMessage.textContent = "";
+            }
+        }, 10000);
     }
 
     async function sendInvite() {
+        if (inviteInProgress) return;
+        inviteInProgress = true;
         showLoader();
         updateStatusMessage("Einladung wird gesendet...");
 
         const userProfile = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE);
         const jobSelect = document.getElementById(CONFIG.DATA_ATTRIBUTES.JOB_SELECT);
         const selectedJobId = jobSelect.value;
+        const selectedJobName = jobSelect.options[jobSelect.selectedIndex].text;
 
         const userData = {
             userName: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME),
             userEmail: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_EMAIL),
             memberstackId: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.MEMBERSTACK_ID),
-            jobId: selectedJobId
+            jobId: selectedJobId,
+            jobName: selectedJobName
         };
 
         logDebug("📤 Sende Einladung mit folgenden Daten:", userData);
@@ -160,18 +129,17 @@
             if (!response.ok) throw new Error(`Server-Antwort: ${response.status}`);
             
             updateStatusMessage("Vielen Dank! Die Einladung wurde an den Creator gesendet.");
+            resetStatusMessage();
         } catch (error) {
             console.error("❌ Fehler beim Senden der Einladung:", error);
             updateStatusMessage("Fehler beim Senden der Einladung. Bitte versuche es erneut.");
         }
 
         hideLoader();
+        inviteInProgress = false;
     }
 
     window.addEventListener("DOMContentLoaded", () => {
-        preloadUserJobs();
-        document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", renderInviteModal);
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_SUBMIT}]`)?.addEventListener("click", sendInvite);
-        document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_CLOSE}]`)?.addEventListener("click", closeModal);
     });
 })();
