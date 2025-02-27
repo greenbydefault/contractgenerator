@@ -32,8 +32,49 @@
         }
     }
 
+    async function fetchUserJobs(memberId) {
+        try {
+            logDebug("Fetching jobs for user", memberId);
+            const response = await fetch(`${CONFIG.WORKER_BASE_URL}${CONFIG.API_BASE_URL}/${CONFIG.USER_COLLECTION_ID}/items/${memberId}/live`);
+            if (!response.ok) throw new Error(`API-Fehler: ${response.status}`);
+            const userData = await response.json();
+            return userData?.fieldData?.["posted-jobs"] || [];
+        } catch (error) {
+            console.error(`❌ Fehler beim Abrufen der Jobs: ${error.message}`);
+            return [];
+        }
+    }
+
+    async function fetchJobDetails(jobId) {
+        try {
+            logDebug("Fetching job details", jobId);
+            const response = await fetch(`${CONFIG.WORKER_BASE_URL}${CONFIG.API_BASE_URL}/${CONFIG.JOB_COLLECTION_ID}/items/${jobId}/live`);
+            if (!response.ok) throw new Error(`API-Fehler: ${response.status}`);
+            const jobData = await response.json();
+            return jobData?.fieldData || {};
+        } catch (error) {
+            console.error(`❌ Fehler beim Abrufen der Job-Details: ${error.message}`);
+            return {};
+        }
+    }
+
+    async function preloadUserJobs() {
+        try {
+            logDebug("Preloading user jobs...");
+            const member = await window.$memberstackDom.getCurrentMember();
+            const memberId = member?.data?.customFields?.['webflow-member-id'];
+            if (!memberId) throw new Error("Kein 'webflow-member-id' gefunden.");
+            
+            const jobIds = await fetchUserJobs(memberId);
+            cachedJobs = await Promise.all(jobIds.map(fetchJobDetails));
+            logDebug("Preloading completed", cachedJobs);
+        } catch (error) {
+            console.error("❌ Fehler beim Vorladen der Jobs:", error);
+        }
+    }
+
     function createLoader() {
-        return `<div ${CONFIG.DATA_ATTRIBUTES.LOADER} style="display: flex; align-items: center; gap: 10px; opacity: 0; transition: opacity 0.3s ease;">
+        return `<div ${CONFIG.DATA_ATTRIBUTES.LOADER} style="display: none; align-items: center; gap: 10px; opacity: 0; transition: opacity 0.3s ease;">
                     <svg width="24" height="24" viewBox="0 0 50 50">
                         <circle cx="25" cy="25" r="20" fill="none" stroke="#fd5392" stroke-width="5" stroke-dasharray="90,150" stroke-dashoffset="0">
                             <animateTransform attributeType="XML" attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite" />
@@ -46,24 +87,22 @@
     function showLoader() {
         const loader = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.LOADER}]`);
         if (loader) {
-            loader.style.opacity = "1";
+            loader.style.display = "flex";
+            setTimeout(() => loader.style.opacity = "1", 10);
         }
     }
 
     function updateStatusMessage(message) {
         const statusMessage = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE}]`);
-        if (statusMessage) {
-            statusMessage.textContent = message;
-        }
+        if (statusMessage) statusMessage.textContent = message;
     }
 
     function hideLoader() {
         const loader = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.LOADER}]`);
-        if (loader) {
-            setTimeout(() => {
-                loader.style.opacity = "0";
-            }, 2000);
-        }
+        if (loader) setTimeout(() => {
+            loader.style.opacity = "0";
+            setTimeout(() => loader.style.display = "none", 300);
+        }, 2000);
     }
 
     async function sendInvite() {
@@ -91,7 +130,6 @@
         jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
             cachedJobs.map(job => `<option value="${job.id}">${job.name}</option>`).join("");
         
-        modal.innerHTML += createLoader();
         modal.style.display = "flex";
         modal.style.opacity = "0";
         modal.style.transform = "scale(0.95)";
@@ -103,11 +141,11 @@
         logDebug("Modal sichtbar gemacht");
     }
 
-    window.addEventListener("DOMContentLoaded", () => {
-        document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", () => {
-            logDebug("Invite-Button geklickt");
-            renderInviteModal();
-            sendInvite();
-        });
+    window.addEventListener("DOMContentLoaded", preloadUserJobs);
+    
+    document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", () => {
+        logDebug("Invite-Button geklickt");
+        renderInviteModal();
+        sendInvite();
     });
 })();
