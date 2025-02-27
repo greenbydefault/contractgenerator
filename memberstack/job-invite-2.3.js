@@ -107,13 +107,13 @@
         jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
             jobs.map(job => `<option value="${job.id}">${job.name}</option>`).join("");
         
-        modal.classList.add("is-visible");
+        modal.style.display = "flex";
         logDebug("Modal sichtbar gemacht");
     }
 
     function closeModal() {
         logDebug("Schließe Modal");
-        document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`).classList.remove("is-visible");
+        document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`).style.display = "none";
     }
 
     document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", () => {
