@@ -52,6 +52,19 @@
         return `${CONFIG.WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
     }
 
+    async function fetchJobDetails(jobId) {
+        try {
+            logDebug("Fetching job details", jobId);
+            const response = await fetch(buildWorkerUrl(`${CONFIG.API_BASE_URL}/${CONFIG.JOB_COLLECTION_ID}/items/${jobId}/live`));
+            if (!response.ok) throw new Error(`API-Fehler: ${response.status}`);
+            const jobData = await response.json();
+            return jobData?.fieldData || {};
+        } catch (error) {
+            console.error(`❌ Fehler beim Abrufen der Job-Details: ${error.message}`);
+            return {};
+        }
+    }
+
     async function preloadUserJobs() {
         try {
             logDebug("Preloading user jobs...");
@@ -86,8 +99,8 @@
     function renderInviteModal() {
         logDebug("Rendering modal with jobs", cachedJobs);
         const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
-        const modalTitle = modal.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
-        const jobSelect = modal.querySelector(`#${CONFIG.DATA_ATTRIBUTES.JOB_SELECT}`);
+        const modalTitle = modal?.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
+        const jobSelect = modal?.querySelector(`#${CONFIG.DATA_ATTRIBUTES.JOB_SELECT}`);
         const searchInput = document.getElementById(CONFIG.DATA_ATTRIBUTES.SEARCH_INPUT);
 
         if (!modal || !modalTitle || !jobSelect || !searchInput) {
