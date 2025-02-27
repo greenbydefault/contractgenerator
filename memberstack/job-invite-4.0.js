@@ -45,6 +45,18 @@
         }
     }
 
+    function openModal() {
+        const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
+        if (modal) {
+            modal.style.display = "flex";
+            setTimeout(() => {
+                modal.style.opacity = "1";
+                modal.style.transform = "scale(1)";
+                modal.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+            }, 10);
+        }
+    }
+
     function hideStatusMessage() {
         setTimeout(() => {
             updateStatusMessage("");
@@ -140,6 +152,8 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
+        document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", openModal);
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_SUBMIT}]`)?.addEventListener("click", sendInvite);
+        document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_CLOSE}]`)?.addEventListener("click", closeModal);
     });
 })();
