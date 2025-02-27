@@ -33,6 +33,58 @@
         }
     }
 
+    async function fetchUserJobs(memberId) {
+        try {
+            logDebug("Fetching jobs for user", memberId);
+            const response = await fetch(`${CONFIG.WORKER_BASE_URL}${CONFIG.API_BASE_URL}/${CONFIG.USER_COLLECTION_ID}/items/${memberId}/live`);
+            if (!response.ok) throw new Error(`API-Fehler: ${response.status}`);
+            const userData = await response.json();
+            return userData?.fieldData?.["posted-jobs"] || [];
+        } catch (error) {
+            console.error(`❌ Fehler beim Abrufen der Jobs: ${error.message}`);
+            return [];
+        }
+    }
+
+    async function fetchJobDetails(jobId) {
+        try {
+            logDebug("Fetching job details", jobId);
+            const response = await fetch(`${CONFIG.WORKER_BASE_URL}${CONFIG.API_BASE_URL}/${CONFIG.JOB_COLLECTION_ID}/items/${jobId}/live`);
+            if (!response.ok) throw new Error(`API-Fehler: ${response.status}`);
+            const jobData = await response.json();
+            return jobData?.fieldData || {};
+        } catch (error) {
+            console.error(`❌ Fehler beim Abrufen der Job-Details: ${error.message}`);
+            return {};
+        }
+    }
+
+    async function preloadUserJobs() {
+        try {
+            logDebug("Preloading user jobs...");
+            const member = await window.$memberstackDom.getCurrentMember();
+            const memberId = member?.data?.customFields?.['webflow-member-id'];
+            if (!memberId) throw new Error("Kein 'webflow-member-id' gefunden.");
+            
+            const jobIds = await fetchUserJobs(memberId);
+            cachedJobs = await Promise.all(jobIds.map(fetchJobDetails));
+            logDebug("Preloading completed", cachedJobs);
+        } catch (error) {
+            console.error("❌ Fehler beim Vorladen der Jobs:", error);
+        }
+    }
+
+    function closeModal() {
+        const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
+        if (modal) {
+            modal.style.opacity = "0";
+            modal.style.transform = "scale(0.95)";
+            setTimeout(() => {
+                modal.style.display = "none";
+            }, 300);
+        }
+    }
+
     async function sendInvite() {
         showLoader();
         updateStatusMessage("Einladung wird gesendet...");
@@ -90,6 +142,9 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
+        preloadUserJobs();
+        document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", renderInviteModal);
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_SUBMIT}]`)?.addEventListener("click", sendInvite);
+        document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_CLOSE}]`)?.addEventListener("click", closeModal);
     });
 })();
