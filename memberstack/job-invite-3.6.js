@@ -7,7 +7,7 @@
         WORKER_BASE_URL: "https://bewerbungen.oliver-258.workers.dev/?url=",
         USER_COLLECTION_ID: "6448faf9c5a8a15f6cc05526",
         JOB_COLLECTION_ID: "6448faf9c5a8a17455c05525",
-        WEBHOOK_URL: "https://your-zapier-webhook-url.com",
+        WEBHOOK_URL: "https://hooks.zapier.com/hooks/catch/10061116/23n4ylm/",
         DEBUG: true,
         DATA_ATTRIBUTES: {
             MODAL: "data-modal",
