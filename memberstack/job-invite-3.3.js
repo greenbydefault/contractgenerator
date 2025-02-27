@@ -33,6 +33,27 @@
         }
     }
 
+    function showLoader() {
+        const loader = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.LOADER}]`);
+        if (loader) {
+            loader.style.display = "flex";
+            setTimeout(() => loader.style.opacity = "1", 10);
+        }
+    }
+
+    function hideLoader() {
+        const loader = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.LOADER}]`);
+        if (loader) setTimeout(() => {
+            loader.style.opacity = "0";
+            setTimeout(() => loader.style.display = "none", 300);
+        }, 2000);
+    }
+
+    function updateStatusMessage(message) {
+        const statusMessage = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE}]`);
+        if (statusMessage) statusMessage.textContent = message;
+    }
+
     async function fetchUserJobs(memberId) {
         try {
             logDebug("Fetching jobs for user", memberId);
