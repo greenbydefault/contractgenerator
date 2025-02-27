@@ -14,6 +14,7 @@
             MODAL_TITLE: "data-modal-title",
             JOB_SELECT: "job-select",
             INVITE_BUTTON: "data-invite-button",
+            INVITE_SUBMIT: "data-invite-submit",
             MODAL_CLOSE: "data-modal-close",
             CREATOR_PROFILE: "creator-profile",
             USER_NAME: "data-user-name",
@@ -73,6 +74,17 @@
         }
     }
 
+    function closeModal() {
+        const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
+        if (modal) {
+            modal.style.opacity = "0";
+            modal.style.transform = "scale(0.95)";
+            setTimeout(() => {
+                modal.style.display = "none";
+            }, 300);
+        }
+    }
+
     function createLoader() {
         return `<div ${CONFIG.DATA_ATTRIBUTES.LOADER} style="display: none; align-items: center; gap: 10px; opacity: 0; transition: opacity 0.3s ease;">
                     <svg width="24" height="24" viewBox="0 0 50 50">
@@ -112,6 +124,7 @@
         setTimeout(() => {
             updateStatusMessage("Vielen Dank! Die Einladung wurde an den Creator gesendet.");
             hideLoader();
+            setTimeout(closeModal, 2000);
         }, 2000);
     }
 
@@ -143,9 +156,7 @@
 
     window.addEventListener("DOMContentLoaded", preloadUserJobs);
     
-    document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", () => {
-        logDebug("Invite-Button geklickt");
-        renderInviteModal();
-        sendInvite();
-    });
+    document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", renderInviteModal);
+    document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_SUBMIT}]`)?.addEventListener("click", sendInvite);
+    document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_CLOSE}]`)?.addEventListener("click", closeModal);
 })();
