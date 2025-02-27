@@ -33,25 +33,15 @@
         }
     }
 
-    function showLoader() {
-        const loader = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.LOADER}]`);
-        if (loader) {
-            loader.style.display = "flex";
-            setTimeout(() => loader.style.opacity = "1", 10);
+    function closeModal() {
+        const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
+        if (modal) {
+            modal.style.opacity = "0";
+            modal.style.transform = "scale(0.95)";
+            setTimeout(() => {
+                modal.style.display = "none";
+            }, 300);
         }
-    }
-
-    function hideLoader() {
-        const loader = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.LOADER}]`);
-        if (loader) setTimeout(() => {
-            loader.style.opacity = "0";
-            setTimeout(() => loader.style.display = "none", 300);
-        }, 2000);
-    }
-
-    function updateStatusMessage(message) {
-        const statusMessage = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE}]`);
-        if (statusMessage) statusMessage.textContent = message;
     }
 
     async function fetchUserJobs(memberId) {
@@ -88,7 +78,8 @@
             if (!memberId) throw new Error("Kein 'webflow-member-id' gefunden.");
             
             const jobIds = await fetchUserJobs(memberId);
-            cachedJobs = await Promise.all(jobIds.map(fetchJobDetails));
+            cachedJobs = (await Promise.all(jobIds.map(fetchJobDetails)))
+                .filter(job => new Date(job["job-date-end"]) > new Date()); // Nur aktive Jobs
             logDebug("Preloading completed", cachedJobs);
         } catch (error) {
             console.error("❌ Fehler beim Vorladen der Jobs:", error);
@@ -108,7 +99,7 @@
 
         modalTitle.textContent = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE).getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME);
         jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
-            cachedJobs.map(job => `<option value="${job.id}">${job.name}</option>`).join("");
+            cachedJobs.map(job => `<option value="${job.slug}">${job.name}</option>`).join("");
         
         modal.style.display = "flex";
         modal.style.opacity = "0";
@@ -119,17 +110,6 @@
             modal.style.transition = "opacity 0.3s ease, transform 0.3s ease";
         }, 10);
         logDebug("Modal sichtbar gemacht");
-    }
-
-    function closeModal() {
-        const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
-        if (modal) {
-            modal.style.opacity = "0";
-            modal.style.transform = "scale(0.95)";
-            setTimeout(() => {
-                modal.style.display = "none";
-            }, 300);
-        }
     }
 
     async function sendInvite() {
