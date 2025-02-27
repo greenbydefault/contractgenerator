@@ -44,6 +44,10 @@
         });
     }
 
+    function buildWorkerUrl(apiUrl) {
+        return `${CONFIG.WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
+    }
+
     async function fetchUserJobs(memberId) {
         try {
             logDebug("Fetching jobs for user", memberId);
@@ -55,6 +59,19 @@
         } catch (error) {
             console.error(`❌ Fehler beim Abrufen der Jobs: ${error.message}`);
             return [];
+        }
+    }
+
+    async function fetchJobDetails(jobId) {
+        try {
+            logDebug("Fetching job details", jobId);
+            const response = await fetch(buildWorkerUrl(`${CONFIG.API_BASE_URL}/${CONFIG.JOB_COLLECTION_ID}/items/${jobId}/live`));
+            if (!response.ok) throw new Error(`API-Fehler: ${response.status}`);
+            const jobData = await response.json();
+            return jobData?.fieldData || {};
+        } catch (error) {
+            console.error(`❌ Fehler beim Abrufen der Job-Details: ${error.message}`);
+            return {};
         }
     }
 
