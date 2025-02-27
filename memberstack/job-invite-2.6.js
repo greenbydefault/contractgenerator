@@ -18,8 +18,7 @@
             CREATOR_PROFILE: "creator-profile",
             USER_NAME: "data-user-name",
             USER_EMAIL: "data-user-email",
-            MEMBERSTACK_ID: "data-memberstack-id",
-            SEARCH_INPUT: "job-search-input"
+            MEMBERSTACK_ID: "data-memberstack-id"
         }
     };
 
@@ -36,7 +35,6 @@
             modal: document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`),
             modalTitle: document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`),
             jobSelect: document.getElementById(CONFIG.DATA_ATTRIBUTES.JOB_SELECT),
-            searchInput: document.getElementById(CONFIG.DATA_ATTRIBUTES.SEARCH_INPUT),
             inviteButton: document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`),
             modalClose: document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_CLOSE}]`),
             creatorProfile: document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE)
@@ -101,23 +99,15 @@
         const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
         const modalTitle = modal?.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
         const jobSelect = modal?.querySelector(`#${CONFIG.DATA_ATTRIBUTES.JOB_SELECT}`);
-        const searchInput = document.getElementById(CONFIG.DATA_ATTRIBUTES.SEARCH_INPUT);
 
-        if (!modal || !modalTitle || !jobSelect || !searchInput) {
+        if (!modal || !modalTitle || !jobSelect) {
             console.error("❌ Modal-Elemente fehlen");
             return;
         }
 
-        modalTitle.textContent = `Einladung für ${document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE).getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME)}`;
+        modalTitle.textContent = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE).getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME);
         jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
             cachedJobs.map(job => `<option value="${job.id}">${job.name}</option>`).join("");
-        
-        searchInput.addEventListener("input", () => {
-            const searchTerm = searchInput.value.toLowerCase();
-            jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
-                cachedJobs.filter(job => job.name.toLowerCase().includes(searchTerm))
-                    .map(job => `<option value="${job.id}">${job.name}</option>`).join("");
-        });
         
         modal.style.display = "flex";
         modal.style.opacity = "0";
@@ -135,6 +125,7 @@
     document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", () => {
         logDebug("Invite-Button geklickt");
         renderInviteModal();
+        alert("Vielen Dank! Der Creator wurde auf einen Job eingeladen.");
     });
     
     document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_CLOSE}]`)?.addEventListener("click", closeModal);
