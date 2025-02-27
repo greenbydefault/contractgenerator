@@ -58,6 +58,23 @@
         }
     }
 
+    async function fetchAndDisplayUserJobs() {
+        try {
+            logDebug("Fetching and displaying user jobs");
+            const member = await window.$memberstackDom.getCurrentMember();
+            const memberId = member?.data?.customFields?.['webflow-member-id'];
+            if (!memberId) throw new Error("Kein 'webflow-member-id' gefunden.");
+            
+            const jobIds = await fetchUserJobs(memberId);
+            const jobs = (await Promise.all(jobIds.map(fetchJobDetails)))
+                .filter(job => new Date(job["job-date-end"]) > new Date());
+            
+            renderInviteModal(jobs);
+        } catch (error) {
+            console.error("❌ Fehler beim Laden der Jobs:", error);
+        }
+    }
+
     function renderInviteModal(jobs) {
         logDebug("Rendering modal with jobs", jobs);
         const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
