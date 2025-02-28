@@ -189,16 +189,19 @@
         return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
     }
     
+    // Hilfsfunktion zum Kürzen von langen Texten
+    function truncateText(text, maxLength = 40) {
+        if (!text) return "";
+        return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+    }
+    
     function showInviteModalWithJobs() {
         logDebug("Rendering modal with jobs", cachedJobs);
         const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
         const modalTitle = modal?.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
-        const jobDropdown = document.querySelector(`.db-invite-job-dropdown`);
-        const jobDropdownList = jobDropdown?.querySelector(`.db-invite-job-dropdown-list`);
-        const dropdownToggle = jobDropdown?.querySelector(".db-invite-job-dropdown-toggle");
-        const modalContent = document.querySelector(".db-invite-job-modal");
+        const jobSelect = modal?.querySelector(`#${CONFIG.DATA_ATTRIBUTES.JOB_SELECT}`);
 
-        if (!modal || !modalTitle || !jobDropdown || !jobDropdownList || !dropdownToggle) {
+        if (!modal || !modalTitle || !jobSelect) {
             console.error("❌ Modal-Elemente fehlen");
             return;
         }
@@ -206,128 +209,9 @@
         // Modal Title setzen
         modalTitle.textContent = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE).getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME);
 
-        // Reset selected job
-        selectedJob = null;
-        
-        // Aktualisiere Dropdown Toggle Text
-        dropdownToggle.textContent = "-- Job auswählen --";
-
-        // Dropdown-Liste mit gekürzten Namen aktualisieren
-        jobDropdownList.innerHTML = "";
-        cachedJobs.forEach(job => {
-            const listItem = document.createElement("div");
-            listItem.className = "db-invite-job-dropdown-list-item";
-            listItem.dataset.jobSlug = job.slug;
-            
-            const namePart = document.createElement("div");
-            namePart.className = "db-invite-job-dropdown-list-name";
-            namePart.textContent = truncateText(job.name, 40);
-            namePart.title = job.name; // Tooltip für langen Text
-            
-            const checkmarkImg = document.createElement("img");
-            checkmarkImg.src = "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/63e0e3c2ad00f752f0270740_check-dark.svg";
-            checkmarkImg.alt = "Ausgewählt";
-            checkmarkImg.className = "job-checkmark";
-            checkmarkImg.style.display = "none"; // Standard: nicht anzeigen
-            checkmarkImg.style.width = "16px";
-            checkmarkImg.style.marginLeft = "8px";
-            
-            listItem.appendChild(namePart);
-            listItem.appendChild(checkmarkImg);
-            
-            // Klick-Handler für Listenelement
-            listItem.addEventListener("click", () => {
-                // Alle Checkmarks ausblenden
-                jobDropdownList.querySelectorAll(".job-checkmark").forEach(checkmark => {
-                    checkmark.style.display = "none";
-                });
-                
-                // Diesen Checkmark anzeigen
-                checkmarkImg.style.display = "inline-block";
-                
-                // Ausgewählten Job setzen
-                selectedJob = job;
-                
-                // Dropdown-Toggle aktualisieren
-                dropdownToggle.textContent = truncateText(job.name, 40);
-                
-                // Dropdown nach Auswahl schließen
-                jobDropdownList.style.display = "none";
-            });
-            
-            jobDropdownList.appendChild(listItem);
-        });
-        
-        // Berechne die Gesamthöhe des Dropdowns basierend auf der Anzahl der Jobs
-        // Da jedes Item 3.25em hoch ist
-        const itemHeight = 3.25; // in em
-        const dropdownHeight = Math.min(cachedJobs.length, 5) * itemHeight; // Maximal 5 Items zeigen
-        
-        // Klick-Handler für Toggle (Dropdown öffnen/schließen)
-        dropdownToggle.addEventListener("click", (e) => {
-            e.preventDefault();
-            
-            if (modalContent) {
-                const isVisible = jobDropdownList.style.display === "block";
-                
-                if (isVisible) {
-                    // Dropdown wird geschlossen
-                    jobDropdownList.style.display = "none";
-                    
-                    if (modalContent.style.height) {
-                        modalContent.style.transition = "height 0.3s ease";
-                        modalContent.style.height = `${parseFloat(modalContent.style.height) - dropdownHeight}em`;
-                        
-                        setTimeout(() => {
-                            modalContent.style.height = "";
-                            modalContent.style.transition = "";
-                        }, 300);
-                    }
-                } else {
-                    // Dropdown wird geöffnet
-                    jobDropdownList.style.display = "block";
-                    
-                    // Aktuelle Höhe in em berechnen (16px = 1em als Standardwert)
-                    const currentHeightInPx = modalContent.offsetHeight;
-                    const baseFontSize = parseFloat(window.getComputedStyle(document.documentElement).fontSize);
-                    const currentHeightInEm = currentHeightInPx / baseFontSize;
-                    
-                    modalContent.style.transition = "height 0.3s ease";
-                    modalContent.style.height = `${currentHeightInEm}em`;
-                    
-                    // Nach einem kleinen Delay die neue Höhe setzen
-                    setTimeout(() => {
-                        modalContent.style.height = `${currentHeightInEm + dropdownHeight}em`;
-                        
-                        // Nach der Animation die Höhe wieder auf auto setzen
-                        setTimeout(() => {
-                            modalContent.style.height = "";
-                            modalContent.style.transition = "";
-                        }, 300);
-                    }, 10);
-                }
-            } else {
-                // Fallback, wenn kein modalContent gefunden wurde
-                jobDropdownList.style.display = jobDropdownList.style.display === "block" ? "none" : "block";
-            }
-        });
-        
-        // Klick außerhalb des Dropdowns schließt es
-        document.addEventListener("click", (e) => {
-            if (!jobDropdown.contains(e.target) && jobDropdownList.style.display === "block") {
-                jobDropdownList.style.display = "none";
-                
-                if (modalContent && modalContent.style.height) {
-                    modalContent.style.transition = "height 0.3s ease";
-                    modalContent.style.height = `${parseFloat(modalContent.style.height) - dropdownHeight}em`;
-                    
-                    setTimeout(() => {
-                        modalContent.style.height = "";
-                        modalContent.style.transition = "";
-                    }, 300);
-                }
-            }
-        });
+        // Job-Auswahlfeld mit gekürzten Namen aktualisieren
+        jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
+            cachedJobs.map(job => `<option value="${job.slug}" title="${job.name}">${truncateText(job.name, 40)}</option>`).join("");
 
         // Verstecke vorhandene Loading-Elemente
         hideLoader();
@@ -349,22 +233,25 @@
     }
 
     async function sendInvite() {
-        // Überprüfen, ob ein Job ausgewählt wurde
-        if (!selectedJob) {
-            alert("Bitte wähle einen Job aus.");
-            return;
-        }
-
         showLoader();
 
         const userProfile = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE);
+        const jobSelect = document.getElementById(CONFIG.DATA_ATTRIBUTES.JOB_SELECT);
+        const selectedJobSlug = jobSelect.value;
+        const selectedJobName = jobSelect.options[jobSelect.selectedIndex]?.text || "";
+
+        if (!selectedJobSlug) {
+            hideLoader();
+            alert("Bitte wähle einen Job aus.");
+            return;
+        }
 
         const userData = {
             userName: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME),
             userEmail: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_EMAIL),
             memberstackId: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.MEMBERSTACK_ID),
-            jobId: selectedJob.slug,
-            jobName: selectedJob.name
+            jobId: selectedJobSlug,
+            jobName: selectedJobName // Job-Name hinzugefügt
         };
 
         logDebug("📤 Sende Einladung mit folgenden Daten:", userData);
