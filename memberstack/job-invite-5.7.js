@@ -1,4 +1,8 @@
-(function() {
+// Hilfsfunktion zum Kürzen von langen Texten
+    function truncateText(text, maxLength = 40) {
+        if (!text) return "";
+        return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+    }(function() {
     "use strict";
 
     // 🔧 Konfiguration
@@ -183,10 +187,70 @@
     // Globale Variable für den aktuell ausgewählten Job
     let selectedJob = null;
     
-    // Hilfsfunktion zum Kürzen von langen Texten
-    function truncateText(text, maxLength = 40) {
-        if (!text) return "";
-        return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+    // Hilfsfunktion zum Abrufen von Benutzerdaten
+    function getUserData() {
+        let userName = null;
+        let userEmail = null;
+        let memberstackId = null;
+        
+        // Methode 1: Versuche es mit dem zentralen Creator-Profil-Element
+        const creatorProfile = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE);
+        if (creatorProfile) {
+            userName = creatorProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME);
+            userEmail = creatorProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_EMAIL);
+            memberstackId = creatorProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.MEMBERSTACK_ID);
+            
+            logDebug("Benutzerdaten aus zentralem Profil-Element gefunden", { userName, userEmail, memberstackId });
+        }
+        
+        // Methode 2: Versuche es mit einzelnen Datenattributen auf der Seite
+        if (!userName) {
+            const userNameElement = document.querySelector('[data-user-name]');
+            userName = userNameElement?.getAttribute('data-user-name');
+            
+            if (userName) {
+                logDebug("Benutzername aus data-user-name Attribut gefunden", userName);
+            }
+        }
+        
+        if (!userEmail) {
+            const userEmailElement = document.querySelector('[data-user-email]');
+            userEmail = userEmailElement?.getAttribute('data-user-email');
+            
+            if (userEmail) {
+                logDebug("Benutzer-Email aus data-user-email Attribut gefunden", userEmail);
+            }
+        }
+        
+        if (!memberstackId) {
+            const memberIdElement = document.querySelector('[data-memberstack-id]');
+            memberstackId = memberIdElement?.getAttribute('data-memberstack-id');
+            
+            if (memberstackId) {
+                logDebug("Memberstack-ID aus data-memberstack-id Attribut gefunden", memberstackId);
+            }
+        }
+        
+        // Methode 3: Versuche es mit spezifischen Klassen (Fallback)
+        if (!userName) {
+            const userNameElement = document.querySelector('.profile-username');
+            userName = userNameElement?.textContent?.trim();
+            
+            if (userName) {
+                logDebug("Benutzername aus .profile-username Klasse gefunden", userName);
+            }
+        }
+        
+        if (!userEmail) {
+            const userEmailElement = document.querySelector('.profile-email');
+            userEmail = userEmailElement?.textContent?.trim();
+            
+            if (userEmail) {
+                logDebug("Benutzer-Email aus .profile-email Klasse gefunden", userEmail);
+            }
+        }
+        
+        return { userName, userEmail, memberstackId };
     }
     
     // Hilfsfunktion zum Kürzen von langen Texten
@@ -206,8 +270,14 @@
             return;
         }
 
-        // Modal Title setzen
-        modalTitle.textContent = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE).getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME);
+        // Benutzerdaten abrufen und Modal-Titel setzen
+        const { userName } = getUserData();
+        if (userName) {
+            modalTitle.textContent = userName;
+        } else {
+            modalTitle.textContent = "Creator";
+            logDebug("Kein Benutzername gefunden, verwende Standardwert");
+        }
 
         // Job-Auswahlfeld mit gekürzten Namen aktualisieren
         jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
@@ -235,7 +305,8 @@
     async function sendInvite() {
         showLoader();
 
-        const userProfile = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE);
+        // Benutzerdaten abrufen
+        const { userName, userEmail, memberstackId } = getUserData();
         const jobSelect = document.getElementById(CONFIG.DATA_ATTRIBUTES.JOB_SELECT);
         const selectedJobSlug = jobSelect.value;
         const selectedJobName = jobSelect.options[jobSelect.selectedIndex]?.text || "";
@@ -246,10 +317,17 @@
             return;
         }
 
+        if (!userName || !userEmail) {
+            hideLoader();
+            alert("Benutzerdaten konnten nicht gefunden werden. Bitte stelle sicher, dass die Daten auf der Seite vorhanden sind.");
+            console.error("❌ Benutzerdaten fehlen:", { userName, userEmail, memberstackId });
+            return;
+        }
+
         const userData = {
-            userName: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME),
-            userEmail: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_EMAIL),
-            memberstackId: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.MEMBERSTACK_ID),
+            userName: userName,
+            userEmail: userEmail,
+            memberstackId: memberstackId || "", // Optional
             jobId: selectedJobSlug,
             jobName: selectedJobName // Job-Name hinzugefügt
         };
