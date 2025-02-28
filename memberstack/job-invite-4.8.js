@@ -48,19 +48,40 @@
         const loaderWrapper = document.getElementById("loading-animation-wrapper");
         const successMessage = document.getElementById("loading-animation-success");
         
-        if (successMessage) {
-            successMessage.style.display = "none";
-        }
-        
-        if (loaderWrapper) {
-            loaderWrapper.style.display = "flex";
+        // Erst Erfolgsmeldung ausblenden (falls vorhanden)
+        if (successMessage && successMessage.style.display !== "none") {
+            successMessage.style.opacity = "0";
+            setTimeout(() => {
+                successMessage.style.display = "none";
+                
+                // Dann Loader einblenden
+                if (loaderWrapper) {
+                    loaderWrapper.style.display = "flex";
+                    loaderWrapper.style.opacity = "0";
+                    setTimeout(() => {
+                        loaderWrapper.style.opacity = "1";
+                    }, 10);
+                }
+            }, 300);
+        } else {
+            // Direkt Loader einblenden
+            if (loaderWrapper) {
+                loaderWrapper.style.display = "flex";
+                loaderWrapper.style.opacity = "0";
+                setTimeout(() => {
+                    loaderWrapper.style.opacity = "1";
+                }, 10);
+            }
         }
     }
 
     function hideLoader() {
         const loaderWrapper = document.getElementById("loading-animation-wrapper");
         if (loaderWrapper) {
-            loaderWrapper.style.display = "none";
+            loaderWrapper.style.opacity = "0";
+            setTimeout(() => {
+                loaderWrapper.style.display = "none";
+            }, 300);
         }
     }
 
@@ -69,17 +90,34 @@
         const loaderWrapper = document.getElementById("loading-animation-wrapper");
         
         if (successMessage) {
-            // Erst Loader ausblenden, dann Erfolgsmeldung einblenden
-            if (loaderWrapper) {
-                loaderWrapper.style.display = "none";
+            // Erst Loader ausblenden
+            if (loaderWrapper && loaderWrapper.style.display !== "none") {
+                loaderWrapper.style.opacity = "0";
+                setTimeout(() => {
+                    loaderWrapper.style.display = "none";
+                    
+                    // Dann Erfolgsmeldung einblenden
+                    successMessage.style.display = "block";
+                    successMessage.style.opacity = "0";
+                    setTimeout(() => {
+                        successMessage.style.opacity = "1";
+                    }, 10);
+                }, 300);
+            } else {
+                // Direkt Erfolgsmeldung einblenden
+                successMessage.style.display = "block";
+                successMessage.style.opacity = "0";
+                setTimeout(() => {
+                    successMessage.style.opacity = "1";
+                }, 10);
             }
-            
-            // Erfolgsmeldung anzeigen
-            successMessage.style.display = "block";
             
             if (autoHide) {
                 setTimeout(() => {
-                    successMessage.style.display = "none";
+                    successMessage.style.opacity = "0";
+                    setTimeout(() => {
+                        successMessage.style.display = "none";
+                    }, 300);
                 }, 7000);
             }
         }
@@ -142,6 +180,12 @@
         }
     }
     
+    // Hilfsfunktion zum Kürzen von langen Texten
+    function truncateText(text, maxLength = 40) {
+        if (!text) return "";
+        return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+    }
+    
     function showInviteModalWithJobs() {
         logDebug("Rendering modal with jobs", cachedJobs);
         const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
@@ -156,15 +200,16 @@
         // Modal Title setzen
         modalTitle.textContent = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE).getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME);
 
-        // Job-Auswahlfeld aktualisieren
+        // Job-Auswahlfeld mit gekürzten Namen aktualisieren
         jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
-            cachedJobs.map(job => `<option value="${job.slug}">${job.name}</option>`).join("");
+            cachedJobs.map(job => `<option value="${job.slug}" title="${job.name}">${truncateText(job.name, 40)}</option>`).join("");
 
         // Verstecke vorhandene Loading-Elemente
         hideLoader();
         const successMessage = document.getElementById("loading-animation-success");
         if (successMessage) {
             successMessage.style.display = "none";
+            successMessage.style.opacity = "0";
         }
 
         modal.style.display = "flex";
@@ -229,16 +274,28 @@
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_SUBMIT}]`)?.addEventListener("click", sendInvite);
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_CLOSE}]`)?.addEventListener("click", closeModal);
         
+        // Füge CSS für Animationen hinzu
+        const styleEl = document.createElement('style');
+        styleEl.textContent = `
+            #loading-animation-wrapper,
+            #loading-animation-success {
+                transition: opacity 0.3s ease;
+            }
+        `;
+        document.head.appendChild(styleEl);
+        
         // Verstecke Loading-Elemente beim Start
         const loaderWrapper = document.getElementById("loading-animation-wrapper");
         const successMessage = document.getElementById("loading-animation-success");
         
         if (loaderWrapper) {
             loaderWrapper.style.display = "none";
+            loaderWrapper.style.opacity = "0";
         }
         
         if (successMessage) {
             successMessage.style.display = "none";
+            successMessage.style.opacity = "0";
         }
     });
 })();
