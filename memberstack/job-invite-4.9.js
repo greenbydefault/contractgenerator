@@ -180,6 +180,9 @@
         }
     }
     
+    // Globale Variable für den aktuell ausgewählten Job
+    let selectedJob = null;
+    
     // Hilfsfunktion zum Kürzen von langen Texten
     function truncateText(text, maxLength = 40) {
         if (!text) return "";
@@ -190,9 +193,10 @@
         logDebug("Rendering modal with jobs", cachedJobs);
         const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
         const modalTitle = modal?.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
-        const jobSelect = modal?.querySelector(`#${CONFIG.DATA_ATTRIBUTES.JOB_SELECT}`);
+        const jobDropdown = document.querySelector(`.db-invite-job-dropdown`);
+        const jobDropdownList = jobDropdown?.querySelector(`.db-invite-job-dropdown-list`);
 
-        if (!modal || !modalTitle || !jobSelect) {
+        if (!modal || !modalTitle || !jobDropdown || !jobDropdownList) {
             console.error("❌ Modal-Elemente fehlen");
             return;
         }
@@ -200,9 +204,78 @@
         // Modal Title setzen
         modalTitle.textContent = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE).getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME);
 
-        // Job-Auswahlfeld mit gekürzten Namen aktualisieren
-        jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
-            cachedJobs.map(job => `<option value="${job.slug}" title="${job.name}">${truncateText(job.name, 40)}</option>`).join("");
+        // Reset selected job
+        selectedJob = null;
+        
+        // Aktualisiere Dropdown Toggle Text
+        const dropdownToggle = jobDropdown.querySelector(".db-invite-job-dropdown-toggle");
+        if (dropdownToggle) {
+            dropdownToggle.textContent = "-- Job auswählen --";
+        }
+
+        // Dropdown-Liste mit gekürzten Namen aktualisieren
+        jobDropdownList.innerHTML = "";
+        cachedJobs.forEach(job => {
+            const listItem = document.createElement("div");
+            listItem.className = "db-invite-job-dropdown-list-item";
+            listItem.dataset.jobSlug = job.slug;
+            
+            const namePart = document.createElement("div");
+            namePart.className = "db-invite-job-dropdown-list-name";
+            namePart.textContent = truncateText(job.name, 40);
+            namePart.title = job.name; // Tooltip für langen Text
+            
+            const checkmarkImg = document.createElement("img");
+            checkmarkImg.src = "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/63e0e3c2ad00f752f0270740_check-dark.svg";
+            checkmarkImg.alt = "Ausgewählt";
+            checkmarkImg.className = "job-checkmark";
+            checkmarkImg.style.display = "none"; // Standard: nicht anzeigen
+            checkmarkImg.style.width = "16px";
+            checkmarkImg.style.marginLeft = "8px";
+            
+            listItem.appendChild(namePart);
+            listItem.appendChild(checkmarkImg);
+            
+            // Klick-Handler für Listenelement
+            listItem.addEventListener("click", () => {
+                // Alle Checkmarks ausblenden
+                jobDropdownList.querySelectorAll(".job-checkmark").forEach(checkmark => {
+                    checkmark.style.display = "none";
+                });
+                
+                // Diesen Checkmark anzeigen
+                checkmarkImg.style.display = "inline-block";
+                
+                // Ausgewählten Job setzen
+                selectedJob = job;
+                
+                // Dropdown-Toggle aktualisieren
+                if (dropdownToggle) {
+                    dropdownToggle.textContent = truncateText(job.name, 40);
+                }
+                
+                // Optional: Dropdown nach Auswahl schließen
+                jobDropdownList.style.display = "none";
+            });
+            
+            jobDropdownList.appendChild(listItem);
+        });
+        
+        // Klick-Handler für Toggle (Dropdown öffnen/schließen)
+        const dropdownToggle = jobDropdown.querySelector(".db-invite-job-dropdown-toggle");
+        if (dropdownToggle) {
+            dropdownToggle.addEventListener("click", (e) => {
+                e.preventDefault();
+                jobDropdownList.style.display = jobDropdownList.style.display === "block" ? "none" : "block";
+            });
+        }
+        
+        // Klick außerhalb des Dropdowns schließt es
+        document.addEventListener("click", (e) => {
+            if (!jobDropdown.contains(e.target)) {
+                jobDropdownList.style.display = "none";
+            }
+        });
 
         // Verstecke vorhandene Loading-Elemente
         hideLoader();
@@ -224,25 +297,22 @@
     }
 
     async function sendInvite() {
-        showLoader();
-
-        const userProfile = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE);
-        const jobSelect = document.getElementById(CONFIG.DATA_ATTRIBUTES.JOB_SELECT);
-        const selectedJobSlug = jobSelect.value;
-        const selectedJobName = jobSelect.options[jobSelect.selectedIndex]?.text || "";
-
-        if (!selectedJobSlug) {
-            hideLoader();
+        // Überprüfen, ob ein Job ausgewählt wurde
+        if (!selectedJob) {
             alert("Bitte wähle einen Job aus.");
             return;
         }
+
+        showLoader();
+
+        const userProfile = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE);
 
         const userData = {
             userName: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME),
             userEmail: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_EMAIL),
             memberstackId: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.MEMBERSTACK_ID),
-            jobId: selectedJobSlug,
-            jobName: selectedJobName // Job-Name hinzugefügt
+            jobId: selectedJob.slug,
+            jobName: selectedJob.name
         };
 
         logDebug("📤 Sende Einladung mit folgenden Daten:", userData);
@@ -280,6 +350,32 @@
             #loading-animation-wrapper,
             #loading-animation-success {
                 transition: opacity 0.3s ease;
+            }
+            
+            .db-invite-job-dropdown-list {
+                max-height: 250px;
+                overflow-y: auto;
+            }
+            
+            .db-invite-job-dropdown-list-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                cursor: pointer;
+                padding: 8px 12px;
+                transition: background-color 0.2s ease;
+            }
+            
+            .db-invite-job-dropdown-list-item:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+            }
+            
+            .db-invite-job-dropdown-list-name {
+                flex: 1;
+            }
+            
+            .job-checkmark {
+                flex-shrink: 0;
             }
         `;
         document.head.appendChild(styleEl);
