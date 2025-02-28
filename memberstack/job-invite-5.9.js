@@ -262,24 +262,8 @@
         const modalTitle = modal?.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
         const jobSelect = modal?.querySelector(`#${CONFIG.DATA_ATTRIBUTES.JOB_SELECT}`);
         const submitButton = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_SUBMIT}]`);
+        const emptyState = document.querySelector('.db-invite-empty-state');
         
-        // Element für "Keine Jobs"-Meldung suchen oder erstellen
-        let noJobsMessage = document.getElementById(CONFIG.DATA_ATTRIBUTES.NO_JOBS_MESSAGE);
-        if (!noJobsMessage) {
-            noJobsMessage = document.createElement('div');
-            noJobsMessage.id = CONFIG.DATA_ATTRIBUTES.NO_JOBS_MESSAGE;
-            noJobsMessage.style.color = "#ff5c5c";
-            noJobsMessage.style.fontWeight = "500";
-            noJobsMessage.style.margin = "15px 0";
-            noJobsMessage.style.display = "none";
-            noJobsMessage.textContent = "Du hast derzeit keine aktiven Jobs, auf die du diesen Creator einladen kannst.";
-            
-            // Nach dem Select-Feld einfügen
-            if (jobSelect) {
-                jobSelect.parentNode.insertBefore(noJobsMessage, jobSelect.nextSibling);
-            }
-        }
-
         if (!modal || !modalTitle || !jobSelect) {
             console.error("❌ Modal-Elemente fehlen");
             return;
@@ -296,9 +280,9 @@
 
         // Prüfen, ob aktive Jobs vorhanden sind
         if (cachedJobs.length === 0) {
-            // Keine Jobs vorhanden - zeige Meldung und verstecke relevante Elemente
-            jobSelect.style.display = "none";
-            noJobsMessage.style.display = "block";
+            // Keine Jobs vorhanden - zeige Empty State und verstecke relevante Elemente
+            if (jobSelect) jobSelect.style.display = "none";
+            if (emptyState) emptyState.style.display = "block";
             
             // Submit-Button deaktivieren
             if (submitButton) {
@@ -307,11 +291,11 @@
                 submitButton.style.cursor = "not-allowed";
             }
             
-            logDebug("Keine aktiven Jobs gefunden, zeige Hinweis an");
+            logDebug("Keine aktiven Jobs gefunden, zeige Empty State an");
         } else {
             // Jobs vorhanden - normale Anzeige
-            jobSelect.style.display = "block";
-            noJobsMessage.style.display = "none";
+            if (jobSelect) jobSelect.style.display = "block";
+            if (emptyState) emptyState.style.display = "none";
             
             // Submit-Button aktivieren
             if (submitButton) {
