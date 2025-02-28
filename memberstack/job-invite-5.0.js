@@ -195,8 +195,9 @@
         const modalTitle = modal?.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
         const jobDropdown = document.querySelector(`.db-invite-job-dropdown`);
         const jobDropdownList = jobDropdown?.querySelector(`.db-invite-job-dropdown-list`);
+        const dropdownToggle = jobDropdown?.querySelector(".db-invite-job-dropdown-toggle");
 
-        if (!modal || !modalTitle || !jobDropdown || !jobDropdownList) {
+        if (!modal || !modalTitle || !jobDropdown || !jobDropdownList || !dropdownToggle) {
             console.error("❌ Modal-Elemente fehlen");
             return;
         }
@@ -208,10 +209,7 @@
         selectedJob = null;
         
         // Aktualisiere Dropdown Toggle Text
-        const dropdownToggle = jobDropdown.querySelector(".db-invite-job-dropdown-toggle");
-        if (dropdownToggle) {
-            dropdownToggle.textContent = "-- Job auswählen --";
-        }
+        dropdownToggle.textContent = "-- Job auswählen --";
 
         // Dropdown-Liste mit gekürzten Namen aktualisieren
         jobDropdownList.innerHTML = "";
@@ -250,9 +248,7 @@
                 selectedJob = job;
                 
                 // Dropdown-Toggle aktualisieren
-                if (dropdownToggle) {
-                    dropdownToggle.textContent = truncateText(job.name, 40);
-                }
+                dropdownToggle.textContent = truncateText(job.name, 40);
                 
                 // Optional: Dropdown nach Auswahl schließen
                 jobDropdownList.style.display = "none";
@@ -262,13 +258,10 @@
         });
         
         // Klick-Handler für Toggle (Dropdown öffnen/schließen)
-        const dropdownToggle = jobDropdown.querySelector(".db-invite-job-dropdown-toggle");
-        if (dropdownToggle) {
-            dropdownToggle.addEventListener("click", (e) => {
-                e.preventDefault();
-                jobDropdownList.style.display = jobDropdownList.style.display === "block" ? "none" : "block";
-            });
-        }
+        dropdownToggle.addEventListener("click", (e) => {
+            e.preventDefault();
+            jobDropdownList.style.display = jobDropdownList.style.display === "block" ? "none" : "block";
+        });
         
         // Klick außerhalb des Dropdowns schließt es
         document.addEventListener("click", (e) => {
@@ -344,38 +337,12 @@
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_SUBMIT}]`)?.addEventListener("click", sendInvite);
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_CLOSE}]`)?.addEventListener("click", closeModal);
         
-        // Füge CSS für Animationen hinzu
+        // Füge CSS nur für Animationen der Loading-Elemente hinzu
         const styleEl = document.createElement('style');
         styleEl.textContent = `
             #loading-animation-wrapper,
             #loading-animation-success {
                 transition: opacity 0.3s ease;
-            }
-            
-            .db-invite-job-dropdown-list {
-                max-height: 250px;
-                overflow-y: auto;
-            }
-            
-            .db-invite-job-dropdown-list-item {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                cursor: pointer;
-                padding: 8px 12px;
-                transition: background-color 0.2s ease;
-            }
-            
-            .db-invite-job-dropdown-list-item:hover {
-                background-color: rgba(0, 0, 0, 0.05);
-            }
-            
-            .db-invite-job-dropdown-list-name {
-                flex: 1;
-            }
-            
-            .job-checkmark {
-                flex-shrink: 0;
             }
         `;
         document.head.appendChild(styleEl);
