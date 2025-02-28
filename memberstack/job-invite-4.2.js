@@ -22,6 +22,10 @@
             MEMBERSTACK_ID: "data-memberstack-id",
             LOADER: "invite-loader",
             STATUS_MESSAGE: "invite-status-message"
+        },
+        ANIMATIONS: {
+            FADE_DURATION: 300,
+            MESSAGE_DURATION: 7000
         }
     };
 
@@ -42,35 +46,86 @@
             modal.style.transform = "scale(0.95)";
             setTimeout(() => {
                 modal.style.display = "none";
-            }, 300);
+            }, CONFIG.ANIMATIONS.FADE_DURATION);
         }
     }
 
     function showLoader() {
         const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
+        const statusMessage = document.getElementById(CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE);
+        
         if (loader) {
-            loader.style.display = "block";
+            // Erst Status ausblenden (falls vorhanden)
+            if (statusMessage) {
+                statusMessage.style.opacity = "0";
+                setTimeout(() => {
+                    statusMessage.style.display = "none";
+                    
+                    // Dann Loader einblenden
+                    loader.style.display = "flex";
+                    loader.style.opacity = "0";
+                    setTimeout(() => {
+                        loader.style.opacity = "1";
+                    }, 10);
+                }, CONFIG.ANIMATIONS.FADE_DURATION);
+            } else {
+                // Direkt Loader einblenden
+                loader.style.display = "flex";
+                loader.style.opacity = "0";
+                setTimeout(() => {
+                    loader.style.opacity = "1";
+                }, 10);
+            }
         }
     }
 
     function hideLoader() {
         const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
         if (loader) {
-            loader.style.display = "none";
+            loader.style.opacity = "0";
+            setTimeout(() => {
+                loader.style.display = "none";
+            }, CONFIG.ANIMATIONS.FADE_DURATION);
         }
     }
 
     function updateStatusMessage(message, autoHide = false) {
         const statusMessage = document.getElementById(CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE);
+        const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
+        
         if (statusMessage) {
             statusMessage.textContent = message;
-            statusMessage.style.display = "block";
+            
+            // Erst Loader ausblenden falls vorhanden
+            if (loader && loader.style.display !== "none") {
+                loader.style.opacity = "0";
+                setTimeout(() => {
+                    loader.style.display = "none";
+                    
+                    // Dann Status einblenden
+                    statusMessage.style.display = "block";
+                    statusMessage.style.opacity = "0";
+                    setTimeout(() => {
+                        statusMessage.style.opacity = "1";
+                    }, 10);
+                }, CONFIG.ANIMATIONS.FADE_DURATION);
+            } else {
+                // Direkt Status einblenden
+                statusMessage.style.display = "block";
+                statusMessage.style.opacity = "0";
+                setTimeout(() => {
+                    statusMessage.style.opacity = "1";
+                }, 10);
+            }
 
             if (autoHide) {
                 clearTimeout(successTimeout);
                 successTimeout = setTimeout(() => {
-                    statusMessage.style.display = "none";
-                }, 7000);
+                    statusMessage.style.opacity = "0";
+                    setTimeout(() => {
+                        statusMessage.style.display = "none";
+                    }, CONFIG.ANIMATIONS.FADE_DURATION);
+                }, CONFIG.ANIMATIONS.MESSAGE_DURATION);
             }
         }
     }
@@ -135,13 +190,28 @@
         jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
             cachedJobs.map(job => `<option value="${job.slug}">${job.name}</option>`).join("");
 
+        // Loader und Status Message zurücksetzen
+        const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
+        const statusMessage = document.getElementById(CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE);
+        
+        if (loader) {
+            loader.style.display = "none";
+            loader.style.opacity = "0";
+        }
+        
+        if (statusMessage) {
+            statusMessage.style.display = "none";
+            statusMessage.style.opacity = "0";
+            statusMessage.textContent = "";
+        }
+
         modal.style.display = "flex";
         modal.style.opacity = "0";
         modal.style.transform = "scale(0.95)";
         setTimeout(() => {
             modal.style.opacity = "1";
             modal.style.transform = "scale(1)";
-            modal.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+            modal.style.transition = `opacity ${CONFIG.ANIMATIONS.FADE_DURATION}ms ease, transform ${CONFIG.ANIMATIONS.FADE_DURATION}ms ease`;
         }, 10);
         logDebug("Modal sichtbar gemacht");
     }
@@ -156,9 +226,10 @@
         setTimeout(async () => {
             const userProfile = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE);
             const jobSelect = document.getElementById(CONFIG.DATA_ATTRIBUTES.JOB_SELECT);
-            const selectedJobId = jobSelect.value;
+            const selectedJobSlug = jobSelect.value;
+            const selectedJobName = jobSelect.options[jobSelect.selectedIndex].text;
 
-            if (!selectedJobId) {
+            if (!selectedJobSlug) {
                 updateStatusMessage("Bitte wähle einen Job aus.");
                 hideLoader();
                 inviteInProgress = false;
@@ -169,7 +240,8 @@
                 userName: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME),
                 userEmail: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_EMAIL),
                 memberstackId: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.MEMBERSTACK_ID),
-                jobId: selectedJobId
+                jobId: selectedJobSlug,
+                jobName: selectedJobName
             };
 
             logDebug("📤 Sende Einladung mit folgenden Daten:", userData);
@@ -177,7 +249,9 @@
             try {
                 const response = await fetch(CONFIG.WEBHOOK_URL, {
                     method: "POST",
-                    headers: {},
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
                     body: JSON.stringify(userData)
                 });
 
@@ -194,7 +268,55 @@
         }, 3000);
     }
 
+    // Hinzufügen von CSS für Loader und Statusmeldung
+    function addStyles() {
+        const styleEl = document.createElement('style');
+        styleEl.textContent = `
+            #${CONFIG.DATA_ATTRIBUTES.LOADER} {
+                display: none;
+                align-items: center;
+                justify-content: flex-start;
+                opacity: 0;
+                transition: opacity ${CONFIG.ANIMATIONS.FADE_DURATION}ms ease;
+                margin: 10px 0;
+            }
+            
+            #${CONFIG.DATA_ATTRIBUTES.LOADER} .dot {
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background-color: #4CAF50;
+                margin-right: 5px;
+            }
+            
+            #${CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE} {
+                display: none;
+                opacity: 0;
+                transition: opacity ${CONFIG.ANIMATIONS.FADE_DURATION}ms ease;
+                margin: 10px 0;
+                color: #333;
+                font-weight: 500;
+            }
+        `;
+        document.head.appendChild(styleEl);
+    }
+
+    // Erstellen des Loaders im DOM
+    function createLoaderElement() {
+        const loaderContainer = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
+        if (loaderContainer) {
+            loaderContainer.innerHTML = `
+                <span class="dot"></span>
+                <span>Processing...</span>
+            `;
+            loaderContainer.style.display = "none";
+        }
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
+        addStyles();
+        createLoaderElement();
         preloadUserJobs();
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", renderInviteModal);
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_SUBMIT}]`)?.addEventListener("click", sendInvite);
