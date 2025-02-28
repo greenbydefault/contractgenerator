@@ -206,11 +206,8 @@
             return;
         }
 
-        // Modal Title setzen nur mit dem Datenattribut
-        const userName = document.querySelector('[data-user-name]')?.getAttribute('data-user-name');
-        if (userName) {
-            modalTitle.textContent = userName;
-        }
+        // Modal Title setzen
+        modalTitle.textContent = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE).getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME);
 
         // Job-Auswahlfeld mit gekürzten Namen aktualisieren
         jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
@@ -238,10 +235,7 @@
     async function sendInvite() {
         showLoader();
 
-        // Sammle nur Name und Email direkt von den Elementen mit den entsprechenden Attributen
-        const userName = document.querySelector('[data-user-name]')?.getAttribute('data-user-name');
-        const userEmail = document.querySelector('[data-user-email]')?.getAttribute('data-user-email');
-
+        const userProfile = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE);
         const jobSelect = document.getElementById(CONFIG.DATA_ATTRIBUTES.JOB_SELECT);
         const selectedJobSlug = jobSelect.value;
         const selectedJobName = jobSelect.options[jobSelect.selectedIndex]?.text || "";
@@ -252,17 +246,12 @@
             return;
         }
 
-        if (!userName || !userEmail) {
-            hideLoader();
-            alert("Benutzerdaten konnten nicht gefunden werden.");
-            return;
-        }
-
         const userData = {
-            userName: userName,
-            userEmail: userEmail,
+            userName: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_NAME),
+            userEmail: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.USER_EMAIL),
+            memberstackId: userProfile.getAttribute(CONFIG.DATA_ATTRIBUTES.MEMBERSTACK_ID),
             jobId: selectedJobSlug,
-            jobName: selectedJobName
+            jobName: selectedJobName // Job-Name hinzugefügt
         };
 
         logDebug("📤 Sende Einladung mit folgenden Daten:", userData);
