@@ -251,79 +251,59 @@
                 // Dropdown-Toggle aktualisieren
                 dropdownToggle.textContent = truncateText(job.name, 40);
                 
-                // Dropdown nach Auswahl schließen mit Animation
-                if (modalContent) {
-                    // Sichern der ursprünglichen Höhe des Modal-Content vor dem Schließen
-                    const currentHeight = modalContent.offsetHeight;
-                    
-                    // Dropdown schließen und Modal-Content animieren
-                    jobDropdownList.style.display = "none";
-                    
-                    // Modal-Größe animieren
-                    modalContent.style.height = currentHeight + "px";
-                    modalContent.style.transition = "height 0.3s ease";
-                    
-                    setTimeout(() => {
-                        // Nach dem Schließen die natürliche Höhe wiederherstellen
-                        modalContent.style.height = "auto";
-                    }, 300);
-                } else {
-                    // Falls kein Modal-Content, einfach nur Dropdown schließen
-                    jobDropdownList.style.display = "none";
-                }
+                // Dropdown nach Auswahl schließen
+                jobDropdownList.style.display = "none";
             });
             
             jobDropdownList.appendChild(listItem);
         });
+        
+        // Berechne die Gesamthöhe des Dropdowns basierend auf der Anzahl der Jobs
+        // Da jedes Item 3.25em hoch ist
+        const itemHeight = 3.25; // in em
+        const dropdownHeight = Math.min(cachedJobs.length, 5) * itemHeight; // Maximal 5 Items zeigen
         
         // Klick-Handler für Toggle (Dropdown öffnen/schließen)
         dropdownToggle.addEventListener("click", (e) => {
             e.preventDefault();
             
             if (modalContent) {
-                // Aktuelle Höhe sichern
-                const startHeight = modalContent.offsetHeight;
-                
-                // Dropdown-Status umschalten
                 const isVisible = jobDropdownList.style.display === "block";
                 
                 if (isVisible) {
                     // Dropdown wird geschlossen
-                    // Sichern der Höhe vor dem Schließen
-                    modalContent.style.height = startHeight + "px";
-                    
-                    // Dropdown schließen
                     jobDropdownList.style.display = "none";
                     
-                    // Modal-Content animieren
-                    setTimeout(() => {
+                    if (modalContent.style.height) {
                         modalContent.style.transition = "height 0.3s ease";
-                        modalContent.style.height = (startHeight - jobDropdownList.scrollHeight) + "px";
+                        modalContent.style.height = `${parseFloat(modalContent.style.height) - dropdownHeight}em`;
                         
                         setTimeout(() => {
-                            modalContent.style.height = "auto";
+                            modalContent.style.height = "";
                             modalContent.style.transition = "";
                         }, 300);
-                    }, 10);
+                    }
                 } else {
                     // Dropdown wird geöffnet
-                    // Dropdown anzeigen
                     jobDropdownList.style.display = "block";
                     
-                    // Modal-Content animieren
+                    // Aktuelle Höhe in em berechnen (16px = 1em als Standardwert)
+                    const currentHeightInPx = modalContent.offsetHeight;
+                    const baseFontSize = parseFloat(window.getComputedStyle(document.documentElement).fontSize);
+                    const currentHeightInEm = currentHeightInPx / baseFontSize;
+                    
+                    modalContent.style.transition = "height 0.3s ease";
+                    modalContent.style.height = `${currentHeightInEm}em`;
+                    
+                    // Nach einem kleinen Delay die neue Höhe setzen
                     setTimeout(() => {
-                        const endHeight = startHeight + jobDropdownList.scrollHeight;
-                        modalContent.style.height = startHeight + "px";
-                        modalContent.style.transition = "height 0.3s ease";
+                        modalContent.style.height = `${currentHeightInEm + dropdownHeight}em`;
                         
+                        // Nach der Animation die Höhe wieder auf auto setzen
                         setTimeout(() => {
-                            modalContent.style.height = endHeight + "px";
-                            
-                            setTimeout(() => {
-                                modalContent.style.height = "auto";
-                                modalContent.style.transition = "";
-                            }, 300);
-                        }, 10);
+                            modalContent.style.height = "";
+                            modalContent.style.transition = "";
+                        }, 300);
                     }, 10);
                 }
             } else {
@@ -335,28 +315,16 @@
         // Klick außerhalb des Dropdowns schließt es
         document.addEventListener("click", (e) => {
             if (!jobDropdown.contains(e.target) && jobDropdownList.style.display === "block") {
-                if (modalContent) {
-                    // Aktuelle Höhe sichern
-                    const startHeight = modalContent.offsetHeight;
-                    
-                    // Modal-Content animieren
-                    modalContent.style.height = startHeight + "px";
+                jobDropdownList.style.display = "none";
+                
+                if (modalContent && modalContent.style.height) {
                     modalContent.style.transition = "height 0.3s ease";
-                    
-                    // Dropdown schließen
-                    jobDropdownList.style.display = "none";
+                    modalContent.style.height = `${parseFloat(modalContent.style.height) - dropdownHeight}em`;
                     
                     setTimeout(() => {
-                        modalContent.style.height = (startHeight - jobDropdownList.scrollHeight) + "px";
-                        
-                        setTimeout(() => {
-                            modalContent.style.height = "auto";
-                            modalContent.style.transition = "";
-                        }, 300);
-                    }, 10);
-                } else {
-                    // Fallback
-                    jobDropdownList.style.display = "none";
+                        modalContent.style.height = "";
+                        modalContent.style.transition = "";
+                    }, 300);
                 }
             }
         });
