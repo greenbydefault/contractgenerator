@@ -1,8 +1,4 @@
-// Hilfsfunktion zum Kürzen von langen Texten
-    function truncateText(text, maxLength = 40) {
-        if (!text) return "";
-        return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
-    }(function() {
+(function() {
     "use strict";
 
     // 🔧 Konfiguration
@@ -25,7 +21,8 @@
             USER_EMAIL: "data-user-email",
             MEMBERSTACK_ID: "data-memberstack-id",
             LOADER: "invite-loader",
-            STATUS_MESSAGE: "invite-status-message"
+            STATUS_MESSAGE: "invite-status-message",
+            NO_JOBS_MESSAGE: "no-jobs-message"
         }
     };
 
@@ -264,6 +261,24 @@
         const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
         const modalTitle = modal?.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
         const jobSelect = modal?.querySelector(`#${CONFIG.DATA_ATTRIBUTES.JOB_SELECT}`);
+        const submitButton = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_SUBMIT}]`);
+        
+        // Element für "Keine Jobs"-Meldung suchen oder erstellen
+        let noJobsMessage = document.getElementById(CONFIG.DATA_ATTRIBUTES.NO_JOBS_MESSAGE);
+        if (!noJobsMessage) {
+            noJobsMessage = document.createElement('div');
+            noJobsMessage.id = CONFIG.DATA_ATTRIBUTES.NO_JOBS_MESSAGE;
+            noJobsMessage.style.color = "#ff5c5c";
+            noJobsMessage.style.fontWeight = "500";
+            noJobsMessage.style.margin = "15px 0";
+            noJobsMessage.style.display = "none";
+            noJobsMessage.textContent = "Du hast derzeit keine aktiven Jobs, auf die du diesen Creator einladen kannst.";
+            
+            // Nach dem Select-Feld einfügen
+            if (jobSelect) {
+                jobSelect.parentNode.insertBefore(noJobsMessage, jobSelect.nextSibling);
+            }
+        }
 
         if (!modal || !modalTitle || !jobSelect) {
             console.error("❌ Modal-Elemente fehlen");
@@ -279,9 +294,36 @@
             logDebug("Kein Benutzername gefunden, verwende Standardwert");
         }
 
-        // Job-Auswahlfeld mit gekürzten Namen aktualisieren
-        jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
-            cachedJobs.map(job => `<option value="${job.slug}" title="${job.name}">${truncateText(job.name, 40)}</option>`).join("");
+        // Prüfen, ob aktive Jobs vorhanden sind
+        if (cachedJobs.length === 0) {
+            // Keine Jobs vorhanden - zeige Meldung und verstecke relevante Elemente
+            jobSelect.style.display = "none";
+            noJobsMessage.style.display = "block";
+            
+            // Submit-Button deaktivieren
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.style.opacity = "0.5";
+                submitButton.style.cursor = "not-allowed";
+            }
+            
+            logDebug("Keine aktiven Jobs gefunden, zeige Hinweis an");
+        } else {
+            // Jobs vorhanden - normale Anzeige
+            jobSelect.style.display = "block";
+            noJobsMessage.style.display = "none";
+            
+            // Submit-Button aktivieren
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.style.opacity = "1";
+                submitButton.style.cursor = "pointer";
+            }
+            
+            // Job-Auswahlfeld mit gekürzten Namen aktualisieren
+            jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
+                cachedJobs.map(job => `<option value="${job.slug}" title="${job.name}">${truncateText(job.name, 40)}</option>`).join("");
+        }
 
         // Verstecke vorhandene Loading-Elemente
         hideLoader();
@@ -359,9 +401,6 @@
             }, 4000);
         }
     }
-
-    // Erstellen des Loaders im DOM ist nicht mehr nötig,
-    // da wir bestehende HTML-Elemente verwenden
     
     window.addEventListener("DOMContentLoaded", () => {
         preloadUserJobs();
