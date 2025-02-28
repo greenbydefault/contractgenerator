@@ -249,9 +249,7 @@
             try {
                 const response = await fetch(CONFIG.WEBHOOK_URL, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: {},  // Keine Content-Type Header
                     body: JSON.stringify(userData)
                 });
 
@@ -287,7 +285,7 @@
                 height: 8px;
                 border-radius: 50%;
                 background-color: #4CAF50;
-                margin-right: 5px;
+                margin-right: 10px;
             }
             
             #${CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE} {
@@ -308,7 +306,7 @@
         if (loaderContainer) {
             loaderContainer.innerHTML = `
                 <span class="dot"></span>
-                <span>Processing...</span>
+                <span>Deine Einladung wird verarbeitet</span>
             `;
             loaderContainer.style.display = "none";
         }
