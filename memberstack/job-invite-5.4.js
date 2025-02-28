@@ -257,6 +257,7 @@
         logDebug("📤 Sende Einladung mit folgenden Daten:", userData);
 
         try {
+            // Webhook-Anfrage senden
             const response = await fetch(CONFIG.WEBHOOK_URL, {
                 method: "POST",
                 headers: { }, // Leere Header wie im Original
@@ -265,12 +266,19 @@
 
             if (!response.ok) throw new Error(`Server-Antwort: ${response.status}`);
             
-            updateStatusMessage("Vielen Dank! Die Einladung wurde an den Creator gesendet.", true);
-            logDebug("Webhook-Anfrage erfolgreich gesendet", response);
+            // Loader noch für zusätzliche Zeit anzeigen (insgesamt 4 Sekunden)
+            setTimeout(() => {
+                updateStatusMessage("Vielen Dank! Die Einladung wurde an den Creator gesendet.", true);
+                logDebug("Webhook-Anfrage erfolgreich gesendet", response);
+            }, 4000);
         } catch (error) {
             console.error("❌ Fehler beim Senden der Einladung:", error);
-            hideLoader();
-            alert("Fehler beim Senden der Einladung. Bitte versuche es erneut.");
+            
+            // Auch bei Fehler den Loader für 4 Sekunden anzeigen
+            setTimeout(() => {
+                hideLoader();
+                alert("Fehler beim Senden der Einladung. Bitte versuche es erneut.");
+            }, 4000);
         }
     }
 
