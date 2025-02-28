@@ -108,7 +108,14 @@
         }
     }
 
-    function renderInviteModal() {
+    async function renderInviteModal() {
+        // Stellen wir sicher, dass die Jobs geladen sind
+        if (cachedJobs.length === 0) {
+            // Wenn keine Jobs im Cache, versuchen wir sie erneut zu laden
+            logDebug("Keine Jobs im Cache, lade sie erneut...");
+            await preloadUserJobs();
+        }
+        
         logDebug("Rendering modal with jobs", cachedJobs);
         const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
         const modalTitle = modal?.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
@@ -140,7 +147,7 @@
             modal.style.transform = "scale(1)";
             modal.style.transition = "opacity 0.3s ease, transform 0.3s ease";
         }, 10);
-        logDebug("Modal sichtbar gemacht");
+        logDebug("Modal sichtbar gemacht", cachedJobs.length);
     }
 
     async function sendInvite() {
