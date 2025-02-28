@@ -45,24 +45,43 @@
     }
 
     function showLoader() {
-        const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
-        if (loader) {
-            loader.style.display = "flex";
+        const loaderWrapper = document.getElementById("loading-animation-wrapper");
+        const successMessage = document.getElementById("loading-animation-success");
+        
+        if (successMessage) {
+            successMessage.style.display = "none";
+        }
+        
+        if (loaderWrapper) {
+            loaderWrapper.style.display = "flex";
         }
     }
 
     function hideLoader() {
-        const loader = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
-        if (loader) {
-            loader.style.display = "none";
+        const loaderWrapper = document.getElementById("loading-animation-wrapper");
+        if (loaderWrapper) {
+            loaderWrapper.style.display = "none";
         }
     }
 
-    function updateStatusMessage(message) {
-        const statusMessage = document.getElementById(CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE);
-        if (statusMessage) {
-            statusMessage.textContent = message;
-            statusMessage.style.display = "block";
+    function updateStatusMessage(message, autoHide = false) {
+        const successMessage = document.getElementById("loading-animation-success");
+        const loaderWrapper = document.getElementById("loading-animation-wrapper");
+        
+        if (successMessage) {
+            // Erst Loader ausblenden, dann Erfolgsmeldung einblenden
+            if (loaderWrapper) {
+                loaderWrapper.style.display = "none";
+            }
+            
+            // Erfolgsmeldung anzeigen
+            successMessage.style.display = "block";
+            
+            if (autoHide) {
+                setTimeout(() => {
+                    successMessage.style.display = "none";
+                }, 7000);
+            }
         }
     }
 
@@ -108,14 +127,22 @@
         }
     }
 
-    async function renderInviteModal() {
+    function renderInviteModal() {
         // Stellen wir sicher, dass die Jobs geladen sind
         if (cachedJobs.length === 0) {
             // Wenn keine Jobs im Cache, versuchen wir sie erneut zu laden
             logDebug("Keine Jobs im Cache, lade sie erneut...");
-            await preloadUserJobs();
+            preloadUserJobs().then(() => {
+                // Erst nach dem Laden die Modal anzeigen
+                showInviteModalWithJobs();
+            });
+        } else {
+            // Direkt Modal anzeigen, wenn Jobs bereits geladen sind
+            showInviteModalWithJobs();
         }
-        
+    }
+    
+    function showInviteModalWithJobs() {
         logDebug("Rendering modal with jobs", cachedJobs);
         const modal = document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL}]`);
         const modalTitle = modal?.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_TITLE}]`);
@@ -133,10 +160,11 @@
         jobSelect.innerHTML = `<option value="">-- Job auswählen --</option>` + 
             cachedJobs.map(job => `<option value="${job.slug}">${job.name}</option>`).join("");
 
-        // Status zurücksetzen
-        const statusMessage = document.getElementById(CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE);
-        if (statusMessage) {
-            statusMessage.style.display = "none";
+        // Verstecke vorhandene Loading-Elemente
+        hideLoader();
+        const successMessage = document.getElementById("loading-animation-success");
+        if (successMessage) {
+            successMessage.style.display = "none";
         }
 
         modal.style.display = "flex";
@@ -152,7 +180,6 @@
 
     async function sendInvite() {
         showLoader();
-        updateStatusMessage("Einladung wird gesendet...");
 
         const userProfile = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE);
         const jobSelect = document.getElementById(CONFIG.DATA_ATTRIBUTES.JOB_SELECT);
@@ -160,8 +187,8 @@
         const selectedJobName = jobSelect.options[jobSelect.selectedIndex]?.text || "";
 
         if (!selectedJobSlug) {
-            updateStatusMessage("Bitte wähle einen Job aus.");
             hideLoader();
+            alert("Bitte wähle einen Job aus.");
             return;
         }
 
@@ -184,78 +211,34 @@
 
             if (!response.ok) throw new Error(`Server-Antwort: ${response.status}`);
             
-            updateStatusMessage("Vielen Dank! Die Einladung wurde an den Creator gesendet.");
+            updateStatusMessage("Vielen Dank! Die Einladung wurde an den Creator gesendet.", true);
             logDebug("Webhook-Anfrage erfolgreich gesendet", response);
         } catch (error) {
             console.error("❌ Fehler beim Senden der Einladung:", error);
-            updateStatusMessage("Fehler beim Senden der Einladung. Bitte versuche es erneut.");
-        }
-
-        hideLoader();
-    }
-
-    // Hinzufügen von CSS für Loader und Statusmeldung
-    function addStyles() {
-        const styleEl = document.createElement('style');
-        styleEl.textContent = `
-            #${CONFIG.DATA_ATTRIBUTES.LOADER} {
-                display: none;
-                align-items: center;
-                margin: 10px 0;
-            }
-            
-            #${CONFIG.DATA_ATTRIBUTES.LOADER} .dot {
-                display: inline-block;
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background-color: #4CAF50;
-                margin-right: 10px;
-            }
-            
-            #${CONFIG.DATA_ATTRIBUTES.LOADER} .loading-text {
-                display: inline-block;
-                font-size: 14px;
-                color: #333;
-            }
-            
-            #${CONFIG.DATA_ATTRIBUTES.STATUS_MESSAGE} {
-                display: none;
-                margin: 10px 0;
-                color: #333;
-                font-weight: 500;
-            }
-        `;
-        document.head.appendChild(styleEl);
-    }
-
-    // Erstellen des Loaders im DOM
-    function createLoaderElement() {
-        const loaderContainer = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
-        if (loaderContainer) {
-            // Hier müssen wir das HTML komplett neu aufbauen
-            loaderContainer.innerHTML = '';
-            loaderContainer.style.display = 'none';
-            
-            // Eine separate Span für den Punkt erstellen
-            const dotSpan = document.createElement('span');
-            dotSpan.className = 'dot';
-            loaderContainer.appendChild(dotSpan);
-            
-            // Eine separate Span für den Text erstellen
-            const textSpan = document.createElement('span');
-            textSpan.className = 'loading-text';
-            textSpan.textContent = 'Deine Einladung wird verarbeitet';
-            loaderContainer.appendChild(textSpan);
+            hideLoader();
+            alert("Fehler beim Senden der Einladung. Bitte versuche es erneut.");
         }
     }
 
+    // Erstellen des Loaders im DOM ist nicht mehr nötig,
+    // da wir bestehende HTML-Elemente verwenden
+    
     window.addEventListener("DOMContentLoaded", () => {
-        addStyles();
-        createLoaderElement();
         preloadUserJobs();
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_BUTTON}]`)?.addEventListener("click", renderInviteModal);
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.INVITE_SUBMIT}]`)?.addEventListener("click", sendInvite);
         document.querySelector(`[${CONFIG.DATA_ATTRIBUTES.MODAL_CLOSE}]`)?.addEventListener("click", closeModal);
+        
+        // Verstecke Loading-Elemente beim Start
+        const loaderWrapper = document.getElementById("loading-animation-wrapper");
+        const successMessage = document.getElementById("loading-animation-success");
+        
+        if (loaderWrapper) {
+            loaderWrapper.style.display = "none";
+        }
+        
+        if (successMessage) {
+            successMessage.style.display = "none";
+        }
     });
 })();
