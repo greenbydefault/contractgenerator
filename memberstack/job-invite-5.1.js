@@ -196,6 +196,7 @@
         const jobDropdown = document.querySelector(`.db-invite-job-dropdown`);
         const jobDropdownList = jobDropdown?.querySelector(`.db-invite-job-dropdown-list`);
         const dropdownToggle = jobDropdown?.querySelector(".db-invite-job-dropdown-toggle");
+        const modalContent = document.querySelector(".db-invite-job-modal");
 
         if (!modal || !modalTitle || !jobDropdown || !jobDropdownList || !dropdownToggle) {
             console.error("❌ Modal-Elemente fehlen");
@@ -250,8 +251,26 @@
                 // Dropdown-Toggle aktualisieren
                 dropdownToggle.textContent = truncateText(job.name, 40);
                 
-                // Optional: Dropdown nach Auswahl schließen
-                jobDropdownList.style.display = "none";
+                // Dropdown nach Auswahl schließen mit Animation
+                if (modalContent) {
+                    // Sichern der ursprünglichen Höhe des Modal-Content vor dem Schließen
+                    const currentHeight = modalContent.offsetHeight;
+                    
+                    // Dropdown schließen und Modal-Content animieren
+                    jobDropdownList.style.display = "none";
+                    
+                    // Modal-Größe animieren
+                    modalContent.style.height = currentHeight + "px";
+                    modalContent.style.transition = "height 0.3s ease";
+                    
+                    setTimeout(() => {
+                        // Nach dem Schließen die natürliche Höhe wiederherstellen
+                        modalContent.style.height = "auto";
+                    }, 300);
+                } else {
+                    // Falls kein Modal-Content, einfach nur Dropdown schließen
+                    jobDropdownList.style.display = "none";
+                }
             });
             
             jobDropdownList.appendChild(listItem);
@@ -260,13 +279,85 @@
         // Klick-Handler für Toggle (Dropdown öffnen/schließen)
         dropdownToggle.addEventListener("click", (e) => {
             e.preventDefault();
-            jobDropdownList.style.display = jobDropdownList.style.display === "block" ? "none" : "block";
+            
+            if (modalContent) {
+                // Aktuelle Höhe sichern
+                const startHeight = modalContent.offsetHeight;
+                
+                // Dropdown-Status umschalten
+                const isVisible = jobDropdownList.style.display === "block";
+                
+                if (isVisible) {
+                    // Dropdown wird geschlossen
+                    // Sichern der Höhe vor dem Schließen
+                    modalContent.style.height = startHeight + "px";
+                    
+                    // Dropdown schließen
+                    jobDropdownList.style.display = "none";
+                    
+                    // Modal-Content animieren
+                    setTimeout(() => {
+                        modalContent.style.transition = "height 0.3s ease";
+                        modalContent.style.height = (startHeight - jobDropdownList.scrollHeight) + "px";
+                        
+                        setTimeout(() => {
+                            modalContent.style.height = "auto";
+                            modalContent.style.transition = "";
+                        }, 300);
+                    }, 10);
+                } else {
+                    // Dropdown wird geöffnet
+                    // Dropdown anzeigen
+                    jobDropdownList.style.display = "block";
+                    
+                    // Modal-Content animieren
+                    setTimeout(() => {
+                        const endHeight = startHeight + jobDropdownList.scrollHeight;
+                        modalContent.style.height = startHeight + "px";
+                        modalContent.style.transition = "height 0.3s ease";
+                        
+                        setTimeout(() => {
+                            modalContent.style.height = endHeight + "px";
+                            
+                            setTimeout(() => {
+                                modalContent.style.height = "auto";
+                                modalContent.style.transition = "";
+                            }, 300);
+                        }, 10);
+                    }, 10);
+                }
+            } else {
+                // Fallback, wenn kein modalContent gefunden wurde
+                jobDropdownList.style.display = jobDropdownList.style.display === "block" ? "none" : "block";
+            }
         });
         
         // Klick außerhalb des Dropdowns schließt es
         document.addEventListener("click", (e) => {
-            if (!jobDropdown.contains(e.target)) {
-                jobDropdownList.style.display = "none";
+            if (!jobDropdown.contains(e.target) && jobDropdownList.style.display === "block") {
+                if (modalContent) {
+                    // Aktuelle Höhe sichern
+                    const startHeight = modalContent.offsetHeight;
+                    
+                    // Modal-Content animieren
+                    modalContent.style.height = startHeight + "px";
+                    modalContent.style.transition = "height 0.3s ease";
+                    
+                    // Dropdown schließen
+                    jobDropdownList.style.display = "none";
+                    
+                    setTimeout(() => {
+                        modalContent.style.height = (startHeight - jobDropdownList.scrollHeight) + "px";
+                        
+                        setTimeout(() => {
+                            modalContent.style.height = "auto";
+                            modalContent.style.transition = "";
+                        }, 300);
+                    }, 10);
+                } else {
+                    // Fallback
+                    jobDropdownList.style.display = "none";
+                }
             }
         });
 
