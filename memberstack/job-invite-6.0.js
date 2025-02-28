@@ -8,7 +8,7 @@
         USER_COLLECTION_ID: "6448faf9c5a8a15f6cc05526",
         JOB_COLLECTION_ID: "6448faf9c5a8a17455c05525",
         WEBHOOK_URL: "https://hooks.zapier.com/hooks/catch/10061116/23n4ylm/",
-        DEBUG: true,
+        DEBUG: false,
         DATA_ATTRIBUTES: {
             MODAL: "data-modal",
             MODAL_TITLE: "data-modal-title",
