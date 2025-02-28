@@ -157,7 +157,7 @@
         const userProfile = document.getElementById(CONFIG.DATA_ATTRIBUTES.CREATOR_PROFILE);
         const jobSelect = document.getElementById(CONFIG.DATA_ATTRIBUTES.JOB_SELECT);
         const selectedJobSlug = jobSelect.value;
-        const selectedJobName = jobSelect.options[jobSelect.selectedIndex].text;
+        const selectedJobName = jobSelect.options[jobSelect.selectedIndex]?.text || "";
 
         if (!selectedJobSlug) {
             updateStatusMessage("Bitte wähle einen Job aus.");
@@ -185,6 +185,7 @@
             if (!response.ok) throw new Error(`Server-Antwort: ${response.status}`);
             
             updateStatusMessage("Vielen Dank! Die Einladung wurde an den Creator gesendet.");
+            logDebug("Webhook-Anfrage erfolgreich gesendet", response);
         } catch (error) {
             console.error("❌ Fehler beim Senden der Einladung:", error);
             updateStatusMessage("Fehler beim Senden der Einladung. Bitte versuche es erneut.");
@@ -232,19 +233,20 @@
     function createLoaderElement() {
         const loaderContainer = document.getElementById(CONFIG.DATA_ATTRIBUTES.LOADER);
         if (loaderContainer) {
-            // Komplett neue Struktur erstellen
+            // Hier müssen wir das HTML komplett neu aufbauen
             loaderContainer.innerHTML = '';
+            loaderContainer.style.display = 'none';
             
-            // Punkt erstellen
-            const dot = document.createElement('span');
-            dot.className = 'dot';
-            loaderContainer.appendChild(dot);
+            // Eine separate Span für den Punkt erstellen
+            const dotSpan = document.createElement('span');
+            dotSpan.className = 'dot';
+            loaderContainer.appendChild(dotSpan);
             
-            // Text erstellen
-            const text = document.createElement('span');
-            text.className = 'loading-text';
-            text.textContent = 'Deine Einladung wird verarbeitet';
-            loaderContainer.appendChild(text);
+            // Eine separate Span für den Text erstellen
+            const textSpan = document.createElement('span');
+            textSpan.className = 'loading-text';
+            textSpan.textContent = 'Deine Einladung wird verarbeitet';
+            loaderContainer.appendChild(textSpan);
         }
     }
 
