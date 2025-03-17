@@ -19,15 +19,15 @@ async function createCMSItem(formData) {
     
     const payload = {
         fieldData: {
-            name: formData.name,
-            slug: formData.slug,
-            kategorie: formData.kategorie,
-            beschreibung: formData.beschreibung,
-            open_video: formData.openVideo,
-            video_contest: formData.videoContest,
-            webflow_member_id: formData.webflowMemberId,
-            memberstack_member_id: formData.memberstackMemberId,
-            member_name: formData.memberName,
+            name: formData.name || "Unbenanntes Video",
+            slug: formData.slug || "unbenanntes-video",
+            kategorie: formData.kategorie || "Keine Kategorie",
+            beschreibung: formData.beschreibung || "Keine Beschreibung",
+            open_video: formData.openVideo || false,
+            video_contest: formData.videoContest || false,
+            webflow_member_id: formData.webflowMemberId || "",
+            memberstack_member_id: formData.memberstackMemberId || "",
+            member_name: formData.memberName || "Unbekannter Nutzer",
         }
     };
 
@@ -40,7 +40,7 @@ async function createCMSItem(formData) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer YOUR_WEBFLOW_API_KEY"
+                "Authorization": "Bearer YOUR_WEBFLOW_API_KEY" // 🛑 Stelle sicher, dass der API-Token die Berechtigung 'cms:write' hat!
             },
             body: JSON.stringify(payload)
         });
@@ -72,34 +72,36 @@ document.addEventListener("DOMContentLoaded", () => {
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
         
-        function getValue(selector) {
+        function getValue(selector, defaultValue = "") {
             const element = form.querySelector(selector);
             if (!element) {
-                console.error(`⚠️ Feld '${selector}' nicht gefunden.`);
-                return "";
+                console.warn(`⚠️ Feld '${selector}' nicht gefunden. Setze Standardwert: '${defaultValue}'`);
+                return defaultValue;
             }
+            console.log(`🔍 Feld '${selector}' gefunden:`, element.value);
             return element.value;
         }
 
         function getChecked(selector) {
             const element = form.querySelector(selector);
             if (!element) {
-                console.error(`⚠️ Checkbox '${selector}' nicht gefunden.`);
+                console.warn(`⚠️ Checkbox '${selector}' nicht gefunden. Standard: false`);
                 return false;
             }
+            console.log(`🔍 Checkbox '${selector}' gefunden:`, element.checked);
             return element.checked;
         }
 
         const formData = {
-            name: getValue("input[name='Name']"),
-            slug: getValue("input[name='Name']").toLowerCase().replace(/\s+/g, "-"),
-            kategorie: getValue("input[name='Kategorie']"),
-            beschreibung: getValue("input[name='Beschreibung']"),
+            name: getValue("input[name='Name']", "Unbenanntes Video"),
+            slug: getValue("input[name='Name']", "Unbenanntes Video").toLowerCase().replace(/\s+/g, "-"),
+            kategorie: getValue("input[name='Kategorie']", "Keine Kategorie"),
+            beschreibung: getValue("input[name='Beschreibung']", "Keine Beschreibung"),
             openVideo: getChecked("input[name='open video']"),
             videoContest: getChecked("input[name='video contest']"),
-            webflowMemberId: getValue("input[name='Webflow Member ID']"),
-            memberstackMemberId: getValue("input[name='Memberstack Member ID']"),
-            memberName: getValue("input[name='Member Name']"),
+            webflowMemberId: getValue("input[name='Webflow Member ID']", ""),
+            memberstackMemberId: getValue("input[name='Memberstack Member ID']", ""),
+            memberName: getValue("input[name='Member Name']", "Unbekannter Nutzer"),
         };
 
         if (DEBUG_MODE) {
