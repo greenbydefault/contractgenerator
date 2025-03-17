@@ -17,15 +17,13 @@ function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
 
-// Funktion zum Umwandeln der standard CDN URL in eine URL mit Videokonvertierung
-function getProcessedVideoUrl(cdnUrl, uuid) {
-    if (!cdnUrl || !uuid) return "";
+// Funktion zum Erstellen der Video-URL mit Konvertierungsparametern
+function getProcessedVideoUrl(uuid) {
+    if (!uuid) return "";
     
-    // Format: /video/-/format/mp4/-/quality/lighter/-/size/360x640/
-    const videoProcessingParams = "/video/-/format/mp4/-/quality/lighter/-/size/360x640/";
-    
-    // Erstelle die prozessierte URL
-    return `https://ucarecdn.com/${uuid}${videoProcessingParams}`;
+    // Nach Uploadcare-Dokumentation muss das Format sein:
+    // UUID/video/-/operation/params/
+    return `https://ucarecdn.com/${uuid}/video/-/format/mp4/-/quality/lighter/-/size/360x640/`;
 }
 
 // 📡 Funktion zur Erstellung eines CMS Items
@@ -114,6 +112,94 @@ function analyzeForm(form) {
     });
 }
 
+// Erstellen des Fortschrittsbalkens
+function createProgressBar() {
+    const progressContainer = document.createElement('div');
+    progressContainer.id = 'upload-progress-container';
+    progressContainer.style.display = 'none'; // Initial versteckt
+    progressContainer.style.marginTop = '15px';
+    progressContainer.style.width = '100%';
+    
+    const progressLabel = document.createElement('div');
+    progressLabel.id = 'upload-progress-label';
+    progressLabel.textContent = 'Daten werden an Webflow gesendet:';
+    progressLabel.style.marginBottom = '5px';
+    progressLabel.style.fontWeight = 'bold';
+    
+    const progressBarOuter = document.createElement('div');
+    progressBarOuter.style.width = '100%';
+    progressBarOuter.style.backgroundColor = '#e0e0e0';
+    progressBarOuter.style.borderRadius = '4px';
+    progressBarOuter.style.overflow = 'hidden';
+    progressBarOuter.style.height = '20px';
+    
+    const progressBarInner = document.createElement('div');
+    progressBarInner.id = 'upload-progress-bar';
+    progressBarInner.style.width = '0%';
+    progressBarInner.style.height = '100%';
+    progressBarInner.style.backgroundColor = '#4CAF50';
+    progressBarInner.style.transition = 'width 0.3s ease';
+    
+    const progressText = document.createElement('div');
+    progressText.id = 'upload-progress-text';
+    progressText.textContent = '0%';
+    progressText.style.marginTop = '5px';
+    progressText.style.textAlign = 'center';
+    
+    progressBarOuter.appendChild(progressBarInner);
+    progressContainer.appendChild(progressLabel);
+    progressContainer.appendChild(progressBarOuter);
+    progressContainer.appendChild(progressText);
+    
+    // Füge den Fortschrittsbalken zum Formular hinzu
+    const form = document.getElementById(FORM_ID);
+    if (form) {
+        form.appendChild(progressContainer);
+    }
+    
+    // Erstelle einen Container für Dateiinformationen
+    const fileInfoDiv = document.createElement('div');
+    fileInfoDiv.id = 'fileInfo';
+    
+    if (form) {
+        form.appendChild(fileInfoDiv);
+    }
+}
+
+// Aktualisiere den Fortschrittsbalken
+function updateProgressBar(progress, status) {
+    const progressBar = document.getElementById('upload-progress-bar');
+    const progressText = document.getElementById('upload-progress-text');
+    const progressLabel = document.getElementById('upload-progress-label');
+    
+    if (!progressBar || !progressText || !progressLabel) return;
+    
+    // Konvertiere Fortschritt in Prozent
+    const percent = Math.round(progress * 100);
+    
+    // Aktualisiere die Anzeige
+    progressBar.style.width = `${percent}%`;
+    progressText.textContent = `${percent}%`;
+    
+    // Färbe den Balken je nach Status
+    switch (status) {
+        case 'uploading':
+            progressBar.style.backgroundColor = '#4CAF50'; // Grün
+            break;
+        case 'success':
+            progressBar.style.backgroundColor = '#4CAF50'; // Grün
+            progressLabel.textContent = 'Video erfolgreich hochgeladen!';
+            break;
+        case 'failed':
+            progressBar.style.backgroundColor = '#f44336'; // Rot
+            progressLabel.textContent = 'Fehler beim Hochladen!';
+            break;
+        default:
+            progressBar.style.backgroundColor = '#4CAF50'; // Grün
+            break;
+    }
+}
+
 // Initialisiere Uploadcare und setze Event-Listener
 function initUploadcare() {
     // Prüfe, ob das Uploadcare-Element existiert
@@ -125,7 +211,7 @@ function initUploadcare() {
 
     console.log("✅ Uploadcare Context Provider gefunden", uploaderCtx);
     
-    // Erstelle den Upload-Fortschrittsbalken
+    // Erstelle den Fortschrittsbalken (nicht für Uploadcare, sondern für Webflow-Upload)
     createProgressBar();
 
     // Funktion zum Abrufen der Dateiinformationen
@@ -133,9 +219,6 @@ function initUploadcare() {
         try {
             const api = uploaderCtx.getAPI();
             const state = api.getOutputCollectionState();
-            
-            // Update Progress Bar basierend auf dem aktuellen Status
-            updateProgressBar(state.progress, state.status);
             
             if (state.successCount > 0) {
                 // Nimm die erste erfolgreiche Datei
@@ -146,7 +229,7 @@ function initUploadcare() {
                 uploadcareFileCdnUrl = fileEntry.cdnUrl || "";
                 
                 // Erstelle die Video-URL mit Konvertierungsparametern
-                uploadcareProcessedUrl = getProcessedVideoUrl(uploadcareFileCdnUrl, uploadcareFileUuid);
+                uploadcareProcessedUrl = getProcessedVideoUrl(uploadcareFileUuid);
                 
                 console.log("🎯 Uploadcare Datei gefunden:", {
                     name: fileEntry.name,
@@ -220,123 +303,8 @@ function initUploadcare() {
         getUploadcareFileInfo();
     });
     
-    // Event-Listener für Start des Uploads
-    uploaderCtx.addEventListener('file-upload-start', () => {
-        console.log("🏁 Upload gestartet");
-        showProgressBar();
-    });
-    
-    // Event-Listener für Upload-Fehler
-    uploaderCtx.addEventListener('file-upload-failed', (event) => {
-        console.error("❌ Upload fehlgeschlagen:", event.detail);
-        updateProgressBar(0, 'failed');
-    });
-    
     // Regelmäßige Überprüfung für Uploads
     setInterval(getUploadcareFileInfo, 1000);
-}
-
-// Erstellen des Fortschrittsbalkens
-function createProgressBar() {
-    const progressContainer = document.createElement('div');
-    progressContainer.id = 'upload-progress-container';
-    progressContainer.style.display = 'none';
-    progressContainer.style.marginTop = '15px';
-    progressContainer.style.width = '100%';
-    
-    const progressLabel = document.createElement('div');
-    progressLabel.id = 'upload-progress-label';
-    progressLabel.textContent = 'Upload-Fortschritt:';
-    progressLabel.style.marginBottom = '5px';
-    progressLabel.style.fontWeight = 'bold';
-    
-    const progressBarOuter = document.createElement('div');
-    progressBarOuter.style.width = '100%';
-    progressBarOuter.style.backgroundColor = '#e0e0e0';
-    progressBarOuter.style.borderRadius = '4px';
-    progressBarOuter.style.overflow = 'hidden';
-    progressBarOuter.style.height = '20px';
-    
-    const progressBarInner = document.createElement('div');
-    progressBarInner.id = 'upload-progress-bar';
-    progressBarInner.style.width = '0%';
-    progressBarInner.style.height = '100%';
-    progressBarInner.style.backgroundColor = '#4CAF50';
-    progressBarInner.style.transition = 'width 0.3s ease';
-    
-    const progressText = document.createElement('div');
-    progressText.id = 'upload-progress-text';
-    progressText.textContent = '0%';
-    progressText.style.marginTop = '5px';
-    progressText.style.textAlign = 'center';
-    
-    progressBarOuter.appendChild(progressBarInner);
-    progressContainer.appendChild(progressLabel);
-    progressContainer.appendChild(progressBarOuter);
-    progressContainer.appendChild(progressText);
-    
-    // Füge den Fortschrittsbalken zum Formular hinzu
-    const form = document.getElementById(FORM_ID);
-    if (form) {
-        // Nach dem Uploadcare-Element einfügen
-        const uploader = form.querySelector('uc-file-uploader-minimal');
-        if (uploader) {
-            uploader.parentNode.insertBefore(progressContainer, uploader.nextSibling);
-        } else {
-            form.appendChild(progressContainer);
-        }
-    }
-    
-    // Erstelle einen Container für Dateiinformationen
-    const fileInfoDiv = document.createElement('div');
-    fileInfoDiv.id = 'fileInfo';
-    
-    if (form) {
-        form.appendChild(fileInfoDiv);
-    }
-}
-
-// Zeige den Fortschrittsbalken an
-function showProgressBar() {
-    const progressContainer = document.getElementById('upload-progress-container');
-    if (progressContainer) {
-        progressContainer.style.display = 'block';
-    }
-}
-
-// Aktualisiere den Fortschrittsbalken
-function updateProgressBar(progress, status) {
-    const progressBar = document.getElementById('upload-progress-bar');
-    const progressText = document.getElementById('upload-progress-text');
-    const progressLabel = document.getElementById('upload-progress-label');
-    
-    if (!progressBar || !progressText || !progressLabel) return;
-    
-    // Konvertiere Fortschritt in Prozent
-    const percent = Math.round(progress * 100);
-    
-    // Aktualisiere die Anzeige
-    progressBar.style.width = `${percent}%`;
-    progressText.textContent = `${percent}%`;
-    
-    // Färbe den Balken je nach Status
-    switch (status) {
-        case 'uploading':
-            progressBar.style.backgroundColor = '#4CAF50'; // Grün
-            progressLabel.textContent = 'Upload-Fortschritt:';
-            break;
-        case 'success':
-            progressBar.style.backgroundColor = '#4CAF50'; // Grün
-            progressLabel.textContent = 'Upload abgeschlossen:';
-            break;
-        case 'failed':
-            progressBar.style.backgroundColor = '#f44336'; // Rot
-            progressLabel.textContent = 'Upload fehlgeschlagen:';
-            break;
-        default:
-            progressBar.style.backgroundColor = '#4CAF50'; // Grün
-            break;
-    }
 }
 
 // Aktualisiere versteckte Felder im Formular
@@ -395,10 +363,9 @@ function getVideoLink() {
     return "";
 }
 
-// Kategorien-ID extrahieren oder leeren String verwenden
+// Kategorie ID extrahieren
 function getKategorieId() {
     const form = document.getElementById(FORM_ID);
-    // Versuche verschiedene Selektoren für das Kategorie-Feld
     const kategorieSelectors = [
         "select[name='Kategorie']",
         "select[data-name='Kategorie']",
@@ -414,7 +381,6 @@ function getKategorieId() {
         }
     }
     
-    // Wenn nicht gefunden, versuche einen festen Wert
     console.warn("⚠️ Kein Kategorie-Feld gefunden. Standard-Kategorie wird verwendet.");
     return "2f1f2fe0cd35ddd19ca98f4b85b16258"; // Standard-Kategorie-ID
 }
@@ -490,10 +456,25 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        // Videoname abrufen oder Default verwenden
+        const videoName = getValue("input[name='Name']", "Unbenanntes Video");
+        
+        // Erstelle einen Slug aus Videoname und UUID
+        let slug = videoName.toLowerCase()
+            .replace(/\s+/g, "-")        // Leerzeichen zu Bindestrichen
+            .replace(/[^a-z0-9-]/g, "")  // Nur alphanumerische und Bindestriche
+            .replace(/-+/g, "-")         // Mehrfache Bindestriche zu einem
+            .replace(/^-|-$/g, "");      // Bindestriche am Anfang und Ende entfernen
+            
+        // Füge UUID hinzu
+        if (uploadcareFileUuid) {
+            slug = `${slug}-${uploadcareFileUuid.slice(0, 8)}`; // Nimm die ersten 8 Zeichen der UUID
+        }
+
         // Ermittle die Formulardaten mit den korrekten Selektoren
         const formData = {
-            name: getValue("input[name='Name']", "Unbenanntes Video"),
-            slug: getValue("input[name='Name']", "Unbenanntes Video").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Math.random().toString(36).substring(2, 6),
+            name: videoName,
+            slug: slug,
             kategorie: getKategorieId(),
             beschreibung: getValue("textarea[name='Beschreibung']") || getValue("input[name='Beschreibung']", "Keine Beschreibung"),
             openVideo: findCheckbox(['open video', 'Open Video', 'öffentliches video', 'Öffentliches Video']),
@@ -508,30 +489,30 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log("📝 Erfasste Formulardaten:", formData);
         }
 
-        // Statusanzeige für den Upload-Prozess
-        const statusMessage = document.createElement("div");
-        statusMessage.id = "submit-status";
-        statusMessage.style.padding = "10px";
-        statusMessage.style.marginTop = "15px";
-        statusMessage.style.borderRadius = "5px";
-        statusMessage.style.fontWeight = "bold";
-        
-        // Zeige "Wird verarbeitet..." an
-        statusMessage.textContent = "Daten werden an Webflow gesendet...";
-        statusMessage.style.color = "#0066cc";
-        statusMessage.style.border = "1px solid #0066cc";
-        statusMessage.style.backgroundColor = "#f0f8ff";
-        form.appendChild(statusMessage);
+        // Zeige den Fortschrittsbalken für den Webflow-Upload an
+        const uploadContainer = document.getElementById('upload-progress-container');
+        if (uploadContainer) {
+            uploadContainer.style.display = 'block';
+            updateProgressBar(0, 'uploading');
+        }
 
         try {
+            // Simuliere Fortschritt beim Webflow-Upload
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 0.1; // Erhöhe um 10%
+                if (progress > 0.9) {
+                    clearInterval(progressInterval);
+                }
+                updateProgressBar(progress, 'uploading');
+            }, 300);
+
             const result = await createCMSItem(formData);
             console.log("🎉 Video erfolgreich hochgeladen!", result);
             
-            // Erfolgsmeldung anzeigen
-            statusMessage.textContent = "Video erfolgreich hochgeladen!";
-            statusMessage.style.color = "green";
-            statusMessage.style.border = "1px solid green";
-            statusMessage.style.backgroundColor = "#f0fff0";
+            // Fortschrittsintervall stoppen und auf 100% setzen
+            clearInterval(progressInterval);
+            updateProgressBar(1.0, 'success');
             
             // Optional: Formular zurücksetzen oder zur Bestätigungsseite weiterleiten
             // setTimeout(() => {
@@ -540,11 +521,8 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             console.error("❌ Fehler beim Hochladen:", error);
             
-            // Fehlermeldung anzeigen
-            statusMessage.textContent = "Fehler beim Hochladen. Bitte kontaktiere den Support.";
-            statusMessage.style.color = "red";
-            statusMessage.style.border = "1px solid red";
-            statusMessage.style.backgroundColor = "#fff0f0";
+            // Fortschrittsbalken auf Fehler setzen
+            updateProgressBar(0.3, 'failed');
         }
     });
 });
