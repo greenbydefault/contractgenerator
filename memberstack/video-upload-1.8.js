@@ -2,7 +2,7 @@
 
 // 🔧 Konfiguration
 const API_BASE_URL = "https://api.webflow.com/v2/collections";
-const WORKER_BASE_URL = "https://upload.oliver-258.workers.dev/?url="; // Neuer Worker-Endpunkt
+const WORKER_BASE_URL = "https://upload.oliver-258.workers.dev/?url=";
 const COLLECTION_ID = "67d806e65cadcadf2f41e659"; // Collection ID für Videos
 const FORM_ID = "db-upload-video";
 const DEBUG_MODE = true; // 🐞 Debugging aktivieren/deaktivieren
@@ -18,19 +18,22 @@ async function createCMSItem(formData) {
     const workerUrl = buildWorkerUrl(apiUrl);
     
     // Die Webflow API erwartet dieses Format für ein Single Item
+    // WICHTIG: Hier sind die korrekten Feldnamen aus der Webflow-Kollektion
     const payload = {
         isArchived: false,
         isDraft: false,
         fieldData: {
-            name: formData.name || "Unbenanntes Video",
-            slug: formData.slug || "unbenanntes-video",
-            kategorie: formData.kategorie || "Keine Kategorie",
-            beschreibung: formData.beschreibung || "Keine Beschreibung",
-            open_video: formData.openVideo || false,
-            video_contest: formData.videoContest || false,
-            webflow_member_id: formData.webflowMemberId || "",
-            memberstack_member_id: formData.memberstackMemberId || "",
-            member_name: formData.memberName || "Unbekannter Nutzer"
+            "name": formData.name || "Unbenanntes Video",
+            "slug": formData.slug || "unbenanntes-video",
+            "video-name": formData.name || "Unbenanntes Video",
+            "video-kategorie": formData.kategorie || "",
+            "video-beschreibung": formData.beschreibung || "Keine Beschreibung",
+            "offentliches-video": formData.openVideo || false,
+            "video-contest": formData.videoContest || false,
+            "webflow-id": formData.webflowMemberId || "",
+            "memberstack-id": formData.memberstackMemberId || "",
+            "creator-name": formData.memberName || "Unbekannter Nutzer",
+            "video-link": formData.videoLink || ""
         }
     };
 
@@ -43,7 +46,7 @@ async function createCMSItem(formData) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
-                // Der API-Token wird jetzt direkt im Worker gesetzt
+                // Der API-Token wird im Worker gesetzt
             },
             body: JSON.stringify(payload)
         });
@@ -89,6 +92,7 @@ function analyzeForm(form) {
             type: input.type || "N/A",
             name: input.name || "Kein Name",
             id: input.id || "Keine ID",
+            "data-name": input.getAttribute("data-name") || "Kein data-name",
             value: input.type === 'checkbox' ? input.checked : (input.value || "Kein Wert")
         });
     });
@@ -156,17 +160,64 @@ document.addEventListener("DOMContentLoaded", () => {
             return false;
         }
 
-        // Ermittle die Formulardaten mit verbesserten Selektoren
+        // Videolink extrahieren (falls vorhanden)
+        function getVideoLink() {
+            // Verschiedene mögliche Selektoren für das Video-Link-Feld
+            const videoLinkSelectors = [
+                "input[name='Video Link']",
+                "input[name='VideoLink']",
+                "input[name='video-link']",
+                "input[data-name='Video Link']",
+                "input[data-name='video-link']"
+            ];
+            
+            for (const selector of videoLinkSelectors) {
+                const element = form.querySelector(selector);
+                if (element) {
+                    console.log(`🔍 Video-Link-Feld gefunden mit Selektor: ${selector}`, element.value);
+                    return element.value;
+                }
+            }
+            
+            console.warn("⚠️ Kein Video-Link-Feld gefunden. Setze leer.");
+            return "";
+        }
+
+        // Kategorien-ID extrahieren oder leeren String verwenden
+        function getKategorieId() {
+            // Versuche verschiedene Selektoren für das Kategorie-Feld
+            const kategorieSelectors = [
+                "select[name='Kategorie']",
+                "select[data-name='Kategorie']",
+                "input[name='Kategorie']",
+                "input[data-name='Kategorie']"
+            ];
+            
+            for (const selector of kategorieSelectors) {
+                const element = form.querySelector(selector);
+                if (element) {
+                    console.log(`🔍 Kategorie-Feld gefunden mit Selektor: ${selector}`, element.value);
+                    return element.value;
+                }
+            }
+            
+            // Wenn nicht gefunden, versuche einen festen Wert (z.B. "2f1f2fe0cd35ddd19ca98f4b85b16258")
+            console.warn("⚠️ Kein Kategorie-Feld gefunden. Standard-Kategorie wird verwendet.");
+            return "2f1f2fe0cd35ddd19ca98f4b85b16258"; // Standard-Kategorie-ID
+        }
+
+        // Ermittle die Formulardaten mit den korrekten Selektoren
         const formData = {
             name: getValue("input[name='Name']", "Unbenanntes Video"),
-            slug: getValue("input[name='Name']", "Unbenanntes Video").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
-            kategorie: getValue("input[name='Kategorie']", "Keine Kategorie"),
+            slug: getValue("input[name='Name']", "Unbenanntes Video").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Math.random().toString(36).substring(2, 6),
+            kategorie: getKategorieId(),
             beschreibung: getValue("textarea[name='Beschreibung']") || getValue("input[name='Beschreibung']", "Keine Beschreibung"),
-            openVideo: findCheckbox(['open video', 'Open Video', 'open-video', 'OpenVideo']),
-            videoContest: findCheckbox(['video contest', 'Video Contest', 'video-contest', 'VideoContest']),
+            openVideo: findCheckbox(['open video', 'Open Video', 'öffentliches video', 'Öffentliches Video']),
+            videoContest: findCheckbox(['video contest', 'Video Contest']),
             webflowMemberId: getValue("input[name='Webflow Member ID']", ""),
             memberstackMemberId: getValue("input[name='Memberstack Member ID']", ""),
             memberName: getValue("input[name='Member Name']", "Unbekannter Nutzer"),
+            videoLink: getVideoLink()
         };
 
         if (DEBUG_MODE) {
@@ -198,8 +249,10 @@ document.addEventListener("DOMContentLoaded", () => {
             statusMessage.style.border = "1px solid green";
             statusMessage.style.backgroundColor = "#f0fff0";
             
-            // Optional: Formular zurücksetzen
+            // Optional: Formular zurücksetzen oder zur Bestätigungsseite weiterleiten
             // form.reset();
+            // oder
+            // window.location.href = "/upload-success";
         } catch (error) {
             console.error("❌ Fehler beim Hochladen:", error);
             
