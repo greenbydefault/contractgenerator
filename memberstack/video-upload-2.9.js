@@ -6,7 +6,7 @@ const WORKER_BASE_URL = "https://upload.oliver-258.workers.dev/?url=";
 const COLLECTION_ID = "67d806e65cadcadf2f41e659"; // Collection ID für Videos
 const FORM_ID = "db-upload-video";
 const SUCCESS_DIV_ID = "db-upload-susscess";
-const DEBUG_MODE = false; // 🐞 Debugging deaktiviert für Produktion
+const DEBUG_MODE = true; // 🐞 Debugging deaktiviert für Produktion
 
 // Uploadcare Datei-Informationen speichern (nicht im Frontend sichtbar)
 let uploadcareFileUuid = "";
