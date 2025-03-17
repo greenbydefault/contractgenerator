@@ -14,11 +14,14 @@ function buildWorkerUrl(apiUrl) {
 
 // 📡 Funktion zur Erstellung eines CMS Items
 async function createCMSItem(formData) {
-    const apiUrl = `${API_BASE_URL}/${COLLECTION_ID}/items/live`;
+    const apiUrl = `${API_BASE_URL}/${COLLECTION_ID}/items/live`; // '/live' wieder hinzugefügt gemäß Dokumentation
     const workerUrl = buildWorkerUrl(apiUrl);
     
+    // ⚠️ Korrigiert gemäß Webflow API V2 Dokumentation
     const payload = {
-        fieldData: { // ✅ Webflow erwartet 'fieldData', nicht 'items'
+        isArchived: false,
+        isDraft: false,
+        fieldData: { // 'fieldData' ist korrekt, nicht 'fields'
             name: formData.name || "Unbenanntes Video",
             slug: formData.slug || "unbenanntes-video",
             kategorie: formData.kategorie || "Keine Kategorie",
@@ -47,6 +50,7 @@ async function createCMSItem(formData) {
 
         if (!response.ok) {
             const errorText = await response.text();
+            console.error("📄 API-Antwort:", errorText);
             throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
         }
 
@@ -54,8 +58,11 @@ async function createCMSItem(formData) {
         if (DEBUG_MODE) {
             console.log("✅ CMS Item erfolgreich erstellt:", responseData);
         }
+        
+        return responseData;
     } catch (error) {
         console.error("❌ Fehler beim Erstellen des CMS Items:", error);
+        throw error;
     }
 }
 
@@ -68,6 +75,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     console.log("✅ Member Video Upload Script erfolgreich geladen.");
+    
+    // Überprüfen, ob alle benötigten Felder vorhanden sind
+    const requiredFields = [
+        "input[name='Name']",
+        "input[name='Kategorie']",
+        "input[name='Beschreibung']",
+        "input[name='open video']",
+        "input[name='video contest']",
+        "input[name='Webflow Member ID']",
+        "input[name='Memberstack Member ID']",
+        "input[name='Member Name']"
+    ];
+    
+    const missingFields = requiredFields.filter(selector => !form.querySelector(selector));
+    if (missingFields.length > 0) {
+        console.warn("⚠️ Die folgenden Felder wurden nicht gefunden:", missingFields);
+        console.log("🔍 Überprüfe die folgenden Elemente im Formular:");
+        
+        // Alle Formularelemente zur Diagnose ausgeben
+        const allFormElements = form.querySelectorAll("input, select, textarea");
+        allFormElements.forEach(elem => {
+            console.log(`- Element: ${elem.tagName}, Name: ${elem.name || 'kein Name'}, ID: ${elem.id || 'keine ID'}`);
+        });
+    }
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -96,9 +127,9 @@ document.addEventListener("DOMContentLoaded", () => {
             name: getValue("input[name='Name']", "Unbenanntes Video"),
             slug: getValue("input[name='Name']", "Unbenanntes Video").toLowerCase().replace(/\s+/g, "-"),
             kategorie: getValue("input[name='Kategorie']", "Keine Kategorie"),
-            beschreibung: getValue("input[name='Beschreibung']", "Keine Beschreibung"),
-            openVideo: getChecked("input[name='open video']"),
-            videoContest: getChecked("input[name='video contest']"),
+            beschreibung: getValue("textarea[name='Beschreibung']", "Keine Beschreibung"), // Prüfe auch textarea
+            openVideo: getChecked("input[name='open video']") || getChecked("input[name='Open Video']"), // Versuche alternative Schreibweise
+            videoContest: getChecked("input[name='video contest']") || getChecked("input[name='Video Contest']"),
             webflowMemberId: getValue("input[name='Webflow Member ID']", ""),
             memberstackMemberId: getValue("input[name='Memberstack Member ID']", ""),
             memberName: getValue("input[name='Member Name']", "Unbekannter Nutzer"),
@@ -108,6 +139,13 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log("📝 Erfasste Formulardaten:", formData);
         }
 
-        await createCMSItem(formData);
+        try {
+            const result = await createCMSItem(formData);
+            console.log("🎉 Video erfolgreich hochgeladen!", result);
+            // Hier könntest du eine Erfolgsmeldung anzeigen
+        } catch (error) {
+            console.error("❌ Fehler beim Hochladen:", error);
+            // Hier könntest du eine Fehlermeldung anzeigen
+        }
     });
 });
