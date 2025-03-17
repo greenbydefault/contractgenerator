@@ -67,6 +67,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
+    console.log("✅ Member Video Upload Script erfolgreich geladen.");
+
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
         
