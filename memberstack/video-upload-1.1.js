@@ -62,21 +62,42 @@ async function createCMSItem(formData) {
 // 📥 Event Listener für das Formular
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById(FORM_ID);
-    if (!form) return;
+    if (!form) {
+        console.error(`❌ Formular mit ID '${FORM_ID}' nicht gefunden.`);
+        return;
+    }
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
         
+        function getValue(selector) {
+            const element = form.querySelector(selector);
+            if (!element) {
+                console.error(`⚠️ Feld '${selector}' nicht gefunden.`);
+                return "";
+            }
+            return element.value;
+        }
+
+        function getChecked(selector) {
+            const element = form.querySelector(selector);
+            if (!element) {
+                console.error(`⚠️ Checkbox '${selector}' nicht gefunden.`);
+                return false;
+            }
+            return element.checked;
+        }
+
         const formData = {
-            name: form.querySelector("input[name='Name']").value,
-            slug: form.querySelector("input[name='Name']").value.toLowerCase().replace(/\s+/g, "-"),
-            kategorie: form.querySelector("input[name='Kategorie']").value,
-            beschreibung: form.querySelector("input[name='Beschreibung']").value,
-            openVideo: form.querySelector("input[name='open video']").checked,
-            videoContest: form.querySelector("input[name='video contest']").checked,
-            webflowMemberId: form.querySelector("input[name='Webflow Member ID']").value,
-            memberstackMemberId: form.querySelector("input[name='Memberstack Member ID']").value,
-            memberName: form.querySelector("input[name='Member Name']").value,
+            name: getValue("input[name='Name']"),
+            slug: getValue("input[name='Name']").toLowerCase().replace(/\s+/g, "-"),
+            kategorie: getValue("input[name='Kategorie']"),
+            beschreibung: getValue("input[name='Beschreibung']"),
+            openVideo: getChecked("input[name='open video']"),
+            videoContest: getChecked("input[name='video contest']"),
+            webflowMemberId: getValue("input[name='Webflow Member ID']"),
+            memberstackMemberId: getValue("input[name='Memberstack Member ID']"),
+            memberName: getValue("input[name='Member Name']"),
         };
 
         if (DEBUG_MODE) {
