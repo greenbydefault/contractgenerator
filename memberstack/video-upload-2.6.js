@@ -10,10 +10,22 @@ const DEBUG_MODE = true; // 🐞 Debugging aktivieren/deaktivieren
 // Uploadcare Datei-Informationen speichern
 let uploadcareFileUuid = "";
 let uploadcareFileCdnUrl = "";
+let uploadcareProcessedUrl = ""; // URL mit Videokonvertierung
 
 // 🛠️ Hilfsfunktion zur Erstellung der Worker-URL
 function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
+}
+
+// Funktion zum Umwandeln der standard CDN URL in eine URL mit Videokonvertierung
+function getProcessedVideoUrl(cdnUrl, uuid) {
+    if (!cdnUrl || !uuid) return "";
+    
+    // Format: /video/-/format/mp4/-/quality/lighter/-/size/360x640/
+    const videoProcessingParams = "/video/-/format/mp4/-/quality/lighter/-/size/360x640/";
+    
+    // Erstelle die prozessierte URL
+    return `https://ucarecdn.com/${uuid}${videoProcessingParams}`;
 }
 
 // 📡 Funktion zur Erstellung eines CMS Items
@@ -22,6 +34,7 @@ async function createCMSItem(formData) {
     const workerUrl = buildWorkerUrl(apiUrl);
     
     // Die Webflow API erwartet dieses Format für ein Single Item
+    // WICHTIG: Hier sind die korrekten Feldnamen aus der Webflow-Kollektion
     const payload = {
         isArchived: false,
         isDraft: false,
@@ -54,13 +67,14 @@ async function createCMSItem(formData) {
             body: JSON.stringify(payload)
         });
 
-        const responseText = await response.text();
+        const responseText = await response.text(); // Immer zuerst als Text holen
         
         if (!response.ok) {
             console.error("📄 API-Antwort:", responseText);
             throw new Error(`API-Fehler: ${response.status} - ${responseText}`);
         }
 
+        // Versuche, die Antwort als JSON zu parsen
         let responseData;
         try {
             responseData = JSON.parse(responseText);
@@ -84,6 +98,7 @@ async function createCMSItem(formData) {
 function analyzeForm(form) {
     console.log("🔍 Formular-Analyse:");
     
+    // Alle Input-Elemente im Formular auflisten
     const allInputs = form.querySelectorAll("input, textarea, select");
     console.log(`Gefundene Formularelemente: ${allInputs.length}`);
     
@@ -109,12 +124,18 @@ function initUploadcare() {
     }
 
     console.log("✅ Uploadcare Context Provider gefunden", uploaderCtx);
+    
+    // Erstelle den Upload-Fortschrittsbalken
+    createProgressBar();
 
     // Funktion zum Abrufen der Dateiinformationen
     function getUploadcareFileInfo() {
         try {
             const api = uploaderCtx.getAPI();
             const state = api.getOutputCollectionState();
+            
+            // Update Progress Bar basierend auf dem aktuellen Status
+            updateProgressBar(state.progress, state.status);
             
             if (state.successCount > 0) {
                 // Nimm die erste erfolgreiche Datei
@@ -124,22 +145,67 @@ function initUploadcare() {
                 uploadcareFileUuid = fileEntry.uuid || "";
                 uploadcareFileCdnUrl = fileEntry.cdnUrl || "";
                 
+                // Erstelle die Video-URL mit Konvertierungsparametern
+                uploadcareProcessedUrl = getProcessedVideoUrl(uploadcareFileCdnUrl, uploadcareFileUuid);
+                
                 console.log("🎯 Uploadcare Datei gefunden:", {
                     name: fileEntry.name,
                     uuid: uploadcareFileUuid,
-                    cdnUrl: uploadcareFileCdnUrl
+                    originalCdnUrl: uploadcareFileCdnUrl,
+                    processedUrl: uploadcareProcessedUrl
                 });
                 
                 // Aktualisiere versteckte Felder im Formular, falls vorhanden
                 updateHiddenFields();
                 
+                // Zeige Dateiinformationen an
+                displayFileInfo(fileEntry);
+                
                 return fileEntry;
             }
+            
+            // Prüfe, ob derzeit eine Datei hochgeladen wird
+            if (state.uploadingCount > 0) {
+                const uploadingFile = state.uploadingEntries[0];
+                displayFileInfo(uploadingFile, true);
+            }
+            
             return null;
         } catch (error) {
             console.error("❌ Fehler beim Abrufen der Uploadcare-Dateiinformationen:", error);
             return null;
         }
+    }
+
+    // Zeige Dateiinformation an
+    function displayFileInfo(fileEntry, isUploading = false) {
+        const fileInfoDiv = document.getElementById('fileInfo');
+        if (!fileInfoDiv) return;
+        
+        let statusText = "";
+        
+        if (isUploading) {
+            statusText = `<span style="color: #0066cc;">Wird hochgeladen (${Math.round(fileEntry.uploadProgress)}%)...</span>`;
+        } else {
+            statusText = '<span style="color: green;">✓ Erfolgreich hochgeladen</span>';
+        }
+        
+        fileInfoDiv.innerHTML = `
+            <div style="margin-top: 10px; padding: 10px; border-radius: 5px; border: 1px solid #ddd; background-color: #f9f9f9;">
+                <p><strong>Datei:</strong> ${fileEntry.name}</p>
+                <p><strong>Größe:</strong> ${formatFileSize(fileEntry.size)}</p>
+                <p><strong>Status:</strong> ${statusText}</p>
+            </div>
+        `;
+    }
+
+    // Formatiere Dateigröße
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
     // Event-Listener für erfolgreiche Uploads
@@ -148,8 +214,129 @@ function initUploadcare() {
         getUploadcareFileInfo();
     });
     
+    // Event-Listener für Upload-Fortschritt
+    uploaderCtx.addEventListener('file-upload-progress', (event) => {
+        console.log("📊 Upload-Fortschritt:", event.detail);
+        getUploadcareFileInfo();
+    });
+    
+    // Event-Listener für Start des Uploads
+    uploaderCtx.addEventListener('file-upload-start', () => {
+        console.log("🏁 Upload gestartet");
+        showProgressBar();
+    });
+    
+    // Event-Listener für Upload-Fehler
+    uploaderCtx.addEventListener('file-upload-failed', (event) => {
+        console.error("❌ Upload fehlgeschlagen:", event.detail);
+        updateProgressBar(0, 'failed');
+    });
+    
     // Regelmäßige Überprüfung für Uploads
-    setInterval(getUploadcareFileInfo, 2000);
+    setInterval(getUploadcareFileInfo, 1000);
+}
+
+// Erstellen des Fortschrittsbalkens
+function createProgressBar() {
+    const progressContainer = document.createElement('div');
+    progressContainer.id = 'upload-progress-container';
+    progressContainer.style.display = 'none';
+    progressContainer.style.marginTop = '15px';
+    progressContainer.style.width = '100%';
+    
+    const progressLabel = document.createElement('div');
+    progressLabel.id = 'upload-progress-label';
+    progressLabel.textContent = 'Upload-Fortschritt:';
+    progressLabel.style.marginBottom = '5px';
+    progressLabel.style.fontWeight = 'bold';
+    
+    const progressBarOuter = document.createElement('div');
+    progressBarOuter.style.width = '100%';
+    progressBarOuter.style.backgroundColor = '#e0e0e0';
+    progressBarOuter.style.borderRadius = '4px';
+    progressBarOuter.style.overflow = 'hidden';
+    progressBarOuter.style.height = '20px';
+    
+    const progressBarInner = document.createElement('div');
+    progressBarInner.id = 'upload-progress-bar';
+    progressBarInner.style.width = '0%';
+    progressBarInner.style.height = '100%';
+    progressBarInner.style.backgroundColor = '#4CAF50';
+    progressBarInner.style.transition = 'width 0.3s ease';
+    
+    const progressText = document.createElement('div');
+    progressText.id = 'upload-progress-text';
+    progressText.textContent = '0%';
+    progressText.style.marginTop = '5px';
+    progressText.style.textAlign = 'center';
+    
+    progressBarOuter.appendChild(progressBarInner);
+    progressContainer.appendChild(progressLabel);
+    progressContainer.appendChild(progressBarOuter);
+    progressContainer.appendChild(progressText);
+    
+    // Füge den Fortschrittsbalken zum Formular hinzu
+    const form = document.getElementById(FORM_ID);
+    if (form) {
+        // Nach dem Uploadcare-Element einfügen
+        const uploader = form.querySelector('uc-file-uploader-minimal');
+        if (uploader) {
+            uploader.parentNode.insertBefore(progressContainer, uploader.nextSibling);
+        } else {
+            form.appendChild(progressContainer);
+        }
+    }
+    
+    // Erstelle einen Container für Dateiinformationen
+    const fileInfoDiv = document.createElement('div');
+    fileInfoDiv.id = 'fileInfo';
+    
+    if (form) {
+        form.appendChild(fileInfoDiv);
+    }
+}
+
+// Zeige den Fortschrittsbalken an
+function showProgressBar() {
+    const progressContainer = document.getElementById('upload-progress-container');
+    if (progressContainer) {
+        progressContainer.style.display = 'block';
+    }
+}
+
+// Aktualisiere den Fortschrittsbalken
+function updateProgressBar(progress, status) {
+    const progressBar = document.getElementById('upload-progress-bar');
+    const progressText = document.getElementById('upload-progress-text');
+    const progressLabel = document.getElementById('upload-progress-label');
+    
+    if (!progressBar || !progressText || !progressLabel) return;
+    
+    // Konvertiere Fortschritt in Prozent
+    const percent = Math.round(progress * 100);
+    
+    // Aktualisiere die Anzeige
+    progressBar.style.width = `${percent}%`;
+    progressText.textContent = `${percent}%`;
+    
+    // Färbe den Balken je nach Status
+    switch (status) {
+        case 'uploading':
+            progressBar.style.backgroundColor = '#4CAF50'; // Grün
+            progressLabel.textContent = 'Upload-Fortschritt:';
+            break;
+        case 'success':
+            progressBar.style.backgroundColor = '#4CAF50'; // Grün
+            progressLabel.textContent = 'Upload abgeschlossen:';
+            break;
+        case 'failed':
+            progressBar.style.backgroundColor = '#f44336'; // Rot
+            progressLabel.textContent = 'Upload fehlgeschlagen:';
+            break;
+        default:
+            progressBar.style.backgroundColor = '#4CAF50'; // Grün
+            break;
+    }
 }
 
 // Aktualisiere versteckte Felder im Formular
@@ -160,8 +347,8 @@ function updateHiddenFields() {
     // Suche nach versteckten Feldern für die UUID und CDN URL
     const videoLinkInput = form.querySelector("input[name='Video Link'], input[name='VideoLink'], input[name='video-link']");
     if (videoLinkInput) {
-        videoLinkInput.value = uploadcareFileCdnUrl;
-        console.log("✅ Verstecktes Feld 'Video Link' aktualisiert:", uploadcareFileCdnUrl);
+        videoLinkInput.value = uploadcareProcessedUrl || uploadcareFileCdnUrl;
+        console.log("✅ Verstecktes Feld 'Video Link' aktualisiert:", videoLinkInput.value);
     }
     
     // Optional: Feld für die UUID finden und aktualisieren
@@ -174,7 +361,13 @@ function updateHiddenFields() {
 
 // Videolink extrahieren oder aus Uploadcare abrufen
 function getVideoLink() {
-    // Falls wir bereits einen CDN-Link von Uploadcare haben, verwende diesen
+    // Falls wir bereits eine prozessierte URL haben, verwende diese
+    if (uploadcareProcessedUrl) {
+        console.log("✅ Verwende prozessierte Uploadcare URL als Video-Link:", uploadcareProcessedUrl);
+        return uploadcareProcessedUrl;
+    }
+    
+    // Falls keine prozessierte URL, aber eine Standard-CDN URL verfügbar ist
     if (uploadcareFileCdnUrl) {
         console.log("✅ Verwende Uploadcare CDN URL als Video-Link:", uploadcareFileCdnUrl);
         return uploadcareFileCdnUrl;
@@ -200,6 +393,30 @@ function getVideoLink() {
     
     console.warn("⚠️ Kein Video-Link-Feld gefunden. Setze leer.");
     return "";
+}
+
+// Kategorien-ID extrahieren oder leeren String verwenden
+function getKategorieId() {
+    const form = document.getElementById(FORM_ID);
+    // Versuche verschiedene Selektoren für das Kategorie-Feld
+    const kategorieSelectors = [
+        "select[name='Kategorie']",
+        "select[data-name='Kategorie']",
+        "input[name='Kategorie']",
+        "input[data-name='Kategorie']"
+    ];
+    
+    for (const selector of kategorieSelectors) {
+        const element = form.querySelector(selector);
+        if (element) {
+            console.log(`🔍 Kategorie-Feld gefunden mit Selektor: ${selector}`, element.value);
+            return element.value;
+        }
+    }
+    
+    // Wenn nicht gefunden, versuche einen festen Wert
+    console.warn("⚠️ Kein Kategorie-Feld gefunden. Standard-Kategorie wird verwendet.");
+    return "2f1f2fe0cd35ddd19ca98f4b85b16258"; // Standard-Kategorie-ID
 }
 
 // 📥 Event Listener für das Formular
@@ -243,8 +460,10 @@ document.addEventListener("DOMContentLoaded", () => {
             return element.checked;
         }
         
+        // Alternative Selektoren für die Checkbox-Feldsuche 
         function findCheckbox(possibleNames) {
             for (const name of possibleNames) {
+                // Versuche verschiedene Selektoren
                 const selectors = [
                     `input[name='${name}']`,
                     `input[data-name='${name}']`,
@@ -265,24 +484,10 @@ document.addEventListener("DOMContentLoaded", () => {
             return false;
         }
 
-        function getKategorieId() {
-            const kategorieSelectors = [
-                "select[name='Kategorie']",
-                "select[data-name='Kategorie']",
-                "input[name='Kategorie']",
-                "input[data-name='Kategorie']"
-            ];
-            
-            for (const selector of kategorieSelectors) {
-                const element = form.querySelector(selector);
-                if (element) {
-                    console.log(`🔍 Kategorie-Feld gefunden mit Selektor: ${selector}`, element.value);
-                    return element.value;
-                }
-            }
-            
-            console.warn("⚠️ Kein Kategorie-Feld gefunden. Standard-Kategorie wird verwendet.");
-            return "2f1f2fe0cd35ddd19ca98f4b85b16258";
+        // Prüfe, ob ein Video hochgeladen wurde
+        if (!uploadcareFileUuid) {
+            alert("Bitte lade zuerst ein Video hoch, bevor du das Formular absendest.");
+            return;
         }
 
         // Ermittle die Formulardaten mit den korrekten Selektoren
@@ -305,14 +510,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Statusanzeige für den Upload-Prozess
         const statusMessage = document.createElement("div");
-        statusMessage.id = "upload-status";
+        statusMessage.id = "submit-status";
         statusMessage.style.padding = "10px";
         statusMessage.style.marginTop = "15px";
         statusMessage.style.borderRadius = "5px";
         statusMessage.style.fontWeight = "bold";
         
-        // Zeige "Wird hochgeladen..." an
-        statusMessage.textContent = "Video wird hochgeladen...";
+        // Zeige "Wird verarbeitet..." an
+        statusMessage.textContent = "Daten werden an Webflow gesendet...";
         statusMessage.style.color = "#0066cc";
         statusMessage.style.border = "1px solid #0066cc";
         statusMessage.style.backgroundColor = "#f0f8ff";
@@ -327,6 +532,11 @@ document.addEventListener("DOMContentLoaded", () => {
             statusMessage.style.color = "green";
             statusMessage.style.border = "1px solid green";
             statusMessage.style.backgroundColor = "#f0fff0";
+            
+            // Optional: Formular zurücksetzen oder zur Bestätigungsseite weiterleiten
+            // setTimeout(() => {
+            //     window.location.href = "/upload-success";
+            // }, 2000);
         } catch (error) {
             console.error("❌ Fehler beim Hochladen:", error);
             
