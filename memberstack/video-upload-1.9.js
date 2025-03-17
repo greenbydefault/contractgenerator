@@ -1,4 +1,4 @@
-// 🌐 Webflow API Integration zur Erstellung eines CMS Collection Items
+// 🌐 Webflow API Integration zur Erstellung eines CMS Collection Items mit Uploadcare
 
 // 🔧 Konfiguration
 const API_BASE_URL = "https://api.webflow.com/v2/collections";
@@ -6,6 +6,7 @@ const WORKER_BASE_URL = "https://upload.oliver-258.workers.dev/?url=";
 const COLLECTION_ID = "67d806e65cadcadf2f41e659"; // Collection ID für Videos
 const FORM_ID = "db-upload-video";
 const DEBUG_MODE = true; // 🐞 Debugging aktivieren/deaktivieren
+const UPLOADCARE_PUBLIC_KEY = "a6c530350c28177a0509";
 
 // 🛠️ Hilfsfunktion zur Erstellung der Worker-URL
 function buildWorkerUrl(apiUrl) {
@@ -18,7 +19,6 @@ async function createCMSItem(formData) {
     const workerUrl = buildWorkerUrl(apiUrl);
     
     // Die Webflow API erwartet dieses Format für ein Single Item
-    // WICHTIG: Hier sind die korrekten Feldnamen aus der Webflow-Kollektion
     const payload = {
         isArchived: false,
         isDraft: false,
@@ -26,7 +26,7 @@ async function createCMSItem(formData) {
             "name": formData.name || "Unbenanntes Video",
             "slug": formData.slug || "unbenanntes-video",
             "video-name": formData.name || "Unbenanntes Video",
-            "video-kategorie": formData.kategorie || "",
+            "video-kategorie": formData.kategorie || "2f1f2fe0cd35ddd19ca98f4b85b16258",
             "video-beschreibung": formData.beschreibung || "Keine Beschreibung",
             "offentliches-video": formData.openVideo || false,
             "video-contest": formData.videoContest || false,
@@ -46,12 +46,11 @@ async function createCMSItem(formData) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
-                // Der API-Token wird im Worker gesetzt
             },
             body: JSON.stringify(payload)
         });
 
-        const responseText = await response.text(); // Immer zuerst als Text holen
+        const responseText = await response.text();
         
         if (!response.ok) {
             console.error("📄 API-Antwort:", responseText);
@@ -83,7 +82,7 @@ function analyzeForm(form) {
     console.log("🔍 Formular-Analyse:");
     
     // Alle Input-Elemente im Formular auflisten
-    const allInputs = form.querySelectorAll("input, textarea, select");
+    const allInputs = form.querySelectorAll("input, textarea, select, uc-file-uploader-regular");
     console.log(`Gefundene Formularelemente: ${allInputs.length}`);
     
     allInputs.forEach((input, index) => {
@@ -98,6 +97,67 @@ function analyzeForm(form) {
     });
 }
 
+// 🔄 Uploadcare Event-Listener hinzufügen
+function setupUploadcareListeners() {
+    // Listener für Uploadcare-Ereignisse
+    document.addEventListener("uploadcare:regular:success", (event) => {
+        const fileInfo = event.detail;
+        console.log("📹 Uploadcare Video hochgeladen:", fileInfo);
+        
+        // Uploadcare-URL erstellen
+        const videoUrl = `https://ucarecdn.com/${fileInfo.uuid}/`;
+        console.log("🔗 Video-URL:", videoUrl);
+        
+        // Hidden Input-Feld für den Video-Link erstellen oder aktualisieren
+        let videoLinkInput = document.querySelector("input[name='Video Link']");
+        if (!videoLinkInput) {
+            videoLinkInput = document.createElement("input");
+            videoLinkInput.type = "hidden";
+            videoLinkInput.name = "Video Link";
+            document.getElementById(FORM_ID).appendChild(videoLinkInput);
+        }
+        videoLinkInput.value = videoUrl;
+        
+        // Anzeige für den Benutzer, dass das Video hochgeladen wurde
+        const uploadStatusDiv = document.createElement("div");
+        uploadStatusDiv.innerHTML = `
+            <div style="padding: 10px; margin-top: 10px; border-radius: 5px; background-color: #e6f7ff; border: 1px solid #1890ff;">
+                <p style="margin: 0; color: #1890ff;"><strong>Video hochgeladen!</strong></p>
+                <p style="margin: 5px 0 0; font-size: 0.9em; word-break: break-all;">${videoUrl}</p>
+            </div>
+        `;
+        
+        // Uploadcare-Element finden und den Status danach einfügen
+        const uploaderElement = document.querySelector("uc-file-uploader-regular");
+        if (uploaderElement) {
+            uploaderElement.parentNode.insertBefore(uploadStatusDiv, uploaderElement.nextSibling);
+        } else {
+            document.getElementById(FORM_ID).appendChild(uploadStatusDiv);
+        }
+    });
+    
+    // Listener für Uploadcare-Fehler
+    document.addEventListener("uploadcare:regular:error", (event) => {
+        console.error("❌ Uploadcare Fehler:", event.detail);
+        
+        // Fehleranzeige für den Benutzer
+        const errorDiv = document.createElement("div");
+        errorDiv.innerHTML = `
+            <div style="padding: 10px; margin-top: 10px; border-radius: 5px; background-color: #fff1f0; border: 1px solid #ff4d4f;">
+                <p style="margin: 0; color: #ff4d4f;"><strong>Fehler beim Hochladen!</strong></p>
+                <p style="margin: 5px 0 0; font-size: 0.9em;">Bitte versuche es erneut oder kontaktiere den Support.</p>
+            </div>
+        `;
+        
+        const uploaderElement = document.querySelector("uc-file-uploader-regular");
+        if (uploaderElement) {
+            uploaderElement.parentNode.insertBefore(errorDiv, uploaderElement.nextSibling);
+        } else {
+            document.getElementById(FORM_ID).appendChild(errorDiv);
+        }
+    });
+}
+
 // 📥 Event Listener für das Formular
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById(FORM_ID);
@@ -107,6 +167,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     console.log("✅ Member Video Upload Script geladen für Formular:", form.id);
+    
+    // Uploadcare-Listener einrichten
+    setupUploadcareListeners();
     
     // Formularanalyse durchführen
     analyzeForm(form);
@@ -136,10 +199,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return element.checked;
         }
         
-        // Alternative Selektoren für die Checkbox-Feldsuche 
         function findCheckbox(possibleNames) {
             for (const name of possibleNames) {
-                // Versuche verschiedene Selektoren
                 const selectors = [
                     `input[name='${name}']`,
                     `input[data-name='${name}']`,
@@ -160,57 +221,48 @@ document.addEventListener("DOMContentLoaded", () => {
             return false;
         }
 
-        // Videolink extrahieren (falls vorhanden)
         function getVideoLink() {
+            // Prüfe zuerst, ob wir ein verstecktes Feld mit dem Video-Link haben
+            const videoLinkInput = form.querySelector("input[name='Video Link']");
+            if (videoLinkInput && videoLinkInput.value) {
+                console.log("🔍 Video-Link gefunden:", videoLinkInput.value);
+                return videoLinkInput.value;
+            }
+            
             // Verschiedene mögliche Selektoren für das Video-Link-Feld
             const videoLinkSelectors = [
-                "input[name='Video Link']",
+                "input[data-name='Video Link']",
                 "input[name='VideoLink']",
                 "input[name='video-link']",
-                "input[data-name='Video Link']",
                 "input[data-name='video-link']"
             ];
             
             for (const selector of videoLinkSelectors) {
                 const element = form.querySelector(selector);
-                if (element) {
+                if (element && element.value) {
                     console.log(`🔍 Video-Link-Feld gefunden mit Selektor: ${selector}`, element.value);
                     return element.value;
                 }
+            }
+            
+            // Prüfe auf Uploadcare-UUID über Uploadcare API
+            const uploaderElement = form.querySelector("uc-file-uploader-regular");
+            if (uploaderElement && uploaderElement.hasAttribute("ctx-name")) {
+                // Versuche, die UUID zu bekommen (falls möglich)
+                // Dies ist ein Fallback, sollte aber normalerweise nicht nötig sein
+                console.log("⚠️ Kein direkter Video-Link gefunden, prüfe Uploadcare-Element");
+                return "";
             }
             
             console.warn("⚠️ Kein Video-Link-Feld gefunden. Setze leer.");
             return "";
         }
 
-        // Kategorien-ID extrahieren oder leeren String verwenden
-        function getKategorieId() {
-            // Versuche verschiedene Selektoren für das Kategorie-Feld
-            const kategorieSelectors = [
-                "select[name='Kategorie']",
-                "select[data-name='Kategorie']",
-                "input[name='Kategorie']",
-                "input[data-name='Kategorie']"
-            ];
-            
-            for (const selector of kategorieSelectors) {
-                const element = form.querySelector(selector);
-                if (element) {
-                    console.log(`🔍 Kategorie-Feld gefunden mit Selektor: ${selector}`, element.value);
-                    return element.value;
-                }
-            }
-            
-            // Wenn nicht gefunden, versuche einen festen Wert (z.B. "2f1f2fe0cd35ddd19ca98f4b85b16258")
-            console.warn("⚠️ Kein Kategorie-Feld gefunden. Standard-Kategorie wird verwendet.");
-            return "2f1f2fe0cd35ddd19ca98f4b85b16258"; // Standard-Kategorie-ID
-        }
-
         // Ermittle die Formulardaten mit den korrekten Selektoren
         const formData = {
             name: getValue("input[name='Name']", "Unbenanntes Video"),
             slug: getValue("input[name='Name']", "Unbenanntes Video").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Math.random().toString(36).substring(2, 6),
-            kategorie: getKategorieId(),
+            kategorie: getValue("select[name='Kategorie']") || getValue("input[name='Kategorie']", "2f1f2fe0cd35ddd19ca98f4b85b16258"),
             beschreibung: getValue("textarea[name='Beschreibung']") || getValue("input[name='Beschreibung']", "Keine Beschreibung"),
             openVideo: findCheckbox(['open video', 'Open Video', 'öffentliches video', 'Öffentliches Video']),
             videoContest: findCheckbox(['video contest', 'Video Contest']),
@@ -223,6 +275,22 @@ document.addEventListener("DOMContentLoaded", () => {
         if (DEBUG_MODE) {
             console.log("📝 Erfasste Formulardaten:", formData);
         }
+        
+        // Videolink prüfen
+        if (!formData.videoLink) {
+            console.error("❌ Kein Video-Link gefunden! Bitte lade zuerst ein Video hoch.");
+            
+            // Fehlermeldung anzeigen
+            const errorMessage = document.createElement("div");
+            errorMessage.innerHTML = `
+                <div style="padding: 10px; margin-top: 15px; border-radius: 5px; background-color: #fff1f0; border: 1px solid #ff4d4f;">
+                    <p style="margin: 0; color: #ff4d4f;"><strong>Fehler:</strong> Bitte lade zuerst ein Video hoch, bevor du das Formular absendest.</p>
+                </div>
+            `;
+            form.appendChild(errorMessage);
+            
+            return; // Abbrechen, wenn kein Video-Link vorhanden ist
+        }
 
         // Statusanzeige für den Upload-Prozess
         const statusMessage = document.createElement("div");
@@ -233,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
         statusMessage.style.fontWeight = "bold";
         
         // Zeige "Wird hochgeladen..." an
-        statusMessage.textContent = "Video wird hochgeladen...";
+        statusMessage.textContent = "Video wird in die Datenbank eingetragen...";
         statusMessage.style.color = "#0066cc";
         statusMessage.style.border = "1px solid #0066cc";
         statusMessage.style.backgroundColor = "#f0f8ff";
@@ -241,10 +309,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             const result = await createCMSItem(formData);
-            console.log("🎉 Video erfolgreich hochgeladen!", result);
+            console.log("🎉 Video erfolgreich in CMS eingetragen!", result);
             
             // Erfolgsmeldung anzeigen
-            statusMessage.textContent = "Video erfolgreich hochgeladen!";
+            statusMessage.textContent = "Video erfolgreich hochgeladen und eingetragen!";
             statusMessage.style.color = "green";
             statusMessage.style.border = "1px solid green";
             statusMessage.style.backgroundColor = "#f0fff0";
@@ -254,10 +322,10 @@ document.addEventListener("DOMContentLoaded", () => {
             // oder
             // window.location.href = "/upload-success";
         } catch (error) {
-            console.error("❌ Fehler beim Hochladen:", error);
+            console.error("❌ Fehler beim Eintragen in CMS:", error);
             
             // Fehlermeldung anzeigen
-            statusMessage.textContent = "Fehler beim Hochladen. Bitte kontaktiere den Support.";
+            statusMessage.textContent = "Fehler beim Eintragen in die Datenbank. Bitte kontaktiere den Support.";
             statusMessage.style.color = "red";
             statusMessage.style.border = "1px solid red";
             statusMessage.style.backgroundColor = "#fff0f0";
