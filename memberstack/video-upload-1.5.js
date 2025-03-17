@@ -18,19 +18,17 @@ async function createCMSItem(formData) {
     const workerUrl = buildWorkerUrl(apiUrl);
     
     const payload = {
-        items: [ // ✅ API erwartet ein Array von Items
-            {
-                name: formData.name || "Unbenanntes Video",
-                slug: formData.slug || "unbenanntes-video",
-                kategorie: formData.kategorie || "Keine Kategorie",
-                beschreibung: formData.beschreibung || "Keine Beschreibung",
-                open_video: formData.openVideo || false,
-                video_contest: formData.videoContest || false,
-                webflow_member_id: formData.webflowMemberId || "",
-                memberstack_member_id: formData.memberstackMemberId || "",
-                member_name: formData.memberName || "Unbekannter Nutzer",
-            }
-        ]
+        fieldData: { // ✅ Webflow erwartet 'fieldData', nicht 'items'
+            name: formData.name || "Unbenanntes Video",
+            slug: formData.slug || "unbenanntes-video",
+            kategorie: formData.kategorie || "Keine Kategorie",
+            beschreibung: formData.beschreibung || "Keine Beschreibung",
+            open_video: formData.openVideo || false,
+            video_contest: formData.videoContest || false,
+            webflow_member_id: formData.webflowMemberId || "",
+            memberstack_member_id: formData.memberstackMemberId || "",
+            member_name: formData.memberName || "Unbekannter Nutzer",
+        }
     };
 
     if (DEBUG_MODE) {
