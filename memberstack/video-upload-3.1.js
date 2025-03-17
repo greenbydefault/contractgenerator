@@ -3,29 +3,74 @@
 // 🔧 Konfiguration
 const API_BASE_URL = "https://api.webflow.com/v2/collections";
 const WORKER_BASE_URL = "https://upload.oliver-258.workers.dev/?url=";
+const VIDEO_CONVERT_WORKER_URL = "https://video-convert.oliver-258.workers.dev"; // URL deines Video-Konvertierungs-Workers
 const COLLECTION_ID = "67d806e65cadcadf2f41e659"; // Collection ID für Videos
 const FORM_ID = "db-upload-video";
+const SUCCESS_DIV_ID = "db-upload-susscess"; // DIV ID für Erfolgsmeldung
 const DEBUG_MODE = true; // 🐞 Debugging aktivieren/deaktivieren
 
 // Uploadcare Datei-Informationen speichern
 let uploadcareFileUuid = "";
 let uploadcareFileCdnUrl = "";
 let uploadcareProcessedUrl = ""; // URL mit Videokonvertierung
+let isVideoProcessing = false;
 
 // 🛠️ Hilfsfunktion zur Erstellung der Worker-URL
 function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
 
-// Funktion zum Umwandeln der standard CDN URL in eine URL mit Videokonvertierung
-function getProcessedVideoUrl(cdnUrl, uuid) {
-    if (!cdnUrl || !uuid) return "";
-    
-    // Format: /video/-/format/mp4/-/quality/lighter/-/size/360x640/
-    const videoProcessingParams = "/video/-/format/mp4/-/quality/lighter/-/size/360x640/";
-    
-    // Erstelle die prozessierte URL
-    return `https://ucarecdn.com/${uuid}${videoProcessingParams}`;
+// Funktion zur Videokonvertierung mit dem Cloudflare Worker
+async function convertVideoWithWorker(uuid) {
+    if (!uuid) {
+        console.warn("⚠️ Keine UUID für Videokonvertierung vorhanden");
+        return null;
+    }
+
+    try {
+        isVideoProcessing = true;
+        console.log("🎬 Starte Videokonvertierung für UUID:", uuid);
+
+        // Sende Anfrage an den Cloudflare Worker
+        const response = await fetch(VIDEO_CONVERT_WORKER_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                uuid: uuid,
+                format: "mp4",
+                quality: "lighter",
+                size: "360x640"
+            })
+        });
+
+        // Verarbeite die Antwort
+        if (!response.ok) {
+            throw new Error(`Worker-Fehler: ${response.status}`);
+        }
+
+        const data = await response.json();
+        isVideoProcessing = false;
+
+        if (data.status === "success" && data.result && data.result.uuid) {
+            // Speichere die neue UUID des konvertierten Videos
+            console.log("✅ Videokonvertierung erfolgreich:", data.result);
+            
+            // Erstelle die URL des konvertierten Videos
+            uploadcareProcessedUrl = `https://ucarecdn.com/${data.result.uuid}/`;
+            
+            return data.result;
+        } else {
+            // Bei Fehler oder unerwarteter Antwort
+            console.warn("⚠️ Unerwartete Antwort vom Worker:", data);
+            return null;
+        }
+    } catch (error) {
+        isVideoProcessing = false;
+        console.error("❌ Fehler bei der Videokonvertierung:", error);
+        return null;
+    }
 }
 
 // 📡 Funktion zur Erstellung eines CMS Items
@@ -145,14 +190,10 @@ function initUploadcare() {
                 uploadcareFileUuid = fileEntry.uuid || "";
                 uploadcareFileCdnUrl = fileEntry.cdnUrl || "";
                 
-                // Erstelle die Video-URL mit Konvertierungsparametern
-                uploadcareProcessedUrl = getProcessedVideoUrl(uploadcareFileCdnUrl, uploadcareFileUuid);
-                
                 console.log("🎯 Uploadcare Datei gefunden:", {
                     name: fileEntry.name,
                     uuid: uploadcareFileUuid,
-                    originalCdnUrl: uploadcareFileCdnUrl,
-                    processedUrl: uploadcareProcessedUrl
+                    originalCdnUrl: uploadcareFileCdnUrl
                 });
                 
                 // Aktualisiere versteckte Felder im Formular, falls vorhanden
@@ -186,6 +227,8 @@ function initUploadcare() {
         
         if (isUploading) {
             statusText = `<span style="color: #0066cc;">Wird hochgeladen (${Math.round(fileEntry.uploadProgress)}%)...</span>`;
+        } else if (isVideoProcessing) {
+            statusText = '<span style="color: #ff9900;">Video wird optimiert...</span>';
         } else {
             statusText = '<span style="color: green;">✓ Erfolgreich hochgeladen</span>';
         }
@@ -209,9 +252,26 @@ function initUploadcare() {
     }
 
     // Event-Listener für erfolgreiche Uploads
-    uploaderCtx.addEventListener('file-upload-success', (event) => {
+    uploaderCtx.addEventListener('file-upload-success', async (event) => {
         console.log("🚀 Uploadcare Upload erfolgreich:", event.detail);
-        getUploadcareFileInfo();
+        const fileEntry = getUploadcareFileInfo();
+        
+        // Wenn Video hochgeladen, starte die Konvertierung
+        if (fileEntry && uploadcareFileUuid) {
+            // Warte einen kurzen Moment, damit das Uploadcare-System das Video verarbeiten kann
+            setTimeout(async () => {
+                // Starte die Videokonvertierung mit dem Worker
+                await convertVideoWithWorker(uploadcareFileUuid);
+                
+                // Aktualisiere die Anzeige nach der Konvertierung
+                if (fileEntry) {
+                    displayFileInfo(fileEntry, false);
+                }
+                
+                // Aktualisiere die versteckten Felder mit der konvertierten URL
+                updateHiddenFields();
+            }, 1000);
+        }
     });
     
     // Event-Listener für Upload-Fortschritt
@@ -333,6 +393,10 @@ function updateProgressBar(progress, status) {
             progressBar.style.backgroundColor = '#f44336'; // Rot
             progressLabel.textContent = 'Upload fehlgeschlagen:';
             break;
+        case 'processing':
+            progressBar.style.backgroundColor = '#ff9900'; // Orange
+            progressLabel.textContent = 'Video wird optimiert:';
+            break;
         default:
             progressBar.style.backgroundColor = '#4CAF50'; // Grün
             break;
@@ -347,6 +411,7 @@ function updateHiddenFields() {
     // Suche nach versteckten Feldern für die UUID und CDN URL
     const videoLinkInput = form.querySelector("input[name='Video Link'], input[name='VideoLink'], input[name='video-link']");
     if (videoLinkInput) {
+        // Bevorzuge die konvertierte URL, falls vorhanden
         videoLinkInput.value = uploadcareProcessedUrl || uploadcareFileCdnUrl;
         console.log("✅ Verstecktes Feld 'Video Link' aktualisiert:", videoLinkInput.value);
     }
@@ -490,10 +555,31 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        // Ausblenden des erfolgs-DIVs, falls vorhanden
+        const successDiv = document.getElementById(SUCCESS_DIV_ID);
+        if (successDiv) {
+            successDiv.style.display = 'none';
+        }
+
+        // Videoname abrufen oder Default verwenden
+        const videoName = getValue("input[name='Name']", "Unbenanntes Video");
+        
+        // Erstelle einen Slug aus Videoname und UUID
+        let slug = videoName.toLowerCase()
+            .replace(/\s+/g, "-")        // Leerzeichen zu Bindestrichen
+            .replace(/[^a-z0-9-]/g, "")  // Nur alphanumerische und Bindestriche
+            .replace(/-+/g, "-")         // Mehrfache Bindestriche zu einem
+            .replace(/^-|-$/g, "");      // Bindestriche am Anfang und Ende entfernen
+            
+        // Füge UUID hinzu
+        if (uploadcareFileUuid) {
+            slug = `${slug}-${uploadcareFileUuid.slice(0, 8)}`; // Nimm die ersten 8 Zeichen der UUID
+        }
+
         // Ermittle die Formulardaten mit den korrekten Selektoren
         const formData = {
-            name: getValue("input[name='Name']", "Unbenanntes Video"),
-            slug: getValue("input[name='Name']", "Unbenanntes Video").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Math.random().toString(36).substring(2, 6),
+            name: videoName,
+            slug: slug,
             kategorie: getKategorieId(),
             beschreibung: getValue("textarea[name='Beschreibung']") || getValue("input[name='Beschreibung']", "Keine Beschreibung"),
             openVideo: findCheckbox(['open video', 'Open Video', 'öffentliches video', 'Öffentliches Video']),
@@ -501,37 +587,45 @@ document.addEventListener("DOMContentLoaded", () => {
             webflowMemberId: getValue("input[name='Webflow Member ID']", ""),
             memberstackMemberId: getValue("input[name='Memberstack Member ID']", ""),
             memberName: getValue("input[name='Member Name']", "Unbekannter Nutzer"),
-            videoLink: getVideoLink() // Diese Funktion nutzt nun auch Uploadcare-Daten
+            videoLink: getVideoLink() // Diese Funktion nutzt die konvertierte URL, falls vorhanden
         };
 
         if (DEBUG_MODE) {
             console.log("📝 Erfasste Formulardaten:", formData);
         }
 
-        // Statusanzeige für den Upload-Prozess
-        const statusMessage = document.createElement("div");
-        statusMessage.id = "submit-status";
-        statusMessage.style.padding = "10px";
-        statusMessage.style.marginTop = "15px";
-        statusMessage.style.borderRadius = "5px";
-        statusMessage.style.fontWeight = "bold";
-        
-        // Zeige "Wird verarbeitet..." an
-        statusMessage.textContent = "Daten werden an Webflow gesendet...";
-        statusMessage.style.color = "#0066cc";
-        statusMessage.style.border = "1px solid #0066cc";
-        statusMessage.style.backgroundColor = "#f0f8ff";
-        form.appendChild(statusMessage);
+        // Statusanzeige für den Webflow-Upload-Prozess mit Verzögerung anzeigen
+        const uploadContainer = document.getElementById('upload-progress-container');
+        if (uploadContainer) {
+            const progressLabel = document.getElementById('upload-progress-label');
+            if (progressLabel) {
+                progressLabel.textContent = 'Daten werden an Webflow gesendet:';
+            }
+            
+            // Zeige den Fortschrittsbalken mit 2 Sekunden Verzögerung
+            setTimeout(() => {
+                uploadContainer.style.display = 'block';
+                updateProgressBar(0, 'uploading');
+            }, 2000);
+        }
 
         try {
+            // Simuliere Fortschritt beim Webflow-Upload
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 0.1; // Erhöhe um 10%
+                if (progress > 0.9) {
+                    clearInterval(progressInterval);
+                }
+                updateProgressBar(progress, 'uploading');
+            }, 300);
+
             const result = await createCMSItem(formData);
             console.log("🎉 Video erfolgreich hochgeladen!", result);
             
-            // Erfolgsmeldung anzeigen
-            statusMessage.textContent = "Video erfolgreich hochgeladen!";
-            statusMessage.style.color = "green";
-            statusMessage.style.border = "1px solid green";
-            statusMessage.style.backgroundColor = "#f0fff0";
+            // Fortschrittsintervall stoppen und auf 100% setzen
+            clearInterval(progressInterval);
+            updateProgressBar(1.0, 'success');
             
             // Optional: Formular zurücksetzen oder zur Bestätigungsseite weiterleiten
             // setTimeout(() => {
@@ -540,11 +634,8 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             console.error("❌ Fehler beim Hochladen:", error);
             
-            // Fehlermeldung anzeigen
-            statusMessage.textContent = "Fehler beim Hochladen. Bitte kontaktiere den Support.";
-            statusMessage.style.color = "red";
-            statusMessage.style.border = "1px solid red";
-            statusMessage.style.backgroundColor = "#fff0f0";
+            // Fortschrittsbalken auf Fehler setzen
+            updateProgressBar(0.3, 'failed');
         }
     });
 });
