@@ -51,19 +51,41 @@ async function convertVideoWithWorker(uuid) {
         }
 
         const data = await response.json();
+        console.log("Worker-Antwort erhalten:", data);
+        
         isVideoProcessing = false;
 
-        if (data.status === "success" && data.result && data.result.uuid) {
-            // Speichere die neue UUID des konvertierten Videos
-            console.log("✅ Videokonvertierung erfolgreich:", data.result);
+        if (data.status === "success" && data.result) {
+            // Verarbeite die Antwort, wobei result ein Array sein kann
+            let convertedUuid = null;
             
-            // Erstelle die URL des konvertierten Videos
-            uploadcareProcessedUrl = `https://ucarecdn.com/${data.result.uuid}/`;
+            if (Array.isArray(data.result) && data.result.length > 0) {
+                // Nehme das erste Element des Arrays
+                const firstResult = data.result[0];
+                // Prüfe, ob es eine UUID enthält
+                if (firstResult && firstResult.uuid) {
+                    convertedUuid = firstResult.uuid;
+                }
+            } else if (data.result.uuid) {
+                // Falls result direkt ein Objekt mit uuid ist
+                convertedUuid = data.result.uuid;
+            }
             
-            return data.result;
+            if (convertedUuid) {
+                console.log("✅ Videokonvertierung erfolgreich, UUID:", convertedUuid);
+                // Setze die neue URL
+                uploadcareProcessedUrl = `https://ucarecdn.com/${convertedUuid}/`;
+                
+                // Aktualisiere versteckte Felder
+                updateHiddenFields();
+                
+                return { uuid: convertedUuid };
+            } else {
+                console.warn("⚠️ Keine UUID in der Worker-Antwort gefunden:", data);
+                return null;
+            }
         } else {
-            // Bei Fehler oder unerwarteter Antwort
-            console.warn("⚠️ Unerwartete Antwort vom Worker:", data);
+            console.warn("⚠️ Unerwartetes Format der Worker-Antwort:", data);
             return null;
         }
     } catch (error) {
@@ -256,21 +278,42 @@ function initUploadcare() {
         console.log("🚀 Uploadcare Upload erfolgreich:", event.detail);
         const fileEntry = getUploadcareFileInfo();
         
+        // Deaktiviere den Submit-Button während der Konvertierung
+        const form = document.getElementById(FORM_ID);
+        const submitButton = form ? form.querySelector('input[type="submit"], button[type="submit"]') : null;
+        if (submitButton) {
+            submitButton.disabled = true;
+            const originalValue = submitButton.value || submitButton.textContent;
+            submitButton.value = submitButton.type === 'submit' ? "Video wird optimiert..." : originalValue;
+            submitButton.textContent = submitButton.type !== 'submit' ? "Video wird optimiert..." : submitButton.textContent;
+        }
+        
         // Wenn Video hochgeladen, starte die Konvertierung
         if (fileEntry && uploadcareFileUuid) {
-            // Warte einen kurzen Moment, damit das Uploadcare-System das Video verarbeiten kann
-            setTimeout(async () => {
+            try {
+                // Zeige Konvertierungsstatus an
+                isVideoProcessing = true;
+                if (fileEntry) {
+                    displayFileInfo(fileEntry, false);
+                }
+                
                 // Starte die Videokonvertierung mit dem Worker
-                await convertVideoWithWorker(uploadcareFileUuid);
+                const result = await convertVideoWithWorker(uploadcareFileUuid);
                 
                 // Aktualisiere die Anzeige nach der Konvertierung
                 if (fileEntry) {
                     displayFileInfo(fileEntry, false);
                 }
-                
-                // Aktualisiere die versteckten Felder mit der konvertierten URL
-                updateHiddenFields();
-            }, 1000);
+            } catch (error) {
+                console.error("❌ Fehler bei der Videokonvertierung:", error);
+            } finally {
+                // Reaktiviere den Submit-Button
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.value = submitButton.type === 'submit' ? originalValue : submitButton.value;
+                    submitButton.textContent = submitButton.type !== 'submit' ? originalValue : submitButton.textContent;
+                }
+            }
         }
     });
     
@@ -504,6 +547,25 @@ document.addEventListener("DOMContentLoaded", () => {
         event.preventDefault();
         console.log("🚀 Formular wird gesendet...");
         
+        // Prüfe, ob ein Video hochgeladen wurde
+        if (!uploadcareFileUuid) {
+            alert("Bitte lade zuerst ein Video hoch, bevor du das Formular absendest.");
+            return;
+        }
+        
+        // Prüfe, ob die Videokonvertierung noch läuft
+        if (isVideoProcessing) {
+            alert("Die Videooptimierung läuft noch. Bitte warte einen Moment.");
+            return;
+        }
+        
+        // Stelle sicher, dass wir die neueste URL verwenden
+        if (uploadcareProcessedUrl) {
+            console.log("✓ Verwende die konvertierte Video-URL:", uploadcareProcessedUrl);
+        } else {
+            console.log("⚠️ Keine konvertierte URL gefunden, verwende Original:", uploadcareFileCdnUrl);
+        }
+        
         // Hilfsfunktionen zur Felderermittlung
         function getValue(selector, defaultValue = "") {
             const element = form.querySelector(selector);
@@ -547,12 +609,6 @@ document.addEventListener("DOMContentLoaded", () => {
             
             console.warn(`⚠️ Keine Checkbox mit Namen ${possibleNames.join(', ')} gefunden`);
             return false;
-        }
-
-        // Prüfe, ob ein Video hochgeladen wurde
-        if (!uploadcareFileUuid) {
-            alert("Bitte lade zuerst ein Video hoch, bevor du das Formular absendest.");
-            return;
         }
 
         // Ausblenden des erfolgs-DIVs, falls vorhanden
