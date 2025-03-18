@@ -20,6 +20,139 @@ function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
 
+// Funktion zum Abrufen eines Members anhand der Webflow ID
+async function getMemberByWebflowId(webflowId) {
+    if (!webflowId) {
+        console.error("❌ Keine Webflow ID angegeben");
+        return null;
+    }
+
+    try {
+        // Erstelle die API-URL mit Filter für die Webflow ID
+        const apiUrl = `${API_BASE_URL}/${MEMBERS_COLLECTION_ID}/items?filter[webflow-id][eq]=${webflowId}`;
+        const workerUrl = buildWorkerUrl(apiUrl);
+        
+        console.log(`🔍 Suche Member mit Webflow ID: ${webflowId}`);
+        
+        const response = await fetch(workerUrl, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+                // Der API-Token wird im Worker gesetzt
+            }
+        });
+
+        const responseText = await response.text();
+        
+        if (!response.ok) {
+            console.error("📄 API-Antwort (Member-Suche):", responseText);
+            throw new Error(`API-Fehler bei Member-Suche: ${response.status} - ${responseText}`);
+        }
+
+        // Versuche, die Antwort als JSON zu parsen
+        let responseData;
+        try {
+            responseData = JSON.parse(responseText);
+        } catch (e) {
+            console.warn("⚠️ Konnte API-Antwort nicht als JSON parsen:", responseText);
+            return null;
+        }
+        
+        // Prüfe, ob Member gefunden wurde
+        if (responseData.items && responseData.items.length > 0) {
+            const member = responseData.items[0];
+            console.log("✅ Member gefunden:", member);
+            return member;
+        } else {
+            console.warn(`⚠️ Kein Member mit Webflow ID ${webflowId} gefunden`);
+            return null;
+        }
+    } catch (error) {
+        console.error("❌ Fehler beim Abrufen des Members:", error);
+        return null;
+    }
+}
+
+// Funktion zum Aktualisieren des Video-Feeds eines Members
+async function updateMemberVideoFeed(memberId, videoId) {
+    if (!memberId || !videoId) {
+        console.error("❌ Member ID oder Video ID fehlt");
+        return null;
+    }
+
+    try {
+        // Hole zuerst den aktuellen Member
+        const member = await getMemberByWebflowId(memberId);
+        
+        if (!member) {
+            throw new Error(`Kein Member mit ID ${memberId} gefunden`);
+        }
+        
+        // Hole die aktuelle Video-Feed-Liste
+        const currentVideoFeed = member.fieldData["video-feed"] || [];
+        
+        // Prüfe, ob das Video bereits im Feed ist
+        if (currentVideoFeed.includes(videoId)) {
+            console.log(`⚠️ Video ${videoId} ist bereits im Feed des Members`);
+            return member; // Keine Änderung notwendig
+        }
+        
+        // Füge das neue Video zur Liste hinzu
+        const updatedVideoFeed = [...currentVideoFeed, videoId];
+        
+        console.log(`🔄 Aktualisiere Video-Feed für Member ${memberId}:`, updatedVideoFeed);
+        
+        // Erstelle die API-URL zum Aktualisieren des Members
+        const apiUrl = `${API_BASE_URL}/${MEMBERS_COLLECTION_ID}/items/${member.id}`;
+        const workerUrl = buildWorkerUrl(apiUrl);
+        
+        // Baue den Payload für das Update
+        const payload = {
+            isArchived: false,
+            isDraft: false,
+            fieldData: {
+                // Wichtig: Nur das Feld aktualisieren, das wir ändern möchten
+                "video-feed": updatedVideoFeed
+            }
+        };
+        
+        if (DEBUG_MODE) {
+            console.log("📤 Sende Member-Update an Webflow API:", payload);
+        }
+        
+        const response = await fetch(workerUrl, {
+            method: "PATCH", // PATCH zum teilweisen Aktualisieren
+            headers: {
+                "Content-Type": "application/json"
+                // Der API-Token wird im Worker gesetzt
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const responseText = await response.text();
+        
+        if (!response.ok) {
+            console.error("📄 API-Antwort (Member-Update):", responseText);
+            throw new Error(`API-Fehler bei Member-Update: ${response.status} - ${responseText}`);
+        }
+
+        // Versuche, die Antwort als JSON zu parsen
+        let responseData;
+        try {
+            responseData = JSON.parse(responseText);
+        } catch (e) {
+            console.warn("⚠️ Konnte API-Antwort nicht als JSON parsen:", responseText);
+            responseData = { raw: responseText };
+        }
+        
+        console.log("✅ Member erfolgreich aktualisiert:", responseData);
+        return responseData;
+    } catch (error) {
+        console.error("❌ Fehler beim Aktualisieren des Member Video-Feeds:", error);
+        throw error;
+    }
+}
+
 // Funktion zur Videokonvertierung mit dem Cloudflare Worker
 async function convertVideoWithWorker(uuid) {
     if (!uuid) {
