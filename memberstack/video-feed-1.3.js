@@ -30,7 +30,13 @@ async function fetchUserVideos(memberId) {
         }
         const userData = await response.json();
         console.log("✅ Erfolgreich abgerufene Benutzerdaten:", userData);
-        return userData?.fieldData?.["video-feed"] || [];
+        
+        // Prüfen, ob video-feed existiert und gültige Werte enthält
+        if (!userData?.fieldData?.["video-feed"] || !Array.isArray(userData.fieldData["video-feed"])) {
+            console.error("❌ Kein gültiges Video-Feed-Feld gefunden.");
+            return [];
+        }
+        return userData.fieldData["video-feed"];
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen der Videos: ${error.message}`);
         return [];
@@ -46,28 +52,16 @@ function renderVideos(videos) {
     }
     videoContainer.innerHTML = "";
 
-    videos.forEach(videoData => {
-        if (!videoData || Object.keys(videoData).length === 0) return;
+    videos.forEach(videoId => {
+        if (!videoId) return;
 
         const videoDiv = document.createElement("div");
         videoDiv.classList.add("video-item");
 
         const videoElement = document.createElement("video");
-        videoElement.src = videoData["video-link"] || "";
+        videoElement.src = `https://uploads-ssl.webflow.com/${videoId}`;
         videoElement.controls = true;
         videoDiv.appendChild(videoElement);
-
-        const infoDiv = document.createElement("div");
-        infoDiv.classList.add("video-info");
-        infoDiv.innerHTML = `
-            <p><strong>${videoData["video-name"] || "Unbenanntes Video"}</strong></p>
-            <p>Kategorie: ${videoData["video-kategorie"] || "Nicht angegeben"}</p>
-            <p>Beschreibung: ${videoData["video-beschreibung"] || "Keine Beschreibung"}</p>
-            <p>Creator: ${videoData["creator-name"] || "Unbekannt"}</p>
-            <p>Memberstack ID: ${videoData["memberstack-id"] || "Nicht verfügbar"}</p>
-            <p>Webflow ID: ${videoData["webflow-id"] || "Nicht verfügbar"}</p>
-        `;
-        videoDiv.appendChild(infoDiv);
 
         videoContainer.appendChild(videoDiv);
     });
