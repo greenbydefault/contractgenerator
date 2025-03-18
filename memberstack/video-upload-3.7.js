@@ -516,7 +516,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         // Stelle sicher, dass wir die neueste URL verwenden
-        const videoLink = uploadcareProcessedUrl || uploadcareFileCdnUrl;
+        const currentVideoLink = uploadcareProcessedUrl || uploadcareFileCdnUrl;
         if (uploadcareProcessedUrl) {
             console.log("✓ Verwende die konvertierte Video-URL:", uploadcareProcessedUrl);
         } else if (uploadcareFileCdnUrl) {
