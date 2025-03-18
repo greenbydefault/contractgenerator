@@ -31,24 +31,23 @@ async function fetchUserVideos(memberstackId) {
         const data = await response.json();
         console.log("✅ Erfolgreich abgerufene Nutzerdaten:", data);
         
-        // Alle Items durchsuchen und das Item mit der passenden Memberstack-ID finden
-        const userItem = data.items.find(item => item.fieldData["memberstack-id"] === memberstackId);
+        // Alle Items durchsuchen und die passenden Videos sammeln
+        const userVideos = data.items.filter(item => item.fieldData["memberstack-id"] === memberstackId);
         
-        if (!userItem) {
+        if (userVideos.length === 0) {
             console.error("❌ Kein passender Nutzer mit dieser Memberstack ID gefunden.");
             return [];
         }
         
-        console.log("📦 Gefundenes Nutzer-Item:", userItem);
+        console.log("📦 Gefundene Videos für Nutzer:", userVideos);
         
-        // Prüfen, ob video-feed existiert
-        if (!userItem.fieldData["video-feed"]) {
-            console.error("❌ Kein gültiges Video-Feed-Feld gefunden.");
-            return [];
-        }
+        // Extrahiere alle Videos mit einer gültigen "video-link" Eigenschaft
+        const videoFeed = userVideos.map(video => ({
+            "video-link": video.fieldData["video-link"],
+            "video-name": video.fieldData["video-name"],
+            "video-kategorie": video.fieldData["video-kategorie"]
+        })).filter(video => video["video-link"]);
         
-        // Falls video-feed ein einzelnes Video ist, es in ein Array umwandeln
-        const videoFeed = Array.isArray(userItem.fieldData["video-feed"]) ? userItem.fieldData["video-feed"] : [userItem.fieldData];
         return videoFeed;
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen der Videos: ${error.message}`);
