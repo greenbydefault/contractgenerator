@@ -544,154 +544,106 @@ document.addEventListener("DOMContentLoaded", () => {
     analyzeForm(form);
 
     form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        console.log("🚀 Formular wird gesendet...");
+    event.preventDefault();
+    console.log("🚀 Formular wird gesendet...");
+    
+    // Prüfe, ob ein Video hochgeladen wurde
+    if (!uploadcareFileUuid) {
+        alert("Bitte lade zuerst ein Video hoch, bevor du das Formular absendest.");
+        return;
+    }
+    
+    // Prüfe, ob die Videokonvertierung noch läuft
+    if (isVideoProcessing) {
+        alert("Die Videooptimierung läuft noch. Bitte warte einen Moment.");
+        return;
+    }
+    
+    // Hole die Modal-Elemente
+    const progressBar = document.querySelector('.db-modal-progessbar');
+    const progressPercentage = document.querySelector('.db-modal-progress-percentage');
+    const progressText = document.querySelector('.db-modal-progress-text');
+    const progressImage = document.querySelector('.db-modal-progress-img');
+    
+    // Setze initialen Zustand für Modal
+    if (progressBar) progressBar.style.width = '0%';
+    if (progressPercentage) progressPercentage.textContent = '0%';
+    if (progressText) progressText.textContent = 'Daten werden hochgeladen...';
+    
+    // Videoname abrufen oder Default verwenden
+    const videoName = getValue("input[name='Name']", "Unbenanntes Video");
+    
+    // Erstelle einen Slug aus Videoname und UUID
+    let slug = videoName.toLowerCase()
+        .replace(/\s+/g, "-")        // Leerzeichen zu Bindestrichen
+        .replace(/[^a-z0-9-]/g, "")  // Nur alphanumerische und Bindestriche
+        .replace(/-+/g, "-")         // Mehrfache Bindestriche zu einem
+        .replace(/^-|-$/g, "");      // Bindestriche am Anfang und Ende entfernen
         
-        // Prüfe, ob ein Video hochgeladen wurde
-        if (!uploadcareFileUuid) {
-            alert("Bitte lade zuerst ein Video hoch, bevor du das Formular absendest.");
-            return;
-        }
-        
-        // Prüfe, ob die Videokonvertierung noch läuft
-        if (isVideoProcessing) {
-            alert("Die Videooptimierung läuft noch. Bitte warte einen Moment.");
-            return;
-        }
-        
-        // Stelle sicher, dass wir die neueste URL verwenden
-        if (uploadcareProcessedUrl) {
-            console.log("✓ Verwende die konvertierte Video-URL:", uploadcareProcessedUrl);
-        } else {
-            console.log("⚠️ Keine konvertierte URL gefunden, verwende Original:", uploadcareFileCdnUrl);
-        }
-        
-        // Hilfsfunktionen zur Felderermittlung
-        function getValue(selector, defaultValue = "") {
-            const element = form.querySelector(selector);
-            if (!element) {
-                console.warn(`⚠️ Feld '${selector}' nicht gefunden. Setze Standardwert: '${defaultValue}'`);
-                return defaultValue;
-            }
-            console.log(`🔍 Feld '${selector}' gefunden:`, element.value);
-            return element.value;
-        }
+    // Füge UUID hinzu
+    if (uploadcareFileUuid) {
+        slug = `${slug}-${uploadcareFileUuid.slice(0, 8)}`; // Nimm die ersten 8 Zeichen der UUID
+    }
 
-        function getChecked(selector) {
-            const element = form.querySelector(selector);
-            if (!element) {
-                console.warn(`⚠️ Checkbox '${selector}' nicht gefunden. Standard: false`);
-                return false;
-            }
-            console.log(`🔍 Checkbox '${selector}' gefunden:`, element.checked);
-            return element.checked;
-        }
-        
-        // Alternative Selektoren für die Checkbox-Feldsuche 
-        function findCheckbox(possibleNames) {
-            for (const name of possibleNames) {
-                // Versuche verschiedene Selektoren
-                const selectors = [
-                    `input[name='${name}']`,
-                    `input[data-name='${name}']`,
-                    `input#${name}`,
-                    `input[placeholder='${name}']`
-                ];
-                
-                for (const selector of selectors) {
-                    const element = form.querySelector(selector);
-                    if (element && element.type === 'checkbox') {
-                        console.log(`🔍 Checkbox gefunden mit Selektor: ${selector}`);
-                        return element.checked;
-                    }
-                }
-            }
+    // Ermittle die Formulardaten mit den korrekten Selektoren
+    const formData = {
+        name: videoName,
+        slug: slug,
+        kategorie: getKategorieId(),
+        beschreibung: getValue("textarea[name='Beschreibung']") || getValue("input[name='Beschreibung']", "Keine Beschreibung"),
+        openVideo: findCheckbox(['open video', 'Open Video', 'öffentliches video', 'Öffentliches Video']),
+        videoContest: findCheckbox(['video contest', 'Video Contest']),
+        webflowMemberId: getValue("input[name='Webflow Member ID']", ""),
+        memberstackMemberId: getValue("input[name='Memberstack Member ID']", ""),
+        memberName: getValue("input[name='Member Name']", "Unbekannter Nutzer"),
+        videoLink: getVideoLink() // Diese Funktion nutzt die konvertierte URL, falls vorhanden
+    };
+
+    if (DEBUG_MODE) {
+        console.log("📝 Erfasste Formulardaten:", formData);
+    }
+
+    try {
+        // Zeige Fortschrittsmodal mit initialer Animation
+        if (progressBar) {
+            progressBar.style.display = 'block';
             
-            console.warn(`⚠️ Keine Checkbox mit Namen ${possibleNames.join(', ')} gefunden`);
-            return false;
-        }
-
-        // Ausblenden des erfolgs-DIVs, falls vorhanden
-        const successDiv = document.getElementById(SUCCESS_DIV_ID);
-        if (successDiv) {
-            successDiv.style.display = 'none';
-        }
-
-        // Videoname abrufen oder Default verwenden
-        const videoName = getValue("input[name='Name']", "Unbenanntes Video");
-        
-        // Erstelle einen Slug aus Videoname und UUID
-        let slug = videoName.toLowerCase()
-            .replace(/\s+/g, "-")        // Leerzeichen zu Bindestrichen
-            .replace(/[^a-z0-9-]/g, "")  // Nur alphanumerische und Bindestriche
-            .replace(/-+/g, "-")         // Mehrfache Bindestriche zu einem
-            .replace(/^-|-$/g, "");      // Bindestriche am Anfang und Ende entfernen
-            
-        // Füge UUID hinzu
-        if (uploadcareFileUuid) {
-            slug = `${slug}-${uploadcareFileUuid.slice(0, 8)}`; // Nimm die ersten 8 Zeichen der UUID
-        }
-
-        // Ermittle die Formulardaten mit den korrekten Selektoren
-        const formData = {
-            name: videoName,
-            slug: slug,
-            kategorie: getKategorieId(),
-            beschreibung: getValue("textarea[name='Beschreibung']") || getValue("input[name='Beschreibung']", "Keine Beschreibung"),
-            openVideo: findCheckbox(['open video', 'Open Video', 'öffentliches video', 'Öffentliches Video']),
-            videoContest: findCheckbox(['video contest', 'Video Contest']),
-            webflowMemberId: getValue("input[name='Webflow Member ID']", ""),
-            memberstackMemberId: getValue("input[name='Memberstack Member ID']", ""),
-            memberName: getValue("input[name='Member Name']", "Unbekannter Nutzer"),
-            videoLink: getVideoLink() // Diese Funktion nutzt die konvertierte URL, falls vorhanden
-        };
-
-        if (DEBUG_MODE) {
-            console.log("📝 Erfasste Formulardaten:", formData);
-        }
-
-        // Statusanzeige für den Webflow-Upload-Prozess mit Verzögerung anzeigen
-        const uploadContainer = document.getElementById('upload-progress-container');
-        if (uploadContainer) {
-            const progressLabel = document.getElementById('upload-progress-label');
-            if (progressLabel) {
-                progressLabel.textContent = 'Daten werden an Webflow gesendet:';
-            }
-            
-            // Zeige den Fortschrittsbalken mit 2 Sekunden Verzögerung
-            setTimeout(() => {
-                uploadContainer.style.display = 'block';
-                updateProgressBar(0, 'uploading');
-            }, 2000);
-        }
-
-        try {
-            // Simuliere Fortschritt beim Webflow-Upload
+            // Animiere Fortschrittsbalken
             let progress = 0;
             const progressInterval = setInterval(() => {
-                progress += 0.1; // Erhöhe um 10%
-                if (progress > 0.9) {
+                progress += 10;
+                if (progressBar) progressBar.style.width = `${progress}%`;
+                if (progressPercentage) progressPercentage.textContent = `${progress}%`;
+                
+                if (progress >= 90) {
                     clearInterval(progressInterval);
                 }
-                updateProgressBar(progress, 'uploading');
             }, 300);
 
+            // Sende Daten an Webflow
             const result = await createCMSItem(formData);
-            console.log("🎉 Video erfolgreich hochgeladen!", result);
             
-            // Fortschrittsintervall stoppen und auf 100% setzen
+            // Stoppe Fortschrittsanimation
             clearInterval(progressInterval);
-            updateProgressBar(1.0, 'success');
             
-            // Optional: Formular zurücksetzen oder zur Bestätigungsseite weiterleiten
-            // setTimeout(() => {
-            //     window.location.href = "/upload-success";
-            // }, 2000);
-        } catch (error) {
-            console.error("❌ Fehler beim Hochladen:", error);
+            // Erfolgsfall
+            if (progressBar) progressBar.style.width = '100%';
+            if (progressPercentage) progressPercentage.textContent = '100%';
+            if (progressText) progressText.textContent = 'Upload erfolgreich!';
+            if (progressImage) progressImage.src = 'erfolg-icon.svg'; // Passen Sie den Pfad an
             
-            // Fortschrittsbalken auf Fehler setzen
-            updateProgressBar(0.3, 'failed');
+            console.log("🎉 Video erfolgreich hochgeladen!", result);
         }
-    });
+    } catch (error) {
+        console.error("❌ Fehler beim Hochladen:", error);
+        
+        // Fehlerfall
+        if (progressBar) {
+            progressBar.style.width = '100%';
+            progressBar.style.backgroundColor = '#FF6974'; // Roter Fehler-Balken
+        }
+        if (progressPercentage) progressPercentage.textContent = '0%';
+        if (progressText) progressText.textContent = 'Es ist leider ein Fehler aufgetreten. Bitte versuche es erneut.';
+        if (progressImage) progressImage.src = 'fehler-icon.svg'; // Passen Sie den Pfad an
+    }
 });
