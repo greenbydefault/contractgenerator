@@ -76,6 +76,7 @@ function renderVideos(videos) {
         const videoElement = document.createElement("video");
         videoElement.src = `${videoData["video-link"]}`;
         videoElement.controls = true;
+        videoElement.classList.add("db-video-embed");
         videoDiv.appendChild(videoElement);
 
         const detailsDiv = document.createElement("div");
