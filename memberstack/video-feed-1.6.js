@@ -60,18 +60,30 @@ function renderVideos(videos) {
     }
     videoContainer.innerHTML = "";
 
-    videos.forEach(videoId => {
-        if (!videoId) return;
+    videos.forEach(videoData => {
+        if (!videoData || !videoData["video-link"]) return;
+
+        const wrapperDiv = document.createElement("div");
+        wrapperDiv.classList.add("db-upload-wrapper-item");
 
         const videoDiv = document.createElement("div");
-        videoDiv.classList.add("video-item");
+        videoDiv.classList.add("db-upload-item-video");
 
         const videoElement = document.createElement("video");
-        videoElement.src = `https://uploads-ssl.webflow.com/${videoId}`;
+        videoElement.src = `${videoData["video-link"]}`;
         videoElement.controls = true;
         videoDiv.appendChild(videoElement);
 
-        videoContainer.appendChild(videoDiv);
+        const detailsDiv = document.createElement("div");
+        detailsDiv.classList.add("db-upload-item-details");
+        detailsDiv.innerHTML = `
+            <p><strong>${videoData["video-name"] || "Unbenanntes Video"}</strong></p>
+            <p>Kategorie: ${videoData["video-kategorie"] || "Nicht angegeben"}</p>
+        `;
+
+        wrapperDiv.appendChild(videoDiv);
+        wrapperDiv.appendChild(detailsDiv);
+        videoContainer.appendChild(wrapperDiv);
     });
 }
 
