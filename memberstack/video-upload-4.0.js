@@ -1,13 +1,16 @@
 // 🌐 Webflow API Integration zur Erstellung eines CMS Collection Items
 
-// 🔧 Konfiguration
-const API_BASE_URL = "https://api.webflow.com/v2/collections";
-const WORKER_BASE_URL = "https://upload.oliver-258.workers.dev/?url=";
-const VIDEO_CONVERT_WORKER_URL = "https://video-convert.oliver-258.workers.dev"; // URL deines Video-Konvertierungs-Workers
-const COLLECTION_ID = "67d806e65cadcadf2f41e659"; // Collection ID für Videos
-const FORM_ID = "db-upload-video";
-const SUCCESS_DIV_ID = "db-upload-susscess"; // DIV ID für Erfolgsmeldung
-const DEBUG_MODE = true; // 🐞 Debugging aktivieren/deaktivieren
+// 🔧 Konfiguration - Globale Konstanten
+window.WEBFLOW_API = {
+    BASE_URL: "https://api.webflow.com/v2/collections",
+    WORKER_BASE_URL: "https://upload.oliver-258.workers.dev/?url=",
+    VIDEO_CONVERT_WORKER_URL: "https://video-convert.oliver-258.workers.dev",
+    COLLECTION_ID: "67d806e65cadcadf2f41e659", // Collection ID für Videos
+    MEMBERS_COLLECTION_ID: "6448faf9c5a8a15f6cc05526", // Collection ID für Members
+    FORM_ID: "db-upload-video",
+    SUCCESS_DIV_ID: "db-upload-susscess",
+    DEBUG_MODE: true
+};
 
 // Uploadcare Datei-Informationen speichern
 let uploadcareFileUuid = "";
@@ -17,7 +20,82 @@ let isVideoProcessing = false;
 
 // 🛠️ Hilfsfunktion zur Erstellung der Worker-URL
 function buildWorkerUrl(apiUrl) {
-    return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
+    return `${window.WEBFLOW_API.WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
+}
+
+// Funktion zur Videokonvertierung mit dem Cloudflare Worker
+async function convertVideoWithWorker(uuid) {
+    if (!uuid) {
+        console.warn("⚠️ Keine UUID für Videokonvertierung vorhanden");
+        return null;
+    }
+
+    try {
+        isVideoProcessing = true;
+        console.log("🎬 Starte Videokonvertierung für UUID:", uuid);
+
+        // Sende Anfrage an den Cloudflare Worker
+        const response = await fetch(window.WEBFLOW_API.VIDEO_CONVERT_WORKER_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                uuid: uuid,
+                format: "mp4",
+                quality: "lighter",
+                size: "360x640"
+            })
+        });
+
+        // Verarbeite die Antwort
+        if (!response.ok) {
+            throw new Error(`Worker-Fehler: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Worker-Antwort erhalten:", data);
+        
+        isVideoProcessing = false;
+
+        if (data.status === "success" && data.result) {
+            // Verarbeite die Antwort, wobei result ein Array sein kann
+            let convertedUuid = null;
+            
+            if (Array.isArray(data.result) && data.result.length > 0) {
+                // Nimm das erste Element des Arrays
+                const firstResult = data.result[0];
+                // Prüfe, ob es eine UUID enthält
+                if (firstResult && firstResult.uuid) {
+                    convertedUuid = firstResult.uuid;
+                }
+            } else if (data.result.uuid) {
+                // Falls result direkt ein Objekt mit uuid ist
+                convertedUuid = data.result.uuid;
+            }
+            
+            if (convertedUuid) {
+                console.log("✅ Videokonvertierung erfolgreich, UUID:", convertedUuid);
+                // Setze die neue URL
+                uploadcareProcessedUrl = `https://ucarecdn.com/${convertedUuid}/`;
+                
+                // Aktualisiere versteckte Felder
+                updateHiddenFields();
+                
+                return { uuid: convertedUuid };
+            } else {
+                console.warn("⚠️ Keine UUID in der Worker-Antwort gefunden:", data);
+                return null;
+            }
+        } else {
+            console.warn("⚠️ Unerwartetes Format der Worker-Antwort:", data);
+            return null;
+        }
+    } catch (error) {
+        isVideoProcessing = false;
+        console.error("❌ Fehler bei der Videokonvertierung:", error);
+        return null;
+    }
 }
 
 // Funktion zum Abrufen eines Members anhand der Webflow ID
@@ -28,25 +106,48 @@ async function getMemberByWebflowId(webflowId) {
     }
 
     try {
-        // Erstelle die API-URL mit Filter für die Webflow ID
-        // Änderung: Wir suchen jetzt nach dem Feld 'webflow-id' statt nach dem Member-ID
-        const apiUrl = `${API_BASE_URL}/${MEMBERS_COLLECTION_ID}/items`;
-        const workerUrl = buildWorkerUrl(apiUrl);
+        // Versuche zuerst, den Member direkt über die ID zu holen
+        // (falls webflowId eigentlich die Webflow Item-ID ist)
+        const directApiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBERS_COLLECTION_ID}/items/${webflowId}`;
+        const directWorkerUrl = buildWorkerUrl(directApiUrl);
         
-        console.log(`🔍 Suche Member mit Webflow ID: ${webflowId}`);
+        console.log(`🔍 Versuche direkten Zugriff auf Member mit ID: ${webflowId}`);
         
-        const response = await fetch(workerUrl, {
+        let response = await fetch(directWorkerUrl, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json"
-                // Der API-Token wird im Worker gesetzt
+            }
+        });
+        
+        if (response.ok) {
+            const responseText = await response.text();
+            try {
+                const member = JSON.parse(responseText);
+                console.log("✅ Member direkt gefunden:", member);
+                return member;
+            } catch (e) {
+                console.warn("⚠️ Konnte API-Antwort nicht als JSON parsen:", responseText);
+            }
+        }
+        
+        // Wenn direkter Zugriff fehlschlägt, hole alle Member und filtere manuell
+        console.log(`🔍 Direkter Zugriff fehlgeschlagen, suche Member mit Webflow ID: ${webflowId}`);
+        
+        const listApiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBERS_COLLECTION_ID}/items`;
+        const listWorkerUrl = buildWorkerUrl(listApiUrl);
+        
+        response = await fetch(listWorkerUrl, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
             }
         });
 
         const responseText = await response.text();
         
         if (!response.ok) {
-            console.error("📄 API-Antwort (Member-Suche):", responseText);
+            console.error("📄 API-Antwort (Member-Liste):", responseText);
             throw new Error(`API-Fehler bei Member-Suche: ${response.status} - ${responseText}`);
         }
 
@@ -59,32 +160,43 @@ async function getMemberByWebflowId(webflowId) {
             return null;
         }
         
-        // Da wir keine API-Filterung mehr verwenden, müssen wir manuell filtern
+        // Manuell nach dem Member mit der entsprechenden Webflow-ID oder Memberstack-ID suchen
         let foundMember = null;
         
         if (responseData.items && responseData.items.length > 0) {
-            // Suche nach dem Member mit der entsprechenden Webflow-ID
+            // Ausgabe der ersten 3 Members im Debug-Modus
+            if (window.WEBFLOW_API.DEBUG_MODE) {
+                console.log("Debug: Beispiel für Member-Daten (erste 3):");
+                for (let i = 0; i < Math.min(3, responseData.items.length); i++) {
+                    console.log(responseData.items[i]);
+                }
+            }
+            
             for (const member of responseData.items) {
-                if (member.fieldData && 
-                    (member.fieldData["webflow-id"] === webflowId || 
-                     member.id === webflowId)) {
-                    foundMember = member;
-                    break;
+                if (member.fieldData) {
+                    // Prüfe alle möglichen ID-Felder
+                    const memberWebflowId = member.fieldData["webflow-id"];
+                    const memberstackId = member.fieldData["memberstack-id"];
+                    
+                    if (memberWebflowId === webflowId || memberstackId === webflowId || member.id === webflowId) {
+                        foundMember = member;
+                        break;
+                    }
                 }
             }
         }
         
         if (foundMember) {
-            console.log("✅ Member gefunden:", foundMember);
+            console.log("✅ Member in der Liste gefunden:", foundMember);
             return foundMember;
         } else {
-            console.warn(`⚠️ Kein Member mit Webflow ID ${webflowId} gefunden. Prüfe alle IDs...`);
+            console.warn(`⚠️ Kein Member mit ID ${webflowId} gefunden`);
             
-            // Debug-Ausgabe für alle Member-IDs
-            if (DEBUG_MODE && responseData.items) {
+            // Debug-Ausgabe für alle verfügbaren Member-IDs
+            if (window.WEBFLOW_API.DEBUG_MODE && responseData.items) {
                 console.log("Verfügbare Member IDs:");
                 responseData.items.forEach(member => {
-                    console.log(`Member ID: ${member.id}, Webflow-ID: ${member.fieldData ? member.fieldData["webflow-id"] : "nicht gesetzt"}`);
+                    console.log(`Member ID: ${member.id}, Webflow-ID: ${member.fieldData ? member.fieldData["webflow-id"] : "nicht gesetzt"}, Memberstack-ID: ${member.fieldData ? member.fieldData["memberstack-id"] : "nicht gesetzt"}`);
                 });
             }
             
@@ -126,7 +238,7 @@ async function updateMemberVideoFeed(memberId, videoId) {
         console.log(`🔄 Aktualisiere Video-Feed für Member ${memberId}:`, updatedVideoFeed);
         
         // Erstelle die API-URL zum Aktualisieren des Members
-        const apiUrl = `${API_BASE_URL}/${MEMBERS_COLLECTION_ID}/items/${member.id}`;
+        const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBERS_COLLECTION_ID}/items/${member.id}`;
         const workerUrl = buildWorkerUrl(apiUrl);
         
         // Baue den Payload für das Update
@@ -139,7 +251,7 @@ async function updateMemberVideoFeed(memberId, videoId) {
             }
         };
         
-        if (DEBUG_MODE) {
+        if (window.WEBFLOW_API.DEBUG_MODE) {
             console.log("📤 Sende Member-Update an Webflow API:", payload);
         }
         
@@ -176,104 +288,9 @@ async function updateMemberVideoFeed(memberId, videoId) {
     }
 }
 
-// Funktion zur Videokonvertierung mit dem Cloudflare Worker
-async function convertVideoWithWorker(uuid) {
-    if (!uuid) {
-        console.warn("⚠️ Keine UUID für Videokonvertierung vorhanden");
-        return null;
-    }
-
-    try {
-        isVideoProcessing = true;
-        console.log("🎬 Starte Videokonvertierung für UUID:", uuid);
-
-        // Sende Anfrage an den Cloudflare Worker
-        const response = await fetch(VIDEO_CONVERT_WORKER_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                uuid: uuid,
-                format: "mp4",
-                quality: "lighter",
-                size: "360x640"
-            })
-        });
-
-        // Verarbeite die Antwort
-        if (!response.ok) {
-            throw new Error(`Worker-Fehler: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("Worker-Antwort erhalten:", data);
-        
-        isVideoProcessing = false;
-
-        if (data.status === "success" && data.result) {
-            // Verarbeite die Antwort, wobei result ein Array sein kann
-            let convertedUuid = null;
-            
-            if (Array.isArray(data.result) && data.result.length > 0) {
-                // Nehme das erste Element des Arrays
-                const firstResult = data.result[0];
-                // Prüfe, ob es eine UUID enthält
-                if (firstResult && firstResult.uuid) {
-                    convertedUuid = firstResult.uuid;
-                }
-            } else if (data.result.uuid) {
-                // Falls result direkt ein Objekt mit uuid ist
-                convertedUuid = data.result.uuid;
-            }
-            
-            if (convertedUuid) {
-                console.log("✅ Videokonvertierung erfolgreich, UUID:", convertedUuid);
-                // Setze die neue URL
-                uploadcareProcessedUrl = `https://ucarecdn.com/${convertedUuid}/`;
-                
-                // Aktualisiere versteckte Felder
-                updateHiddenFields();
-                
-                return { uuid: convertedUuid };
-            } else {
-                console.warn("⚠️ Keine UUID in der Worker-Antwort gefunden:", data);
-                return null;
-            }
-        } else {
-            console.warn("⚠️ Unerwartetes Format der Worker-Antwort:", data);
-            return null;
-        }
-    } catch (error) {
-        isVideoProcessing = false;
-        console.error("❌ Fehler bei der Videokonvertierung:", error);
-        return null;
-    }
-}
-
-// 🔍 Funktion zur Analyse des Formulars und aller Felder
-function analyzeForm(form) {
-    console.log("🔍 Formular-Analyse:");
-    
-    // Alle Input-Elemente im Formular auflisten
-    const allInputs = form.querySelectorAll("input, textarea, select");
-    console.log(`Gefundene Formularelemente: ${allInputs.length}`);
-    
-    allInputs.forEach((input, index) => {
-        console.log(`${index + 1}. Element:`, {
-            tag: input.tagName,
-            type: input.type || "N/A",
-            name: input.name || "Kein Name",
-            id: input.id || "Keine ID",
-            "data-name": input.getAttribute("data-name") || "Kein data-name",
-            value: input.type === 'checkbox' ? input.checked : (input.value || "Kein Wert")
-        });
-    });
-}
-
 // 📡 Funktion zur Erstellung eines CMS Items
 async function createCMSItem(formData) {
-    const apiUrl = `${API_BASE_URL}/${COLLECTION_ID}/items/live`;
+    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.COLLECTION_ID}/items/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
     
     // Die Webflow API erwartet dieses Format für ein Single Item
@@ -296,7 +313,7 @@ async function createCMSItem(formData) {
         }
     };
 
-    if (DEBUG_MODE) {
+    if (window.WEBFLOW_API.DEBUG_MODE) {
         console.log("📤 Sende Daten an Webflow API:", payload);
     }
 
@@ -326,7 +343,7 @@ async function createCMSItem(formData) {
             responseData = { raw: responseText };
         }
         
-        if (DEBUG_MODE) {
+        if (window.WEBFLOW_API.DEBUG_MODE) {
             console.log("✅ CMS Item erfolgreich erstellt:", responseData);
         }
         
@@ -335,6 +352,26 @@ async function createCMSItem(formData) {
         console.error("❌ Fehler beim Erstellen des CMS Items:", error);
         throw error;
     }
+}
+
+// 🔍 Funktion zur Analyse des Formulars und aller Felder
+function analyzeForm(form) {
+    console.log("🔍 Formular-Analyse:");
+    
+    // Alle Input-Elemente im Formular auflisten
+    const allInputs = form.querySelectorAll("input, textarea, select");
+    console.log(`Gefundene Formularelemente: ${allInputs.length}`);
+    
+    allInputs.forEach((input, index) => {
+        console.log(`${index + 1}. Element:`, {
+            tag: input.tagName,
+            type: input.type || "N/A",
+            name: input.name || "Kein Name",
+            id: input.id || "Keine ID",
+            "data-name": input.getAttribute("data-name") || "Kein data-name",
+            value: input.type === 'checkbox' ? input.checked : (input.value || "Kein Wert")
+        });
+    });
 }
 
 // Initialisiere Uploadcare und setze Event-Listener
@@ -429,7 +466,7 @@ function initUploadcare() {
         const fileEntry = getUploadcareFileInfo();
         
         // Deaktiviere den Submit-Button während der Konvertierung
-        const form = document.getElementById(FORM_ID);
+        const form = document.getElementById(window.WEBFLOW_API.FORM_ID);
         const submitButton = form ? form.querySelector('input[type="submit"], button[type="submit"]') : null;
         let originalValue = ""; // Initialisiere originalValue
         
@@ -550,7 +587,7 @@ function hideCustomProgressBar() {
 
 // Aktualisiere versteckte Felder im Formular
 function updateHiddenFields() {
-    const form = document.getElementById(FORM_ID);
+    const form = document.getElementById(window.WEBFLOW_API.FORM_ID);
     if (!form) return;
     
     // Suche nach versteckten Feldern für die UUID und CDN URL
@@ -584,7 +621,7 @@ function getVideoLink() {
     }
     
     // Ansonsten versuche wie bisher die Felder zu finden
-    const form = document.getElementById(FORM_ID);
+    const form = document.getElementById(window.WEBFLOW_API.FORM_ID);
     const videoLinkSelectors = [
         "input[name='Video Link']",
         "input[name='VideoLink']",
@@ -607,7 +644,7 @@ function getVideoLink() {
 
 // Kategorien-ID extrahieren oder leeren String verwenden
 function getKategorieId() {
-    const form = document.getElementById(FORM_ID);
+    const form = document.getElementById(window.WEBFLOW_API.FORM_ID);
     // Versuche verschiedene Selektoren für das Kategorie-Feld
     const kategorieSelectors = [
         "select[name='Kategorie']",
@@ -631,12 +668,15 @@ function getKategorieId() {
 
 // 📥 Event Listener für das Formular
 document.addEventListener("DOMContentLoaded", () => {
+    // Wichtig: Prüfe und gib Information über die Konfiguration aus
+    console.log("🔧 Webflow API Konfiguration:", window.WEBFLOW_API);
+    
     // Initialisiere Uploadcare-Integration
     initUploadcare();
     
-    const form = document.getElementById(FORM_ID);
+    const form = document.getElementById(window.WEBFLOW_API.FORM_ID);
     if (!form) {
-        console.error(`❌ Formular mit ID '${FORM_ID}' nicht gefunden.`);
+        console.error(`❌ Formular mit ID '${window.WEBFLOW_API.FORM_ID}' nicht gefunden.`);
         return;
     }
 
@@ -729,7 +769,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Ausblenden des erfolgs-DIVs, falls vorhanden
-        const successDiv = document.getElementById(SUCCESS_DIV_ID);
+        const successDiv = document.getElementById(window.WEBFLOW_API.SUCCESS_DIV_ID);
         if (successDiv) {
             successDiv.style.display = 'none';
         }
@@ -754,16 +794,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const memberstackMemberId = getValue("input[name='Memberstack Member ID']", "");
         const videoLink = getVideoLink(); // Diese Funktion nutzt die konvertierte URL, falls vorhanden
         
+        // Debugge die IDs
+        console.log("🔍 Webflow Member ID:", webflowMemberId);
+        console.log("🔍 Memberstack Member ID:", memberstackMemberId);
+        
         // Validiere kritische Felder - Prüfe auf Fehler vor dem API-Aufruf
         let errorMessage = "";
         
-        if (!webflowMemberId) {
-            errorMessage = "Webflow Member ID fehlt. Bitte stelle sicher, dass du eingeloggt bist.";
-            console.error("❌ " + errorMessage);
-        } else if (!memberstackMemberId) {
-            errorMessage = "Memberstack ID fehlt. Bitte stelle sicher, dass du eingeloggt bist.";
-            console.error("❌ " + errorMessage);
-        } else if (!videoLink) {
+        if (!videoLink) {
             errorMessage = "Video Link konnte nicht ermittelt werden. Bitte versuche das Video erneut hochzuladen.";
             console.error("❌ " + errorMessage);
         }
@@ -788,7 +826,7 @@ document.addEventListener("DOMContentLoaded", () => {
             videoLink: videoLink
         };
 
-        if (DEBUG_MODE) {
+        if (window.WEBFLOW_API.DEBUG_MODE) {
             console.log("📝 Erfasste Formulardaten:", formData);
         }
 
@@ -822,14 +860,35 @@ document.addEventListener("DOMContentLoaded", () => {
             
             console.log("✅ Video erfolgreich erstellt mit ID:", newVideoId);
             
+            // Prüfe, ob Member-IDs vorhanden sind
+            if (!webflowMemberId && !memberstackMemberId) {
+                console.warn("⚠️ Keine Member IDs gefunden, überspringe Member-Update");
+                updateCustomProgressBar(1.0, true);
+                
+                // Zeige Erfolgs-DIV an, falls vorhanden
+                if (successDiv) {
+                    successDiv.style.display = 'block';
+                }
+                return;
+            }
+            
             // 2. Aktualisiere den Member mit dem neuen Video
             console.log("👤 Füge Video zum Member-Profil hinzu...");
             updateCustomProgressBar(0.8, true);
             
             try {
-                // Die Webflow Member ID, die wir in dem Formular bekommen, könnte die Item-ID sein,
-                // nicht das "webflow-id" Feld. Daher probieren wir beide.
-                const memberUpdateResult = await updateMemberVideoFeed(formData.webflowMemberId, newVideoId);
+                // Versuche zuerst mit Webflow ID, dann mit Memberstack ID
+                let memberUpdateResult = null;
+                
+                if (webflowMemberId) {
+                    console.log("🔍 Versuche Update mit Webflow Member ID:", webflowMemberId);
+                    memberUpdateResult = await updateMemberVideoFeed(webflowMemberId, newVideoId);
+                }
+                
+                if (!memberUpdateResult && memberstackMemberId) {
+                    console.log("🔍 Webflow ID fehlgeschlagen, versuche mit Memberstack ID:", memberstackMemberId);
+                    memberUpdateResult = await updateMemberVideoFeed(memberstackMemberId, newVideoId);
+                }
                 
                 if (memberUpdateResult) {
                     console.log("✅ Member-Profil erfolgreich aktualisiert:", memberUpdateResult);
@@ -838,7 +897,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     updateCustomProgressBar(1.0, true);
                     
                     // Zeige Erfolgs-DIV an, falls vorhanden
-                    const successDiv = document.getElementById(SUCCESS_DIV_ID);
                     if (successDiv) {
                         successDiv.style.display = 'block';
                     }
@@ -851,7 +909,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     alert("Video wurde erfolgreich hochgeladen, konnte aber nicht zu deinem Profil hinzugefügt werden. Bitte kontaktiere den Support.");
                     
                     // Zeige Erfolgs-DIV trotzdem an, falls vorhanden
-                    const successDiv = document.getElementById(SUCCESS_DIV_ID);
                     if (successDiv) {
                         successDiv.style.display = 'block';
                     }
@@ -864,7 +921,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert("Video wurde erfolgreich hochgeladen, konnte aber nicht zu deinem Profil hinzugefügt werden. Bitte kontaktiere den Support.");
                 
                 // Zeige Erfolgs-DIV trotzdem an, falls vorhanden
-                const successDiv = document.getElementById(SUCCESS_DIV_ID);
                 if (successDiv) {
                     successDiv.style.display = 'block';
                 }
