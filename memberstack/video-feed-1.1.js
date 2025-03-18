@@ -3,8 +3,7 @@
 // 🔧 Konfiguration
 const API_BASE_URL = "https://api.webflow.com/v2/collections";
 const WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url=";
-const VIDEO_COLLECTION_ID = "YOUR_VIDEO_COLLECTION_ID";
-const USER_COLLECTION_ID = "YOUR_USER_COLLECTION_ID";
+const USER_COLLECTION_ID = "67d806e65cadcadf2f41e659";
 
 let currentWebflowMemberId = null;
 
@@ -14,6 +13,11 @@ function buildWorkerUrl(apiUrl) {
 }
 
 async function fetchUserVideos(memberId) {
+    if (!USER_COLLECTION_ID) {
+        console.error("❌ Fehler: USER_COLLECTION_ID ist ungültig.");
+        return [];
+    }
+    
     const apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/${memberId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
 
@@ -31,31 +35,17 @@ async function fetchUserVideos(memberId) {
     }
 }
 
-async function fetchVideoData(videoId) {
-    const apiUrl = `${API_BASE_URL}/${VIDEO_COLLECTION_ID}/items/${videoId}/live`;
-    const workerUrl = buildWorkerUrl(apiUrl);
-
-    try {
-        const response = await fetch(workerUrl);
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
-        }
-        const videoData = await response.json();
-        return videoData?.fieldData || {};
-    } catch (error) {
-        console.error(`❌ Fehler beim Abrufen der Video-Daten: ${error.message}`);
-        return {};
-    }
-}
-
 // 🖨️ Videos rendern
 function renderVideos(videos) {
     const videoContainer = document.getElementById("video-feed");
+    if (!videoContainer) {
+        console.error("❌ Fehler: Container 'video-feed' nicht gefunden.");
+        return;
+    }
     videoContainer.innerHTML = "";
 
     videos.forEach(videoData => {
-        if (!videoData) return;
+        if (!videoData || Object.keys(videoData).length === 0) return;
 
         const videoDiv = document.createElement("div");
         videoDiv.classList.add("video-item");
@@ -92,14 +82,15 @@ async function displayUserVideos() {
             return;
         }
 
-        const videoFeedIds = await fetchUserVideos(currentWebflowMemberId);
+        const videoFeed = await fetchUserVideos(currentWebflowMemberId);
 
-        if (videoFeedIds.length > 0) {
-            const videoPromises = videoFeedIds.map(videoId => fetchVideoData(videoId));
-            const allVideos = await Promise.all(videoPromises);
-            renderVideos(allVideos);
+        if (videoFeed.length > 0) {
+            renderVideos(videoFeed);
         } else {
-            document.getElementById("video-feed").innerHTML = "<p>🚫 Keine Videos gefunden.</p>";
+            const videoContainer = document.getElementById("video-feed");
+            if (videoContainer) {
+                videoContainer.innerHTML = "<p>🚫 Keine Videos gefunden.</p>";
+            }
         }
     } catch (error) {
         console.error("❌ Fehler beim Laden des Video-Feeds:", error);
