@@ -3,7 +3,7 @@
 // 🔧 Konfiguration
 const API_BASE_URL = "https://api.webflow.com/v2/collections";
 const WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url=";
-const USER_COLLECTION_ID = "6448faf9c5a8a15f6cc05526";
+const USER_COLLECTION_ID = "67d806e65cadcadf2f41e659";
 
 let currentWebflowMemberId = null;
 
@@ -12,14 +12,14 @@ function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
 
-async function fetchUserVideos(memberId) {
+async function fetchUserVideos(memberstackId) {
     if (!USER_COLLECTION_ID) {
         console.error("❌ Fehler: USER_COLLECTION_ID ist ungültig.");
         return [];
     }
     
-    console.log("🔍 API-Anfrage für Webflow Member ID:", memberId);
-    const apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/${memberId}/live`;
+    console.log("🔍 API-Anfrage für Nutzer mit Memberstack ID:", memberstackId);
+    const apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items?live=true`;
     const workerUrl = buildWorkerUrl(apiUrl);
 
     try {
@@ -28,23 +28,25 @@ async function fetchUserVideos(memberId) {
             const errorText = await response.text();
             throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
         }
-        const userData = await response.json();
-        console.log("✅ Erfolgreich abgerufene Benutzerdaten:", userData);
+        const data = await response.json();
+        console.log("✅ Erfolgreich abgerufene Nutzerdaten:", data);
         
-        // Prüfen, ob fieldData existiert
-        if (!userData?.fieldData) {
-            console.error("❌ Kein gültiges fieldData erhalten.");
+        // Alle Items durchsuchen und das Item mit der passenden Memberstack-ID finden
+        const userItem = data.items.find(item => item.fieldData["memberstack-id"] === memberstackId);
+        
+        if (!userItem) {
+            console.error("❌ Kein passender Nutzer mit dieser Memberstack ID gefunden.");
             return [];
         }
         
-        console.log("📦 userData.fieldData:", userData.fieldData);
+        console.log("📦 Gefundenes Nutzer-Item:", userItem);
         
         // Prüfen, ob video-feed existiert und gültige Werte enthält
-        if (!userData.fieldData["video-feed"] || !Array.isArray(userData.fieldData["video-feed"])) {
+        if (!userItem.fieldData["video-feed"] || !Array.isArray(userItem.fieldData["video-feed"])) {
             console.error("❌ Kein gültiges Video-Feed-Feld gefunden.");
             return [];
         }
-        return userData.fieldData["video-feed"];
+        return userItem.fieldData["video-feed"];
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen der Videos: ${error.message}`);
         return [];
@@ -91,15 +93,15 @@ function renderVideos(videos) {
 async function displayUserVideos() {
     try {
         const member = await window.$memberstackDom.getCurrentMember();
-        currentWebflowMemberId = member?.data?.customFields?.['webflow-member-id'];
-        console.log("👤 Eingeloggter Nutzer Webflow-ID:", currentWebflowMemberId);
+        const memberstackId = member?.data?.id;
+        console.log("👤 Eingeloggter Nutzer Memberstack-ID:", memberstackId);
 
-        if (!currentWebflowMemberId) {
-            console.error("❌ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
+        if (!memberstackId) {
+            console.error("❌ Kein 'memberstack-id' im Memberstack-Profil gefunden.");
             return;
         }
 
-        const videoFeed = await fetchUserVideos(currentWebflowMemberId);
+        const videoFeed = await fetchUserVideos(memberstackId);
 
         if (videoFeed.length > 0) {
             renderVideos(videoFeed);
