@@ -191,18 +191,12 @@ function initUploadcare() {
     }
 
     console.log("✅ Uploadcare Context Provider gefunden", uploaderCtx);
-    
-    // Erstelle den Upload-Fortschrittsbalken
-    createProgressBar();
 
     // Funktion zum Abrufen der Dateiinformationen
     function getUploadcareFileInfo() {
         try {
             const api = uploaderCtx.getAPI();
             const state = api.getOutputCollectionState();
-            
-            // Update Progress Bar basierend auf dem aktuellen Status
-            updateProgressBar(state.progress, state.status);
             
             if (state.successCount > 0) {
                 // Nimm die erste erfolgreiche Datei
@@ -326,123 +320,78 @@ function initUploadcare() {
     // Event-Listener für Start des Uploads
     uploaderCtx.addEventListener('file-upload-start', () => {
         console.log("🏁 Upload gestartet");
-        showProgressBar();
     });
     
     // Event-Listener für Upload-Fehler
     uploaderCtx.addEventListener('file-upload-failed', (event) => {
         console.error("❌ Upload fehlgeschlagen:", event.detail);
-        updateProgressBar(0, 'failed');
     });
     
     // Regelmäßige Überprüfung für Uploads
     setInterval(getUploadcareFileInfo, 1000);
 }
 
-// Erstellen des Fortschrittsbalkens
-function createProgressBar() {
-    const progressContainer = document.createElement('div');
-    progressContainer.id = 'upload-progress-container';
-    progressContainer.style.display = 'none';
-    progressContainer.style.marginTop = '15px';
-    progressContainer.style.width = '100%';
+// Aktualisiere den benutzerdefinierten Fortschrittsbalken
+function updateCustomProgressBar(progress, isSuccess = true) {
+    const progressBar = document.querySelector('.db-modal-progessbar');
+    const progressText = document.querySelector('.db-modal-progress-text');
+    const progressPercentage = document.querySelector('.db-modal-progress-percentage');
+    const progressImg = document.querySelector('.db-modal-progress-img');
     
-    const progressLabel = document.createElement('div');
-    progressLabel.id = 'upload-progress-label';
-    progressLabel.textContent = 'Upload-Fortschritt:';
-    progressLabel.style.marginBottom = '5px';
-    progressLabel.style.fontWeight = 'bold';
-    
-    const progressBarOuter = document.createElement('div');
-    progressBarOuter.style.width = '100%';
-    progressBarOuter.style.backgroundColor = '#e0e0e0';
-    progressBarOuter.style.borderRadius = '4px';
-    progressBarOuter.style.overflow = 'hidden';
-    progressBarOuter.style.height = '20px';
-    
-    const progressBarInner = document.createElement('div');
-    progressBarInner.id = 'upload-progress-bar';
-    progressBarInner.style.width = '0%';
-    progressBarInner.style.height = '100%';
-    progressBarInner.style.backgroundColor = '#4CAF50';
-    progressBarInner.style.transition = 'width 0.3s ease';
-    
-    const progressText = document.createElement('div');
-    progressText.id = 'upload-progress-text';
-    progressText.textContent = '0%';
-    progressText.style.marginTop = '5px';
-    progressText.style.textAlign = 'center';
-    
-    progressBarOuter.appendChild(progressBarInner);
-    progressContainer.appendChild(progressLabel);
-    progressContainer.appendChild(progressBarOuter);
-    progressContainer.appendChild(progressText);
-    
-    // Füge den Fortschrittsbalken zum Formular hinzu
-    const form = document.getElementById(FORM_ID);
-    if (form) {
-        // Nach dem Uploadcare-Element einfügen
-        const uploader = form.querySelector('uc-file-uploader-minimal');
-        if (uploader) {
-            uploader.parentNode.insertBefore(progressContainer, uploader.nextSibling);
-        } else {
-            form.appendChild(progressContainer);
-        }
+    if (!progressBar || !progressText || !progressPercentage) {
+        console.warn("⚠️ Fortschrittsbalken-Elemente nicht gefunden");
+        return;
     }
-    
-    // Erstelle einen Container für Dateiinformationen
-    const fileInfoDiv = document.createElement('div');
-    fileInfoDiv.id = 'fileInfo';
-    
-    if (form) {
-        form.appendChild(fileInfoDiv);
-    }
-}
-
-// Zeige den Fortschrittsbalken an
-function showProgressBar() {
-    const progressContainer = document.getElementById('upload-progress-container');
-    if (progressContainer) {
-        progressContainer.style.display = 'block';
-    }
-}
-
-// Aktualisiere den Fortschrittsbalken
-function updateProgressBar(progress, status) {
-    const progressBar = document.getElementById('upload-progress-bar');
-    const progressText = document.getElementById('upload-progress-text');
-    const progressLabel = document.getElementById('upload-progress-label');
-    
-    if (!progressBar || !progressText || !progressLabel) return;
     
     // Konvertiere Fortschritt in Prozent
     const percent = Math.round(progress * 100);
     
-    // Aktualisiere die Anzeige
+    // Aktualisiere die Fortschrittsbalken-Breite
     progressBar.style.width = `${percent}%`;
-    progressText.textContent = `${percent}%`;
+    
+    // Aktualisiere die Prozentanzeige
+    progressPercentage.textContent = `${percent}%`;
     
     // Färbe den Balken je nach Status
-    switch (status) {
-        case 'uploading':
-            progressBar.style.backgroundColor = '#4CAF50'; // Grün
-            progressLabel.textContent = 'Upload-Fortschritt:';
-            break;
-        case 'success':
-            progressBar.style.backgroundColor = '#4CAF50'; // Grün
-            progressLabel.textContent = 'Upload abgeschlossen:';
-            break;
-        case 'failed':
-            progressBar.style.backgroundColor = '#f44336'; // Rot
-            progressLabel.textContent = 'Upload fehlgeschlagen:';
-            break;
-        case 'processing':
-            progressBar.style.backgroundColor = '#ff9900'; // Orange
-            progressLabel.textContent = 'Video wird optimiert:';
-            break;
-        default:
-            progressBar.style.backgroundColor = '#4CAF50'; // Grün
-            break;
+    if (isSuccess) {
+        progressBar.style.backgroundColor = '#0066cc'; // Blau für Erfolg/Prozess
+        progressText.textContent = percent === 100 ? "Erfolgreich hochgeladen!" : "Wird hochgeladen...";
+    } else {
+        progressBar.style.backgroundColor = '#FF6974'; // Rot für Fehler
+        progressText.textContent = "Es ist leider ein Fehler aufgetreten. Bitte versuche es erneut.";
+    }
+
+    // Optional: Bild aktualisieren, falls vorhanden
+    if (progressImg) {
+        // Hier könnte das Bild je nach Status geändert werden
+        // z.B. progressImg.src = isSuccess ? 'success.png' : 'error.png';
+    }
+
+    // Progress-Bereich anzeigen lassen
+    const progressSection = progressBar.closest('.progress-section') || progressBar.parentNode;
+    if (progressSection) {
+        progressSection.style.display = 'block';
+    }
+}
+
+// Zeige den benutzerdefinierten Fortschrittsbalken an
+function showCustomProgressBar() {
+    const progressSection = document.querySelector('.db-modal-progessbar').closest('.progress-section') || 
+                          document.querySelector('.db-modal-progessbar').parentNode;
+    
+    if (progressSection) {
+        progressSection.style.display = 'block';
+        updateCustomProgressBar(0, true); // Initialisiere den Balken mit 0%
+    }
+}
+
+// Verstecke den benutzerdefinierten Fortschrittsbalken
+function hideCustomProgressBar() {
+    const progressSection = document.querySelector('.db-modal-progessbar').closest('.progress-section') || 
+                          document.querySelector('.db-modal-progessbar').parentNode;
+    
+    if (progressSection) {
+        progressSection.style.display = 'none';
     }
 }
 
@@ -543,107 +492,154 @@ document.addEventListener("DOMContentLoaded", () => {
     // Formularanalyse durchführen
     analyzeForm(form);
 
+    // Erstelle den Container für Dateiinformationen, falls er nicht existiert
+    if (!document.getElementById('fileInfo')) {
+        const fileInfoDiv = document.createElement('div');
+        fileInfoDiv.id = 'fileInfo';
+        form.appendChild(fileInfoDiv);
+    }
+
+    // Verstecke den benutzerdefinierten Fortschrittsbalken initial
+    hideCustomProgressBar();
+
     form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    console.log("🚀 Formular wird gesendet...");
-    
-    // Prüfe, ob ein Video hochgeladen wurde
-    if (!uploadcareFileUuid) {
-        alert("Bitte lade zuerst ein Video hoch, bevor du das Formular absendest.");
-        return;
-    }
-    
-    // Prüfe, ob die Videokonvertierung noch läuft
-    if (isVideoProcessing) {
-        alert("Die Videooptimierung läuft noch. Bitte warte einen Moment.");
-        return;
-    }
-    
-    // Hole die Modal-Elemente
-    const progressBar = document.querySelector('.db-modal-progessbar');
-    const progressPercentage = document.querySelector('.db-modal-progress-percentage');
-    const progressText = document.querySelector('.db-modal-progress-text');
-    const progressImage = document.querySelector('.db-modal-progress-img');
-    
-    // Setze initialen Zustand für Modal
-    if (progressBar) progressBar.style.width = '0%';
-    if (progressPercentage) progressPercentage.textContent = '0%';
-    if (progressText) progressText.textContent = 'Daten werden hochgeladen...';
-    
-    // Videoname abrufen oder Default verwenden
-    const videoName = getValue("input[name='Name']", "Unbenanntes Video");
-    
-    // Erstelle einen Slug aus Videoname und UUID
-    let slug = videoName.toLowerCase()
-        .replace(/\s+/g, "-")        // Leerzeichen zu Bindestrichen
-        .replace(/[^a-z0-9-]/g, "")  // Nur alphanumerische und Bindestriche
-        .replace(/-+/g, "-")         // Mehrfache Bindestriche zu einem
-        .replace(/^-|-$/g, "");      // Bindestriche am Anfang und Ende entfernen
+        event.preventDefault();
+        console.log("🚀 Formular wird gesendet...");
         
-    // Füge UUID hinzu
-    if (uploadcareFileUuid) {
-        slug = `${slug}-${uploadcareFileUuid.slice(0, 8)}`; // Nimm die ersten 8 Zeichen der UUID
-    }
+        // Prüfe, ob ein Video hochgeladen wurde
+        if (!uploadcareFileUuid) {
+            alert("Bitte lade zuerst ein Video hoch, bevor du das Formular absendest.");
+            return;
+        }
+        
+        // Prüfe, ob die Videokonvertierung noch läuft
+        if (isVideoProcessing) {
+            alert("Die Videooptimierung läuft noch. Bitte warte einen Moment.");
+            return;
+        }
+        
+        // Stelle sicher, dass wir die neueste URL verwenden
+        if (uploadcareProcessedUrl) {
+            console.log("✓ Verwende die konvertierte Video-URL:", uploadcareProcessedUrl);
+        } else {
+            console.log("⚠️ Keine konvertierte URL gefunden, verwende Original:", uploadcareFileCdnUrl);
+        }
+        
+        // Hilfsfunktionen zur Felderermittlung
+        function getValue(selector, defaultValue = "") {
+            const element = form.querySelector(selector);
+            if (!element) {
+                console.warn(`⚠️ Feld '${selector}' nicht gefunden. Setze Standardwert: '${defaultValue}'`);
+                return defaultValue;
+            }
+            console.log(`🔍 Feld '${selector}' gefunden:`, element.value);
+            return element.value;
+        }
 
-    // Ermittle die Formulardaten mit den korrekten Selektoren
-    const formData = {
-        name: videoName,
-        slug: slug,
-        kategorie: getKategorieId(),
-        beschreibung: getValue("textarea[name='Beschreibung']") || getValue("input[name='Beschreibung']", "Keine Beschreibung"),
-        openVideo: findCheckbox(['open video', 'Open Video', 'öffentliches video', 'Öffentliches Video']),
-        videoContest: findCheckbox(['video contest', 'Video Contest']),
-        webflowMemberId: getValue("input[name='Webflow Member ID']", ""),
-        memberstackMemberId: getValue("input[name='Memberstack Member ID']", ""),
-        memberName: getValue("input[name='Member Name']", "Unbekannter Nutzer"),
-        videoLink: getVideoLink() // Diese Funktion nutzt die konvertierte URL, falls vorhanden
-    };
-
-    if (DEBUG_MODE) {
-        console.log("📝 Erfasste Formulardaten:", formData);
-    }
-
-    try {
-        // Zeige Fortschrittsmodal mit initialer Animation
-        if (progressBar) {
-            progressBar.style.display = 'block';
+        function getChecked(selector) {
+            const element = form.querySelector(selector);
+            if (!element) {
+                console.warn(`⚠️ Checkbox '${selector}' nicht gefunden. Standard: false`);
+                return false;
+            }
+            console.log(`🔍 Checkbox '${selector}' gefunden:`, element.checked);
+            return element.checked;
+        }
+        
+        // Alternative Selektoren für die Checkbox-Feldsuche 
+        function findCheckbox(possibleNames) {
+            for (const name of possibleNames) {
+                // Versuche verschiedene Selektoren
+                const selectors = [
+                    `input[name='${name}']`,
+                    `input[data-name='${name}']`,
+                    `input#${name}`,
+                    `input[placeholder='${name}']`
+                ];
+                
+                for (const selector of selectors) {
+                    const element = form.querySelector(selector);
+                    if (element && element.type === 'checkbox') {
+                        console.log(`🔍 Checkbox gefunden mit Selektor: ${selector}`);
+                        return element.checked;
+                    }
+                }
+            }
             
-            // Animiere Fortschrittsbalken
+            console.warn(`⚠️ Keine Checkbox mit Namen ${possibleNames.join(', ')} gefunden`);
+            return false;
+        }
+
+        // Ausblenden des erfolgs-DIVs, falls vorhanden
+        const successDiv = document.getElementById(SUCCESS_DIV_ID);
+        if (successDiv) {
+            successDiv.style.display = 'none';
+        }
+
+        // Videoname abrufen oder Default verwenden
+        const videoName = getValue("input[name='Name']", "Unbenanntes Video");
+        
+        // Erstelle einen Slug aus Videoname und UUID
+        let slug = videoName.toLowerCase()
+            .replace(/\s+/g, "-")        // Leerzeichen zu Bindestrichen
+            .replace(/[^a-z0-9-]/g, "")  // Nur alphanumerische und Bindestriche
+            .replace(/-+/g, "-")         // Mehrfache Bindestriche zu einem
+            .replace(/^-|-$/g, "");      // Bindestriche am Anfang und Ende entfernen
+            
+        // Füge UUID hinzu
+        if (uploadcareFileUuid) {
+            slug = `${slug}-${uploadcareFileUuid.slice(0, 8)}`; // Nimm die ersten 8 Zeichen der UUID
+        }
+
+        // Ermittle die Formulardaten mit den korrekten Selektoren
+        const formData = {
+            name: videoName,
+            slug: slug,
+            kategorie: getKategorieId(),
+            beschreibung: getValue("textarea[name='Beschreibung']") || getValue("input[name='Beschreibung']", "Keine Beschreibung"),
+            openVideo: findCheckbox(['open video', 'Open Video', 'öffentliches video', 'Öffentliches Video']),
+            videoContest: findCheckbox(['video contest', 'Video Contest']),
+            webflowMemberId: getValue("input[name='Webflow Member ID']", ""),
+            memberstackMemberId: getValue("input[name='Memberstack Member ID']", ""),
+            memberName: getValue("input[name='Member Name']", "Unbekannter Nutzer"),
+            videoLink: getVideoLink() // Diese Funktion nutzt die konvertierte URL, falls vorhanden
+        };
+
+        if (DEBUG_MODE) {
+            console.log("📝 Erfasste Formulardaten:", formData);
+        }
+
+        // Zeige den benutzerdefinierten Fortschrittsbalken nach dem Absenden des Formulars
+        showCustomProgressBar();
+
+        try {
+            // Fortschrittssimulation für die API-Anfrage
             let progress = 0;
             const progressInterval = setInterval(() => {
-                progress += 10;
-                if (progressBar) progressBar.style.width = `${progress}%`;
-                if (progressPercentage) progressPercentage.textContent = `${progress}%`;
-                
-                if (progress >= 90) {
+                progress += 0.1; // Erhöhe um 10%
+                if (progress > 0.9) {
                     clearInterval(progressInterval);
                 }
+                updateCustomProgressBar(progress, true);
             }, 300);
 
-            // Sende Daten an Webflow
+            // Tatsächliche API-Anfrage
             const result = await createCMSItem(formData);
-            
-            // Stoppe Fortschrittsanimation
-            clearInterval(progressInterval);
-            
-            // Erfolgsfall
-            if (progressBar) progressBar.style.width = '100%';
-            if (progressPercentage) progressPercentage.textContent = '100%';
-            if (progressText) progressText.textContent = 'Upload erfolgreich!';
-            if (progressImage) progressImage.src = 'erfolg-icon.svg'; // Passen Sie den Pfad an
-            
             console.log("🎉 Video erfolgreich hochgeladen!", result);
+            
+            // Fortschrittsintervall stoppen und auf 100% setzen
+            clearInterval(progressInterval);
+            updateCustomProgressBar(1.0, true);
+            
+            // Optional: Formular zurücksetzen oder zur Bestätigungsseite weiterleiten
+            // setTimeout(() => {
+            //     window.location.href = "/upload-success";
+            // }, 2000);
+        } catch (error) {
+            console.error("❌ Fehler beim Hochladen:", error);
+            
+            // Zeige Fehlerstatus im Fortschrittsbalken
+            updateCustomProgressBar(0.3, false); // false für Fehler
         }
-    } catch (error) {
-        console.error("❌ Fehler beim Hochladen:", error);
-        
-        // Fehlerfall
-        if (progressBar) {
-            progressBar.style.width = '100%';
-            progressBar.style.backgroundColor = '#FF6974'; // Roter Fehler-Balken
-        }
-        if (progressPercentage) progressPercentage.textContent = '0%';
-        if (progressText) progressText.textContent = 'Es ist leider ein Fehler aufgetreten. Bitte versuche es erneut.';
-        if (progressImage) progressImage.src = 'fehler-icon.svg'; // Passen Sie den Pfad an
-    }
+    });
 });
