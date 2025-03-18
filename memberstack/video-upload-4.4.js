@@ -634,6 +634,58 @@ function hideCustomProgressBar() {
     }
 }
 
+// Funktion zum Hinzufügen eines "Fenster schließen" Buttons
+function addCloseButton() {
+    // Prüfe, ob bereits ein Close-Button existiert
+    if (document.getElementById('db-close-window-button')) {
+        return; // Button existiert bereits
+    }
+    
+    // Erstelle den Button
+    const closeButton = document.createElement('a');
+    closeButton.id = 'db-close-window-button';
+    closeButton.className = 'db-button-medium-white-border w-button';
+    closeButton.href = '#';
+    closeButton.textContent = 'Fenster schließen';
+    closeButton.style.marginTop = '20px';
+    closeButton.style.display = 'inline-block';
+    
+    // Füge Event-Listener hinzu - falls in einem Modal, schließe dieses
+    closeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        
+        // Versuche, das Modal zu schließen (falls vorhanden)
+        const modal = document.querySelector('.w-modal-stack');
+        if (modal) {
+            // Suche nach Webflow-Close-Button und klicke darauf
+            const webflowCloseButton = modal.querySelector('.w-modal-close');
+            if (webflowCloseButton) {
+                webflowCloseButton.click();
+                return;
+            }
+        }
+        
+        // Fallback: Versuche, ein anderes übergeordnetes Element auszublenden
+        const container = document.getElementById(window.WEBFLOW_API.FORM_ID).closest('.db-upload-container, .modal-content, .form-container');
+        if (container) {
+            container.style.display = 'none';
+        }
+    });
+    
+    // Füge den Button zum DOM hinzu
+    const form = document.getElementById(window.WEBFLOW_API.FORM_ID);
+    if (form) {
+        // Füge nach dem Erfolgs-DIV ein, falls vorhanden
+        const successDiv = document.getElementById(window.WEBFLOW_API.SUCCESS_DIV_ID);
+        if (successDiv) {
+            successDiv.parentNode.insertBefore(closeButton, successDiv.nextSibling);
+        } else {
+            // Ansonsten ans Ende des Formulars
+            form.appendChild(closeButton);
+        }
+    }
+}
+
 // Aktualisiere versteckte Felder im Formular
 function updateHiddenFields() {
     const form = document.getElementById(window.WEBFLOW_API.FORM_ID);
@@ -653,42 +705,6 @@ function updateHiddenFields() {
         uuidInput.value = uploadcareFileUuid;
         console.log("✅ Verstecktes Feld 'File UUID' aktualisiert:", uploadcareFileUuid);
     }
-}
-
-// Videolink extrahieren oder aus Uploadcare abrufen
-function getVideoLink() {
-    // Falls wir bereits eine prozessierte URL haben, verwende diese
-    if (uploadcareProcessedUrl) {
-        console.log("✅ Verwende prozessierte Uploadcare URL als Video-Link:", uploadcareProcessedUrl);
-        return uploadcareProcessedUrl;
-    }
-    
-    // Falls keine prozessierte URL, aber eine Standard-CDN URL verfügbar ist
-    if (uploadcareFileCdnUrl) {
-        console.log("✅ Verwende Uploadcare CDN URL als Video-Link:", uploadcareFileCdnUrl);
-        return uploadcareFileCdnUrl;
-    }
-    
-    // Ansonsten versuche wie bisher die Felder zu finden
-    const form = document.getElementById(window.WEBFLOW_API.FORM_ID);
-    const videoLinkSelectors = [
-        "input[name='Video Link']",
-        "input[name='VideoLink']",
-        "input[name='video-link']",
-        "input[data-name='Video Link']",
-        "input[data-name='video-link']"
-    ];
-    
-    for (const selector of videoLinkSelectors) {
-        const element = form.querySelector(selector);
-        if (element) {
-            console.log(`🔍 Video-Link-Feld gefunden mit Selektor: ${selector}`, element.value);
-            return element.value;
-        }
-    }
-    
-    console.warn("⚠️ Kein Video-Link-Feld gefunden. Setze leer.");
-    return "";
 }
 
 // Kategorien-ID extrahieren oder leeren String verwenden
@@ -1015,6 +1031,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (successDiv) {
                         successDiv.style.display = 'block';
                     }
+                    
+                    // Füge "Fenster schließen" Button hinzu
+                    addCloseButton();
                 } else {
                     // Member nicht gefunden oder Update fehlgeschlagen, aber Video wurde trotzdem erstellt
                     console.warn("⚠️ Video wurde erstellt, aber Member-Update fehlgeschlagen: Member nicht gefunden");
@@ -1026,6 +1045,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (successDiv) {
                         successDiv.style.display = 'block';
                     }
+                    
+                    // Füge "Fenster schließen" Button hinzu
+                    addCloseButton();
                 }
             } catch (memberError) {
                 console.error("⚠️ Video wurde erstellt, aber Member-Update fehlgeschlagen:", memberError);
