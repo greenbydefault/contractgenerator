@@ -162,6 +162,8 @@ async function getMemberByWebflowId(webflowId) {
         
         // Manuell nach dem Member mit der entsprechenden Webflow-ID oder Memberstack-ID suchen
         let foundMember = null;
+        let exactMatch = false;
+        let partialMatch = null;
         
         if (responseData.items && responseData.items.length > 0) {
             // Ausgabe der ersten 3 Members im Debug-Modus
@@ -172,6 +174,7 @@ async function getMemberByWebflowId(webflowId) {
                 }
             }
             
+            // Erstes versuchen wir eine exakte Übereinstimmung zu finden
             for (const member of responseData.items) {
                 if (member.fieldData) {
                     // Prüfe alle möglichen ID-Felder
@@ -180,14 +183,29 @@ async function getMemberByWebflowId(webflowId) {
                     
                     if (memberWebflowId === webflowId || memberstackId === webflowId || member.id === webflowId) {
                         foundMember = member;
+                        exactMatch = true;
                         break;
                     }
+                    
+                    // Versuche auch eine Teilübereinstimmung für Memberstack IDs
+                    // (z.B. wenn das Präfix "mem_" fehlt oder anders ist)
+                    if (memberstackId && webflowId && 
+                        (memberstackId.includes(webflowId) || webflowId.includes(memberstackId))) {
+                        partialMatch = member;
+                    }
                 }
+            }
+            
+            // Wenn keine exakte Übereinstimmung, aber eine Teilübereinstimmung gefunden wurde
+            if (!exactMatch && partialMatch) {
+                foundMember = partialMatch;
+                console.log("🔍 Keine exakte Übereinstimmung, aber Teilübereinstimmung gefunden");
             }
         }
         
         if (foundMember) {
-            console.log("✅ Member in der Liste gefunden:", foundMember);
+            const matchType = exactMatch ? "exakte Übereinstimmung" : "Teilübereinstimmung";
+            console.log(`✅ Member in der Liste gefunden (${matchType}):`, foundMember);
             return foundMember;
         } else {
             console.warn(`⚠️ Kein Member mit ID ${webflowId} gefunden`);
@@ -241,14 +259,12 @@ async function updateMemberVideoFeed(memberId, videoId) {
         const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBERS_COLLECTION_ID}/items/${member.id}`;
         const workerUrl = buildWorkerUrl(apiUrl);
         
-        // Baue den Payload für das Update - für PUT müssen wir alle Felder beibehalten
+        // Baue den Payload für das Update mit PATCH - nur das zu ändernde Feld
         const payload = {
-            isArchived: member.isArchived || false,
-            isDraft: member.isDraft || false,
+            isArchived: false,
+            isDraft: false,
             fieldData: {
-                // Füge alle bestehenden Felder bei (kopiere das gesamte fieldData)
-                ...member.fieldData,
-                // Überschreibe nur das video-feed Feld
+                // Nur das Feld aktualisieren, das wir ändern möchten
                 "video-feed": updatedVideoFeed
             }
         };
@@ -257,14 +273,40 @@ async function updateMemberVideoFeed(memberId, videoId) {
             console.log("📤 Sende Member-Update an Webflow API:", payload);
         }
         
-        const response = await fetch(workerUrl, {
-            method: "PUT", // Verwende PUT statt PATCH für bessere CORS-Kompatibilität
-            headers: {
-                "Content-Type": "application/json"
-                // Der API-Token wird im Worker gesetzt
-            },
-            body: JSON.stringify(payload)
-        });
+        // Versuche zuerst mit PATCH, dann mit PUT, wenn PATCH fehlschlägt
+        let response;
+        try {
+            console.log("🔄 Versuche Update mit PATCH...");
+            response = await fetch(workerUrl, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+        } catch (corsError) {
+            console.warn("⚠️ PATCH fehlgeschlagen, versuche mit PUT...", corsError);
+            
+            // Bei PUT müssen wir alle Felder beibehalten
+            const putPayload = {
+                isArchived: member.isArchived || false,
+                isDraft: member.isDraft || false,
+                fieldData: {
+                    // Füge alle bestehenden Felder bei (kopiere das gesamte fieldData)
+                    ...member.fieldData,
+                    // Überschreibe nur das video-feed Feld
+                    "video-feed": updatedVideoFeed
+                }
+            };
+            
+            response = await fetch(workerUrl, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(putPayload)
+            });
+        }
 
         const responseText = await response.text();
         
@@ -905,6 +947,61 @@ document.addEventListener("DOMContentLoaded", () => {
                         memberUpdateResult = await updateMemberVideoFeed(memberstackMemberId, newVideoId);
                     } catch (e) {
                         console.warn("⚠️ Fehler beim Update mit Memberstack ID:", e.message);
+                    }
+                }
+                
+                if (!memberUpdateResult && memberstackMemberId) {
+                    // Als letzten Ausweg, versuche alle Member zu durchsuchen und nach ähnlichen IDs zu suchen
+                    console.log("🔄 Versuche manuelle Suche nach ähnlichen Memberstack IDs...");
+                    
+                    try {
+                        // Hole die Liste aller Member
+                        const listApiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBERS_COLLECTION_ID}/items`;
+                        const listWorkerUrl = buildWorkerUrl(listApiUrl);
+                        
+                        const response = await fetch(listWorkerUrl, {
+                            method: "GET",
+                            headers: {
+                                "Content-Type": "application/json"
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const responseData = await response.json();
+                            
+                            if (responseData.items && responseData.items.length > 0) {
+                                // Streifen das "mem_" Präfix ab, falls vorhanden
+                                const cleanedMemberstackId = memberstackMemberId.replace(/^mem_/, '');
+                                
+                                console.log("🔍 Suche nach Mitgliedern mit ID-Teil:", cleanedMemberstackId);
+                                
+                                // Suche nach Mitgliedern mit ähnlicher ID
+                                for (const member of responseData.items) {
+                                    if (member.fieldData && member.fieldData["memberstack-id"]) {
+                                        const dbMemberstackId = member.fieldData["memberstack-id"];
+                                        const cleanedDbId = dbMemberstackId.replace(/^mem_/, '');
+                                        
+                                        // Prüfe auf Teilübereinstimmung
+                                        if (cleanedDbId.includes(cleanedMemberstackId) || 
+                                            cleanedMemberstackId.includes(cleanedDbId)) {
+                                            console.log("✅ Ähnliche ID gefunden:", dbMemberstackId);
+                                            
+                                            try {
+                                                memberUpdateResult = await updateMemberVideoFeed(member.id, newVideoId);
+                                                if (memberUpdateResult) {
+                                                    console.log("✅ Mitgliedsprofil erfolgreich aktualisiert mit ähnlicher ID");
+                                                    break;
+                                                }
+                                            } catch (e) {
+                                                console.warn("⚠️ Update fehlgeschlagen trotz ähnlicher ID:", e.message);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("⚠️ Fehler bei der manuellen Suche:", e.message);
                     }
                 }
                 
