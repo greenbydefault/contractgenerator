@@ -95,6 +95,26 @@ async function convertVideoWithWorker(uuid) {
     }
 }
 
+// 🔍 Funktion zur Analyse des Formulars und aller Felder
+function analyzeForm(form) {
+    console.log("🔍 Formular-Analyse:");
+    
+    // Alle Input-Elemente im Formular auflisten
+    const allInputs = form.querySelectorAll("input, textarea, select");
+    console.log(`Gefundene Formularelemente: ${allInputs.length}`);
+    
+    allInputs.forEach((input, index) => {
+        console.log(`${index + 1}. Element:`, {
+            tag: input.tagName,
+            type: input.type || "N/A",
+            name: input.name || "Kein Name",
+            id: input.id || "Keine ID",
+            "data-name": input.getAttribute("data-name") || "Kein data-name",
+            value: input.type === 'checkbox' ? input.checked : (input.value || "Kein Wert")
+        });
+    });
+}
+
 // 📡 Funktion zur Erstellung eines CMS Items
 async function createCMSItem(formData) {
     const apiUrl = `${API_BASE_URL}/${COLLECTION_ID}/items/live`;
@@ -159,26 +179,6 @@ async function createCMSItem(formData) {
         console.error("❌ Fehler beim Erstellen des CMS Items:", error);
         throw error;
     }
-}
-
-// 🔍 Funktion zur Analyse des Formulars und aller Felder
-function analyzeForm(form) {
-    console.log("🔍 Formular-Analyse:");
-    
-    // Alle Input-Elemente im Formular auflisten
-    const allInputs = form.querySelectorAll("input, textarea, select");
-    console.log(`Gefundene Formularelemente: ${allInputs.length}`);
-    
-    allInputs.forEach((input, index) => {
-        console.log(`${index + 1}. Element:`, {
-            tag: input.tagName,
-            type: input.type || "N/A",
-            name: input.name || "Kein Name",
-            id: input.id || "Keine ID",
-            "data-name": input.getAttribute("data-name") || "Kein data-name",
-            value: input.type === 'checkbox' ? input.checked : (input.value || "Kein Wert")
-        });
-    });
 }
 
 // Initialisiere Uploadcare und setze Event-Listener
@@ -650,24 +650,56 @@ document.addEventListener("DOMContentLoaded", () => {
                 updateCustomProgressBar(progress, true);
             }, 300);
 
-            // Tatsächliche API-Anfrage
-            const result = await createCMSItem(formData);
-            console.log("🎉 Video erfolgreich hochgeladen!", result);
+            // 1. Tatsächliche API-Anfrage zum Erstellen des Videos
+            console.log("📹 Erstelle neues Video in Webflow CMS...");
+            const videoResult = await createCMSItem(formData);
             
-            // Fortschrittsintervall stoppen und auf 100% setzen
+            // Setze den Fortschritt auf 70% nach dem erfolgreichen Video-Upload
             clearInterval(progressInterval);
-            updateCustomProgressBar(1.0, true);
+            updateCustomProgressBar(0.7, true);
+            
+            // Extrahiere die ID des neu erstellten Videos
+            const newVideoId = videoResult.id;
+            if (!newVideoId) {
+                throw new Error("Video wurde erstellt, aber keine ID erhalten");
+            }
+            
+            console.log("✅ Video erfolgreich erstellt mit ID:", newVideoId);
+            
+            // 2. Aktualisiere den Member mit dem neuen Video
+            console.log("👤 Füge Video zum Member-Profil hinzu...");
+            updateCustomProgressBar(0.8, true);
+            
+            try {
+                const memberUpdateResult = await updateMemberVideoFeed(formData.webflowMemberId, newVideoId);
+                console.log("✅ Member-Profil erfolgreich aktualisiert:", memberUpdateResult);
+                
+                // Alles erfolgreich - setze Fortschritt auf 100%
+                updateCustomProgressBar(1.0, true);
+                
+                // Zeige Erfolgs-DIV an, falls vorhanden
+                const successDiv = document.getElementById(SUCCESS_DIV_ID);
+                if (successDiv) {
+                    successDiv.style.display = 'block';
+                }
+            } catch (memberError) {
+                console.error("⚠️ Video wurde erstellt, aber Member-Update fehlgeschlagen:", memberError);
+                
+                // Zeige trotzdem erfolgreichen Video-Upload, aber mit Warnung für Member-Update
+                updateCustomProgressBar(1.0, true);
+                alert("Video wurde erfolgreich hochgeladen, konnte aber nicht zu deinem Profil hinzugefügt werden. Bitte kontaktiere den Support.");
+                
+                // Zeige Erfolgs-DIV trotzdem an, falls vorhanden
+                const successDiv = document.getElementById(SUCCESS_DIV_ID);
+                if (successDiv) {
+                    successDiv.style.display = 'block';
+                }
+            }
             
             // Optional: Formular zurücksetzen oder zur Bestätigungsseite weiterleiten
             // setTimeout(() => {
             //     window.location.href = "/upload-success";
             // }, 2000);
-            
-            // Zeige Erfolgs-DIV an, falls vorhanden
-            const successDiv = document.getElementById(SUCCESS_DIV_ID);
-            if (successDiv) {
-                successDiv.style.display = 'block';
-            }
         } catch (error) {
             console.error("❌ Fehler beim Hochladen:", error);
             
@@ -682,6 +714,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     errorMessage = "Die API konnte nicht gefunden werden. Bitte kontaktiere den Support.";
                 } else if (error.message.includes("500")) {
                     errorMessage = "Serverfehler beim Verarbeiten des Videos. Bitte versuche es später erneut.";
+                } else if (error.message.includes("Member")) {
+                    errorMessage = "Dein Mitgliedsprofil konnte nicht gefunden werden. Bitte versuche es erneut oder kontaktiere den Support.";
                 }
             }
             
