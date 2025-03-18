@@ -18,6 +18,7 @@ async function fetchUserVideos(memberId) {
         return [];
     }
     
+    console.log("🔍 API-Anfrage für Webflow Member ID:", memberId);
     const apiUrl = `${API_BASE_URL}/${USER_COLLECTION_ID}/items/${memberId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
 
@@ -28,6 +29,7 @@ async function fetchUserVideos(memberId) {
             throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
         }
         const userData = await response.json();
+        console.log("✅ Erfolgreich abgerufene Benutzerdaten:", userData);
         return userData?.fieldData?.["video-feed"] || [];
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen der Videos: ${error.message}`);
@@ -76,6 +78,7 @@ async function displayUserVideos() {
     try {
         const member = await window.$memberstackDom.getCurrentMember();
         currentWebflowMemberId = member?.data?.customFields?.['webflow-member-id'];
+        console.log("👤 Eingeloggter Nutzer Webflow-ID:", currentWebflowMemberId);
 
         if (!currentWebflowMemberId) {
             console.error("❌ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
