@@ -275,9 +275,11 @@ function initUploadcare() {
         // Deaktiviere den Submit-Button während der Konvertierung
         const form = document.getElementById(FORM_ID);
         const submitButton = form ? form.querySelector('input[type="submit"], button[type="submit"]') : null;
+        let originalValue = ""; // Initialisiere originalValue
+        
         if (submitButton) {
             submitButton.disabled = true;
-            const originalValue = submitButton.value || submitButton.textContent;
+            originalValue = submitButton.value || submitButton.textContent; // Speichere Original-Wert
             submitButton.value = submitButton.type === 'submit' ? "Video wird optimiert..." : originalValue;
             submitButton.textContent = submitButton.type !== 'submit' ? "Video wird optimiert..." : submitButton.textContent;
         }
@@ -332,7 +334,7 @@ function initUploadcare() {
 }
 
 // Aktualisiere den benutzerdefinierten Fortschrittsbalken
-function updateCustomProgressBar(progress, isSuccess = true) {
+function updateCustomProgressBar(progress, isSuccess = true, errorMessage = "") {
     const progressBar = document.querySelector('.db-modal-progessbar');
     const progressText = document.querySelector('.db-modal-progress-text');
     const progressPercentage = document.querySelector('.db-modal-progress-percentage');
@@ -354,11 +356,12 @@ function updateCustomProgressBar(progress, isSuccess = true) {
     
     // Färbe den Balken je nach Status
     if (isSuccess) {
-        progressBar.style.backgroundColor = '#0066cc'; // Blau für Erfolg/Prozess
+        progressBar.style.backgroundColor = '#4CAF50'; // Grün für Erfolg/Prozess
         progressText.textContent = percent === 100 ? "Erfolgreich hochgeladen!" : "Wird hochgeladen...";
     } else {
         progressBar.style.backgroundColor = '#FF6974'; // Rot für Fehler
-        progressText.textContent = "Es ist leider ein Fehler aufgetreten. Bitte versuche es erneut.";
+        // Verwende die spezifische Fehlermeldung, wenn vorhanden
+        progressText.textContent = errorMessage || "Es ist leider ein Fehler aufgetreten. Bitte versuche es erneut.";
     }
 
     // Optional: Bild aktualisieren, falls vorhanden
@@ -366,32 +369,26 @@ function updateCustomProgressBar(progress, isSuccess = true) {
         // Hier könnte das Bild je nach Status geändert werden
         // z.B. progressImg.src = isSuccess ? 'success.png' : 'error.png';
     }
-
-    // Progress-Bereich anzeigen lassen
-    const progressSection = progressBar.closest('.progress-section') || progressBar.parentNode;
-    if (progressSection) {
-        progressSection.style.display = 'block';
-    }
 }
 
 // Zeige den benutzerdefinierten Fortschrittsbalken an
 function showCustomProgressBar() {
-    const progressSection = document.querySelector('.db-modal-progessbar').closest('.progress-section') || 
-                          document.querySelector('.db-modal-progessbar').parentNode;
+    const progressWrapper = document.querySelector('.db-modal-progress-wrapper');
     
-    if (progressSection) {
-        progressSection.style.display = 'block';
+    if (progressWrapper) {
+        progressWrapper.style.display = 'block';
         updateCustomProgressBar(0, true); // Initialisiere den Balken mit 0%
+    } else {
+        console.warn("⚠️ Fortschrittsbalken-Wrapper nicht gefunden");
     }
 }
 
 // Verstecke den benutzerdefinierten Fortschrittsbalken
 function hideCustomProgressBar() {
-    const progressSection = document.querySelector('.db-modal-progessbar').closest('.progress-section') || 
-                          document.querySelector('.db-modal-progessbar').parentNode;
+    const progressWrapper = document.querySelector('.db-modal-progress-wrapper');
     
-    if (progressSection) {
-        progressSection.style.display = 'none';
+    if (progressWrapper) {
+        progressWrapper.style.display = 'none';
     }
 }
 
@@ -519,10 +516,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         // Stelle sicher, dass wir die neueste URL verwenden
+        const videoLink = uploadcareProcessedUrl || uploadcareFileCdnUrl;
         if (uploadcareProcessedUrl) {
             console.log("✓ Verwende die konvertierte Video-URL:", uploadcareProcessedUrl);
-        } else {
+        } else if (uploadcareFileCdnUrl) {
             console.log("⚠️ Keine konvertierte URL gefunden, verwende Original:", uploadcareFileCdnUrl);
+        } else {
+            showCustomProgressBar();
+            updateCustomProgressBar(0.3, false, "Kein Video-Link gefunden. Bitte versuche es erneut oder kontaktiere den Support.");
+            return;
         }
         
         // Hilfsfunktionen zur Felderermittlung
@@ -592,6 +594,31 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Ermittle die Formulardaten mit den korrekten Selektoren
+        const webflowMemberId = getValue("input[name='Webflow Member ID']", "");
+        const memberstackMemberId = getValue("input[name='Memberstack Member ID']", "");
+        const videoLink = getVideoLink(); // Diese Funktion nutzt die konvertierte URL, falls vorhanden
+        
+        // Validiere kritische Felder - Prüfe auf Fehler vor dem API-Aufruf
+        let errorMessage = "";
+        
+        if (!webflowMemberId) {
+            errorMessage = "Webflow Member ID fehlt. Bitte stelle sicher, dass du eingeloggt bist.";
+            console.error("❌ " + errorMessage);
+        } else if (!memberstackMemberId) {
+            errorMessage = "Memberstack ID fehlt. Bitte stelle sicher, dass du eingeloggt bist.";
+            console.error("❌ " + errorMessage);
+        } else if (!videoLink) {
+            errorMessage = "Video Link konnte nicht ermittelt werden. Bitte versuche das Video erneut hochzuladen.";
+            console.error("❌ " + errorMessage);
+        }
+        
+        // Wenn Fehler gefunden wurden, zeige Fehlermeldung an und breche ab
+        if (errorMessage) {
+            showCustomProgressBar();
+            updateCustomProgressBar(0.3, false, errorMessage);
+            return;
+        }
+        
         const formData = {
             name: videoName,
             slug: slug,
@@ -599,10 +626,10 @@ document.addEventListener("DOMContentLoaded", () => {
             beschreibung: getValue("textarea[name='Beschreibung']") || getValue("input[name='Beschreibung']", "Keine Beschreibung"),
             openVideo: findCheckbox(['open video', 'Open Video', 'öffentliches video', 'Öffentliches Video']),
             videoContest: findCheckbox(['video contest', 'Video Contest']),
-            webflowMemberId: getValue("input[name='Webflow Member ID']", ""),
-            memberstackMemberId: getValue("input[name='Memberstack Member ID']", ""),
+            webflowMemberId: webflowMemberId,
+            memberstackMemberId: memberstackMemberId,
             memberName: getValue("input[name='Member Name']", "Unbekannter Nutzer"),
-            videoLink: getVideoLink() // Diese Funktion nutzt die konvertierte URL, falls vorhanden
+            videoLink: videoLink
         };
 
         if (DEBUG_MODE) {
@@ -635,11 +662,31 @@ document.addEventListener("DOMContentLoaded", () => {
             // setTimeout(() => {
             //     window.location.href = "/upload-success";
             // }, 2000);
+            
+            // Zeige Erfolgs-DIV an, falls vorhanden
+            const successDiv = document.getElementById(SUCCESS_DIV_ID);
+            if (successDiv) {
+                successDiv.style.display = 'block';
+            }
         } catch (error) {
             console.error("❌ Fehler beim Hochladen:", error);
             
+            // Versuche eine spezifische Fehlermeldung zu extrahieren
+            let errorMessage = "Es ist leider ein Fehler beim Hochladen aufgetreten. Bitte versuche es erneut.";
+            
+            if (error && error.message) {
+                // Versuche, eine benutzerfreundlichere Meldung aus dem Fehler zu extrahieren
+                if (error.message.includes("401")) {
+                    errorMessage = "Authentifizierungsfehler. Bitte versuche es erneut oder kontaktiere den Support.";
+                } else if (error.message.includes("404")) {
+                    errorMessage = "Die API konnte nicht gefunden werden. Bitte kontaktiere den Support.";
+                } else if (error.message.includes("500")) {
+                    errorMessage = "Serverfehler beim Verarbeiten des Videos. Bitte versuche es später erneut.";
+                }
+            }
+            
             // Zeige Fehlerstatus im Fortschrittsbalken
-            updateCustomProgressBar(0.3, false); // false für Fehler
+            updateCustomProgressBar(0.3, false, errorMessage);
         }
     });
 });
