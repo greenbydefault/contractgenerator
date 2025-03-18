@@ -3,7 +3,7 @@
 // 🔧 Konfiguration
 const API_BASE_URL = "https://api.webflow.com/v2/collections";
 const WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url=";
-const USER_COLLECTION_ID = "67d806e65cadcadf2f41e659";
+const USER_COLLECTION_ID = "6448faf9c5a8a15f6cc05526";
 
 let currentWebflowMemberId = null;
 
@@ -31,8 +31,16 @@ async function fetchUserVideos(memberId) {
         const userData = await response.json();
         console.log("✅ Erfolgreich abgerufene Benutzerdaten:", userData);
         
+        // Prüfen, ob fieldData existiert
+        if (!userData?.fieldData) {
+            console.error("❌ Kein gültiges fieldData erhalten.");
+            return [];
+        }
+        
+        console.log("📦 userData.fieldData:", userData.fieldData);
+        
         // Prüfen, ob video-feed existiert und gültige Werte enthält
-        if (!userData?.fieldData?.["video-feed"] || !Array.isArray(userData.fieldData["video-feed"])) {
+        if (!userData.fieldData["video-feed"] || !Array.isArray(userData.fieldData["video-feed"])) {
             console.error("❌ Kein gültiges Video-Feed-Feld gefunden.");
             return [];
         }
