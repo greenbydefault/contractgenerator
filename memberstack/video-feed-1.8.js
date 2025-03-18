@@ -41,12 +41,15 @@ async function fetchUserVideos(memberstackId) {
         
         console.log("📦 Gefundenes Nutzer-Item:", userItem);
         
-        // Prüfen, ob video-feed existiert und gültige Werte enthält
-        if (!userItem.fieldData["video-feed"] || !Array.isArray(userItem.fieldData["video-feed"])) {
+        // Prüfen, ob video-feed existiert
+        if (!userItem.fieldData["video-feed"]) {
             console.error("❌ Kein gültiges Video-Feed-Feld gefunden.");
             return [];
         }
-        return userItem.fieldData["video-feed"];
+        
+        // Falls video-feed ein einzelnes Video ist, es in ein Array umwandeln
+        const videoFeed = Array.isArray(userItem.fieldData["video-feed"]) ? userItem.fieldData["video-feed"] : [userItem.fieldData];
+        return videoFeed;
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen der Videos: ${error.message}`);
         return [];
