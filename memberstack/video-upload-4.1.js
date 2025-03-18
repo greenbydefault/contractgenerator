@@ -241,12 +241,14 @@ async function updateMemberVideoFeed(memberId, videoId) {
         const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBERS_COLLECTION_ID}/items/${member.id}`;
         const workerUrl = buildWorkerUrl(apiUrl);
         
-        // Baue den Payload für das Update
+        // Baue den Payload für das Update - für PUT müssen wir alle Felder beibehalten
         const payload = {
-            isArchived: false,
-            isDraft: false,
+            isArchived: member.isArchived || false,
+            isDraft: member.isDraft || false,
             fieldData: {
-                // Wichtig: Nur das Feld aktualisieren, das wir ändern möchten
+                // Füge alle bestehenden Felder bei (kopiere das gesamte fieldData)
+                ...member.fieldData,
+                // Überschreibe nur das video-feed Feld
                 "video-feed": updatedVideoFeed
             }
         };
@@ -256,7 +258,7 @@ async function updateMemberVideoFeed(memberId, videoId) {
         }
         
         const response = await fetch(workerUrl, {
-            method: "PATCH", // PATCH zum teilweisen Aktualisieren
+            method: "PUT", // Verwende PUT statt PATCH für bessere CORS-Kompatibilität
             headers: {
                 "Content-Type": "application/json"
                 // Der API-Token wird im Worker gesetzt
@@ -527,7 +529,7 @@ function initUploadcare() {
 }
 
 // Aktualisiere den benutzerdefinierten Fortschrittsbalken
-function updateCustomProgressBar(progress, isSuccess = true, errorMessage = "") {
+function updateCustomProgressBar(progress, isSuccess = true, errorMessage = "", isWarning = false) {
     const progressBar = document.querySelector('.db-modal-progessbar');
     const progressText = document.querySelector('.db-modal-progress-text');
     const progressPercentage = document.querySelector('.db-modal-progress-percentage');
@@ -548,12 +550,17 @@ function updateCustomProgressBar(progress, isSuccess = true, errorMessage = "") 
     progressPercentage.textContent = `${percent}%`;
     
     // Färbe den Balken je nach Status
-    if (isSuccess) {
-        progressBar.style.backgroundColor = '#4CAF50'; // Grün für Erfolg/Prozess
+    if (isWarning) {
+        // Warnungszustand - gelb
+        progressBar.style.backgroundColor = '#FFC107'; 
+        progressText.textContent = errorMessage || "Video hochgeladen, aber es gibt ein Problem mit deinem Profil.";
+    } else if (isSuccess) {
+        // Erfolg - grün
+        progressBar.style.backgroundColor = '#4CAF50'; 
         progressText.textContent = percent === 100 ? "Erfolgreich hochgeladen!" : "Wird hochgeladen...";
     } else {
-        progressBar.style.backgroundColor = '#FF6974'; // Rot für Fehler
-        // Verwende die spezifische Fehlermeldung, wenn vorhanden
+        // Fehler - rot
+        progressBar.style.backgroundColor = '#FF6974'; 
         progressText.textContent = errorMessage || "Es ist leider ein Fehler aufgetreten. Bitte versuche es erneut.";
     }
 
@@ -861,9 +868,12 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log("✅ Video erfolgreich erstellt mit ID:", newVideoId);
             
             // Prüfe, ob Member-IDs vorhanden sind
-            if (!webflowMemberId && !memberstackMemberId) {
+            let hasMemberId = !!(webflowMemberId || memberstackMemberId);
+            
+            if (!hasMemberId) {
                 console.warn("⚠️ Keine Member IDs gefunden, überspringe Member-Update");
-                updateCustomProgressBar(1.0, true);
+                // Zeige Warnung im Fortschrittsbalken, aber markiere als erfolgreich
+                updateCustomProgressBar(1.0, true, "Video erfolgreich hochgeladen, aber es wurde kein Mitgliedsprofil gefunden.", true);
                 
                 // Zeige Erfolgs-DIV an, falls vorhanden
                 if (successDiv) {
@@ -882,12 +892,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 if (webflowMemberId) {
                     console.log("🔍 Versuche Update mit Webflow Member ID:", webflowMemberId);
-                    memberUpdateResult = await updateMemberVideoFeed(webflowMemberId, newVideoId);
+                    try {
+                        memberUpdateResult = await updateMemberVideoFeed(webflowMemberId, newVideoId);
+                    } catch (e) {
+                        console.warn("⚠️ Fehler beim Update mit Webflow ID:", e.message);
+                    }
                 }
                 
                 if (!memberUpdateResult && memberstackMemberId) {
                     console.log("🔍 Webflow ID fehlgeschlagen, versuche mit Memberstack ID:", memberstackMemberId);
-                    memberUpdateResult = await updateMemberVideoFeed(memberstackMemberId, newVideoId);
+                    try {
+                        memberUpdateResult = await updateMemberVideoFeed(memberstackMemberId, newVideoId);
+                    } catch (e) {
+                        console.warn("⚠️ Fehler beim Update mit Memberstack ID:", e.message);
+                    }
                 }
                 
                 if (memberUpdateResult) {
@@ -904,9 +922,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     // Member nicht gefunden oder Update fehlgeschlagen, aber Video wurde trotzdem erstellt
                     console.warn("⚠️ Video wurde erstellt, aber Member-Update fehlgeschlagen: Member nicht gefunden");
                     
-                    // Zeige trotzdem erfolgreichen Video-Upload, aber mit Warnung für Member-Update
-                    updateCustomProgressBar(1.0, true);
-                    alert("Video wurde erfolgreich hochgeladen, konnte aber nicht zu deinem Profil hinzugefügt werden. Bitte kontaktiere den Support.");
+                    // Zeige Warnung im Fortschrittsbalken, aber markiere als erfolgreich
+                    updateCustomProgressBar(0.9, true, "Video erfolgreich hochgeladen, aber die Zuordnung zu deinem Profil ist fehlgeschlagen.", true);
                     
                     // Zeige Erfolgs-DIV trotzdem an, falls vorhanden
                     if (successDiv) {
@@ -916,9 +933,8 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch (memberError) {
                 console.error("⚠️ Video wurde erstellt, aber Member-Update fehlgeschlagen:", memberError);
                 
-                // Zeige trotzdem erfolgreichen Video-Upload, aber mit Warnung für Member-Update
-                updateCustomProgressBar(1.0, true);
-                alert("Video wurde erfolgreich hochgeladen, konnte aber nicht zu deinem Profil hinzugefügt werden. Bitte kontaktiere den Support.");
+                // Zeige Warnung im Fortschrittsbalken, aber markiere als erfolgreich
+                updateCustomProgressBar(0.9, true, "Video erfolgreich hochgeladen, aber die Zuordnung zu deinem Profil ist fehlgeschlagen.", true);
                 
                 // Zeige Erfolgs-DIV trotzdem an, falls vorhanden
                 if (successDiv) {
