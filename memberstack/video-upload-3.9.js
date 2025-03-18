@@ -29,7 +29,8 @@ async function getMemberByWebflowId(webflowId) {
 
     try {
         // Erstelle die API-URL mit Filter für die Webflow ID
-        const apiUrl = `${API_BASE_URL}/${MEMBERS_COLLECTION_ID}/items?filter[webflow-id][eq]=${webflowId}`;
+        // Änderung: Wir suchen jetzt nach dem Feld 'webflow-id' statt nach dem Member-ID
+        const apiUrl = `${API_BASE_URL}/${MEMBERS_COLLECTION_ID}/items`;
         const workerUrl = buildWorkerUrl(apiUrl);
         
         console.log(`🔍 Suche Member mit Webflow ID: ${webflowId}`);
@@ -58,13 +59,35 @@ async function getMemberByWebflowId(webflowId) {
             return null;
         }
         
-        // Prüfe, ob Member gefunden wurde
+        // Da wir keine API-Filterung mehr verwenden, müssen wir manuell filtern
+        let foundMember = null;
+        
         if (responseData.items && responseData.items.length > 0) {
-            const member = responseData.items[0];
-            console.log("✅ Member gefunden:", member);
-            return member;
+            // Suche nach dem Member mit der entsprechenden Webflow-ID
+            for (const member of responseData.items) {
+                if (member.fieldData && 
+                    (member.fieldData["webflow-id"] === webflowId || 
+                     member.id === webflowId)) {
+                    foundMember = member;
+                    break;
+                }
+            }
+        }
+        
+        if (foundMember) {
+            console.log("✅ Member gefunden:", foundMember);
+            return foundMember;
         } else {
-            console.warn(`⚠️ Kein Member mit Webflow ID ${webflowId} gefunden`);
+            console.warn(`⚠️ Kein Member mit Webflow ID ${webflowId} gefunden. Prüfe alle IDs...`);
+            
+            // Debug-Ausgabe für alle Member-IDs
+            if (DEBUG_MODE && responseData.items) {
+                console.log("Verfügbare Member IDs:");
+                responseData.items.forEach(member => {
+                    console.log(`Member ID: ${member.id}, Webflow-ID: ${member.fieldData ? member.fieldData["webflow-id"] : "nicht gesetzt"}`);
+                });
+            }
+            
             return null;
         }
     } catch (error) {
@@ -804,16 +827,34 @@ document.addEventListener("DOMContentLoaded", () => {
             updateCustomProgressBar(0.8, true);
             
             try {
+                // Die Webflow Member ID, die wir in dem Formular bekommen, könnte die Item-ID sein,
+                // nicht das "webflow-id" Feld. Daher probieren wir beide.
                 const memberUpdateResult = await updateMemberVideoFeed(formData.webflowMemberId, newVideoId);
-                console.log("✅ Member-Profil erfolgreich aktualisiert:", memberUpdateResult);
                 
-                // Alles erfolgreich - setze Fortschritt auf 100%
-                updateCustomProgressBar(1.0, true);
-                
-                // Zeige Erfolgs-DIV an, falls vorhanden
-                const successDiv = document.getElementById(SUCCESS_DIV_ID);
-                if (successDiv) {
-                    successDiv.style.display = 'block';
+                if (memberUpdateResult) {
+                    console.log("✅ Member-Profil erfolgreich aktualisiert:", memberUpdateResult);
+                    
+                    // Alles erfolgreich - setze Fortschritt auf 100%
+                    updateCustomProgressBar(1.0, true);
+                    
+                    // Zeige Erfolgs-DIV an, falls vorhanden
+                    const successDiv = document.getElementById(SUCCESS_DIV_ID);
+                    if (successDiv) {
+                        successDiv.style.display = 'block';
+                    }
+                } else {
+                    // Member nicht gefunden oder Update fehlgeschlagen, aber Video wurde trotzdem erstellt
+                    console.warn("⚠️ Video wurde erstellt, aber Member-Update fehlgeschlagen: Member nicht gefunden");
+                    
+                    // Zeige trotzdem erfolgreichen Video-Upload, aber mit Warnung für Member-Update
+                    updateCustomProgressBar(1.0, true);
+                    alert("Video wurde erfolgreich hochgeladen, konnte aber nicht zu deinem Profil hinzugefügt werden. Bitte kontaktiere den Support.");
+                    
+                    // Zeige Erfolgs-DIV trotzdem an, falls vorhanden
+                    const successDiv = document.getElementById(SUCCESS_DIV_ID);
+                    if (successDiv) {
+                        successDiv.style.display = 'block';
+                    }
                 }
             } catch (memberError) {
                 console.error("⚠️ Video wurde erstellt, aber Member-Update fehlgeschlagen:", memberError);
