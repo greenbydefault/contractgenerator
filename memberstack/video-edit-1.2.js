@@ -20,7 +20,8 @@ window.WEBFLOW_API = {
     EDIT_PUBLIC_FIELD: "Open Video Edit",
     EDIT_SAVE_BUTTON: "video-edit-save",
     EDIT_DELETE_BUTTON: "video-delete-button",
-    DELETE_CONFIRM_MODAL_ID: "delete-confirm-modal"
+    DELETE_CONFIRM_MODAL_ID: "delete-confirm-modal",
+    UPLOADCARE_WORKER_URL: "https://deleteuploadcare.oliver-258.workers.dev" // Dein Worker für Uploadcare-Operationen
 };
 
 // 🛠️ Hilfsfunktion zur Erstellung der Worker-URL (identisch zum Upload-Script)
@@ -243,62 +244,67 @@ async function updateVideo(formData) {
     }
 }
 
-// Video löschen
-async function deleteVideo(videoId) {
-    if (!videoId) {
-        console.error("❌ Keine Video-ID zum Löschen übergeben");
+/**
+ * Uploadcare-Datei UUID aus Video-URL extrahieren
+ * @param {string} videoUrl - Die URL des Videos
+ * @returns {string|null} Die Uploadcare UUID oder null, wenn keine gefunden wurde
+ */
+function extractUploadcareUuid(videoUrl) {
+    if (!videoUrl) return null;
+
+    // Überprüfen, ob es eine Uploadcare-URL ist
+    if (videoUrl.includes('ucarecdn.com')) {
+        // Extrahiere die UUID aus der URL (Format: https://ucarecdn.com/UUID/filename)
+        const uuidMatch = videoUrl.match(/ucarecdn\.com\/([a-f0-9-]+)/i);
+        if (uuidMatch && uuidMatch[1]) {
+            return uuidMatch[1];
+        }
+    }
+    
+    // Überprüfe auf einen direkten Uploadcare-Dateilink (cdnX.uploadcare)
+    if (videoUrl.includes('uploadcare')) {
+        const uuidMatch = videoUrl.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+        if (uuidMatch && uuidMatch[1]) {
+            return uuidMatch[1];
+        }
+    }
+
+    console.warn("⚠️ Konnte keine Uploadcare UUID aus der URL extrahieren:", videoUrl);
+    return null;
+}
+
+/**
+ * Lösche eine Datei von Uploadcare
+ * @param {string} fileUuid - Die UUID der zu löschenden Datei
+ * @returns {Promise<boolean>} True, wenn erfolgreich gelöscht
+ */
+async function deleteUploadcareFile(fileUuid) {
+    if (!fileUuid) {
+        console.error("❌ Keine Uploadcare-UUID zum Löschen angegeben");
         return false;
     }
 
     try {
-        console.log(`🗑️ Lösche Video mit ID: ${videoId}`);
+        console.log(`🗑️ Lösche Uploadcare-Datei mit UUID: ${fileUuid}`);
         
-        // 1. Zuerst das Video aus dem Member-Feed entfernen
-        const videoData = currentVideoData || await getVideoById(videoId);
-        
-        if (videoData && (videoData.fieldData["webflow-id"] || videoData.fieldData["memberstack-id"])) {
-            try {
-                const webflowMemberId = videoData.fieldData["webflow-id"];
-                const memberstackMemberId = videoData.fieldData["memberstack-id"];
-                
-                console.log("👤 Entferne Video aus dem Member-Feed...");
-                
-                // Versuche mit beiden IDs, falls verfügbar
-                if (webflowMemberId) {
-                    await removeVideoFromMemberFeed(webflowMemberId, videoId);
-                }
-                
-                if (memberstackMemberId && memberstackMemberId !== webflowMemberId) {
-                    await removeVideoFromMemberFeed(memberstackMemberId, videoId);
-                }
-            } catch (memberError) {
-                console.warn("⚠️ Fehler beim Entfernen aus dem Member-Feed:", memberError);
-                // Wir machen trotzdem mit dem Löschen des Videos weiter
-            }
-        }
-        
-        // 2. Das Video im CMS löschen
-        const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.COLLECTION_ID}/items/${videoId}`;
-        const workerUrl = buildWorkerUrl(apiUrl);
-        
-        const response = await fetch(workerUrl, {
-            method: "DELETE",
+        // Verwende den Worker für die Uploadcare-API
+        const response = await fetch(`${window.WEBFLOW_API.UPLOADCARE_WORKER_URL}?uuid=${fileUuid}`, {
+            method: 'DELETE',
             headers: {
-                "Content-Type": "application/json"
+                'Content-Type': 'application/json'
             }
         });
-        
-        // Bei DELETE gibt die API möglicherweise keinen Inhalt zurück (204 No Content)
-        if (response.status === 204 || response.ok) {
-            console.log("✅ Video erfolgreich gelöscht");
-            return true;
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ Fehler beim Löschen der Uploadcare-Datei:", response.status, errorText);
+            return false;
         }
-        
-        const responseText = await response.text();
-        console.error("📄 API-Antwort (Video löschen):", responseText);
-        throw new Error(`API-Fehler beim Löschen des Videos: ${response.status} - ${responseText}`);
+
+        console.log(`✅ Uploadcare-Datei ${fileUuid} erfolgreich gelöscht`);
+        return true;
     } catch (error) {
-        console.error("❌ Fehler beim Löschen des Videos:", error);
+        console.error("❌ Fehler beim Löschen der Uploadcare-Datei:", error);
         return false;
     }
 }
@@ -311,33 +317,49 @@ async function removeVideoFromMemberFeed(memberId, videoId) {
     }
 
     try {
-        // Importiere die getMemberByWebflowId-Funktion aus dem Upload-Script
-        if (typeof getMemberByWebflowId !== 'function') {
-            console.warn("⚠️ getMemberByWebflowId-Funktion nicht verfügbar, versuche alternative Implementierung");
+        // Prüfen, ob es sich um eine Memberstack-ID handelt (beginnt mit "mem_")
+        const isMemberstackId = memberId.startsWith("mem_");
+        
+        let member;
+        
+        if (isMemberstackId) {
+            console.log("🔍 Memberstack-ID erkannt. Suche nach zugehörigem Webflow-Member...");
             
-            // Hole den Member direkt
+            // Nach Webflow-Member mit dieser Memberstack-ID suchen
+            const filterQuery = `{"memberstack-id":{"eq":"${memberId}"}}`;
+            const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBERS_COLLECTION_ID}/items?live=true&limit=1&filter=${encodeURIComponent(filterQuery)}`;
+            const workerUrl = buildWorkerUrl(apiUrl);
+            
+            const response = await fetch(workerUrl);
+            
+            if (!response.ok) {
+                throw new Error(`Konnte keinen Member mit Memberstack-ID ${memberId} finden`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.items || data.items.length === 0) {
+                throw new Error(`Kein Member mit Memberstack-ID ${memberId} gefunden`);
+            }
+            
+            member = data.items[0];
+            console.log(`✅ Webflow-Member mit ID ${member.id} gefunden für Memberstack-ID ${memberId}`);
+        } else {
+            // Es ist bereits eine Webflow-ID, direkt abfragen
             const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBERS_COLLECTION_ID}/items/${memberId}`;
             const workerUrl = buildWorkerUrl(apiUrl);
             
-            const response = await fetch(workerUrl, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            });
+            const response = await fetch(workerUrl);
             
             if (!response.ok) {
                 throw new Error(`Konnte Member mit ID ${memberId} nicht abrufen`);
             }
             
-            var member = await response.json();
-        } else {
-            // Verwende die vorhandene Funktion
-            var member = await getMemberByWebflowId(memberId);
+            member = await response.json();
         }
         
         if (!member) {
-            throw new Error(`Kein Member mit ID ${memberId} gefunden`);
+            throw new Error(`Kein Member gefunden`);
         }
         
         // Hole die aktuelle Video-Feed-Liste
@@ -352,7 +374,7 @@ async function removeVideoFromMemberFeed(memberId, videoId) {
         // Entferne das Video aus der Liste
         const updatedVideoFeed = currentVideoFeed.filter(id => id !== videoId);
         
-        console.log(`🔄 Aktualisiere Video-Feed für Member ${memberId}:`, updatedVideoFeed);
+        console.log(`🔄 Aktualisiere Video-Feed für Member ${member.id}:`, updatedVideoFeed);
         
         // Erstelle die API-URL zum Aktualisieren des Members
         const updateUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBERS_COLLECTION_ID}/items/${member.id}`;
@@ -418,6 +440,83 @@ async function removeVideoFromMemberFeed(memberId, videoId) {
     } catch (error) {
         console.error("❌ Fehler beim Aktualisieren des Member Video-Feeds:", error);
         throw error;
+    }
+}
+
+// Video löschen
+async function deleteVideo(videoId) {
+    if (!videoId) {
+        console.error("❌ Keine Video-ID zum Löschen übergeben");
+        return false;
+    }
+
+    try {
+        console.log(`🗑️ Lösche Video mit ID: ${videoId}`);
+        
+        // 1. Zuerst Video-Daten abrufen (falls noch nicht geladen)
+        const videoData = currentVideoData || await getVideoById(videoId);
+        
+        // 2. Uploadcare-Datei löschen, falls vorhanden
+        if (videoData && videoData.fieldData["video-link"]) {
+            const videoUrl = videoData.fieldData["video-link"];
+            const fileUuid = extractUploadcareUuid(videoUrl);
+            
+            if (fileUuid) {
+                console.log(`🔍 Uploadcare-UUID gefunden: ${fileUuid}`);
+                try {
+                    await deleteUploadcareFile(fileUuid);
+                } catch (uploadcareError) {
+                    console.warn("⚠️ Fehler beim Löschen der Uploadcare-Datei:", uploadcareError);
+                    // Wir machen trotzdem mit dem Löschen des Videos weiter
+                }
+            }
+        }
+        
+        // 3. Versuche, das Video aus dem Member-Feed zu entfernen
+        if (videoData && (videoData.fieldData["webflow-id"] || videoData.fieldData["memberstack-id"])) {
+            try {
+                const webflowMemberId = videoData.fieldData["webflow-id"];
+                const memberstackMemberId = videoData.fieldData["memberstack-id"];
+                
+                console.log("👤 Entferne Video aus dem Member-Feed...");
+                
+                // Versuche mit beiden IDs, falls verfügbar
+                if (webflowMemberId) {
+                    await removeVideoFromMemberFeed(webflowMemberId, videoId);
+                }
+                
+                if (memberstackMemberId && memberstackMemberId !== webflowMemberId) {
+                    await removeVideoFromMemberFeed(memberstackMemberId, videoId);
+                }
+            } catch (memberError) {
+                console.warn("⚠️ Fehler beim Entfernen aus dem Member-Feed:", memberError);
+                // Wir machen trotzdem mit dem Löschen des Videos weiter
+            }
+        }
+        
+        // 4. Das Video im CMS löschen
+        const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.COLLECTION_ID}/items/${videoId}`;
+        const workerUrl = buildWorkerUrl(apiUrl);
+        
+        const response = await fetch(workerUrl, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+        
+        // Bei DELETE gibt die API möglicherweise keinen Inhalt zurück (204 No Content)
+        if (response.status === 204 || response.ok) {
+            console.log("✅ Video erfolgreich gelöscht");
+            return true;
+        }
+        
+        const responseText = await response.text();
+        console.error("📄 API-Antwort (Video löschen):", responseText);
+        throw new Error(`API-Fehler beim Löschen des Videos: ${response.status} - ${responseText}`);
+    } catch (error) {
+        console.error("❌ Fehler beim Löschen des Videos:", error);
+        return false;
     }
 }
 
