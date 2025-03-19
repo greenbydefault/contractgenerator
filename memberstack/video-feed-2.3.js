@@ -1,4 +1,107 @@
-// 🌐 Webflow API Integration für Video-Feed
+/**
+   * Lädt Kategorie-Daten für das Mapping von IDs zu Namen
+   * @returns {Promise<Object>} Map von Kategorie-IDs zu deren Namen
+   */
+  async loadCategoryMap() {
+    const cacheKey = 'category_map';
+    const cachedMap = this.cache.get(cacheKey);
+    
+    if (cachedMap) {
+      this.logger.info("Kategorie-Map aus Cache geladen");
+      this.categoryMap = cachedMap;
+      return cachedMap;
+    }
+    
+    // Wenn statische Kategorie-Map konfiguriert ist, diese verwenden
+    if (Object.keys(WEBFLOW_VIDEO_FEED_CONFIG.CATEGORY_MAP || {}).length > 0) {
+      this.categoryMap = WEBFLOW_VIDEO_FEED_CONFIG.CATEGORY_MAP;
+      this.logger.info("Verwende statische Kategorie-Map");
+      this.cache.set(cacheKey, this.categoryMap);
+      return this.categoryMap;
+    }
+    
+    // Wenn keine Kategorie-Collection-ID konfiguriert ist, leere Map zurückgeben
+    if (!WEBFLOW_VIDEO_FEED_CONFIG.CATEGORY_COLLECTION_ID) {
+      this.logger.warn("Keine Kategorie-Collection konfiguriert");
+      this.categoryMap = {};
+      return {};
+    }
+    
+    try {
+      this.logger.info("Lade Kategorie-Daten...");
+      
+      const apiUrl = `${WEBFLOW_VIDEO_FEED_CONFIG.API_BASE_URL}/${WEBFLOW_VIDEO_FEED_CONFIG.CATEGORY_COLLECTION_ID}/items?live=true`;
+      const workerUrl = this.buildWorkerUrl(apiUrl);
+      
+      const data = await this.fetchWithRetry(workerUrl);
+      
+      if (!data.items || data.items.length === 0) {
+        this.logger.warn("Keine Kategorien gefunden");
+        this.categoryMap = {};
+        return {};
+      }
+      
+      const map = {};
+      
+      // Analysiere die ersten Elemente, um automatisch das Name-Feld zu erkennen
+      const firstItem = data.items[0];
+      const possibleNameFields = ['name', 'title', 'kategorie-name', 'kategoriename', 'kategorie_name'];
+      let nameField = null;
+      
+      for (const field of possibleNameFields) {
+        if (firstItem.fieldData[field]) {
+          nameField = field;
+          this.logger.debug(`Kategorie-Namensfeld erkannt: "${nameField}"`);
+          break;
+        }
+      }
+      
+      if (!nameField) {
+        this.logger.warn("Konnte kein Name-Feld für Kategorien identifizieren");
+        // Fallback: Erster verfügbarer Feldname 
+        nameField = Object.keys(firstItem.fieldData)[0];
+        this.logger.debug(`Verwende Fallback-Feld: "${nameField}"`);
+      }
+      
+      // Konstruiere die Map
+      data.items.forEach(item => {
+        map[item.id] = item.fieldData[nameField] || `Kategorie ${item.id.substring(0, 8)}`;
+      });
+      
+      this.logger.success(`${Object.keys(map).length} Kategorien geladen`);
+      
+      // Cache setzen
+      this.cache.set(cacheKey, map);
+      this.categoryMap = map;
+      
+      return map;
+    } catch (error) {
+      this.logger.error("Fehler beim Laden der Kategorien:", error.message);
+      return {};
+    }
+  }
+  
+  /**
+   * Konvertiert eine Kategorie-ID in einen lesbaren Namen
+   * @param {string} categoryId - ID der Kategorie
+   * @returns {string} Lesebarer Name oder Fallback
+   */
+  getCategoryName(categoryId) {
+    if (!categoryId) return "Nicht angegeben";
+    
+    // Wenn es sich nicht um eine ID handelt, sondern bereits um einen Namen
+    if (!categoryId.match(/^[a-f0-9]{24,32}$/i)) {
+      return categoryId;
+    }
+    
+    // Aus der Kategorie-Map holen, falls vorhanden
+    if (this.categoryMap && this.categoryMap[categoryId]) {
+      return this.categoryMap[categoryId];
+    }
+    
+    // Fallback: Gekürzte ID anzeigen
+    return `Kategorie ${categoryId.substring(0, 8)}...`;
+  }// 🌐 Webflow API Integration für Video-Feed
 // Optimierte Version für Skalierbarkeit und Wartbarkeit
 
 /**
@@ -114,10 +217,17 @@ const WEBFLOW_VIDEO_FEED_CONFIG = {
   WORKER_BASE_URL: "https://bewerbungen.oliver-258.workers.dev/?url=",
   MEMBER_COLLECTION_ID: "6448faf9c5a8a15f6cc05526", // Neue Member-Collection ID
   VIDEO_COLLECTION_ID: "67d806e65cadcadf2f41e659",   // Bisherige User-Collection ID
+  CATEGORY_COLLECTION_ID: "YOUR_CATEGORY_COLLECTION_ID", // ID der Kategorie-Collection (falls bekannt)
   DOM_ELEMENTS: {
     VIDEO_CONTAINER: "video-feed"
   },
   CACHE_DURATION: 5 * 60 * 1000, // 5 Minuten Cache-Dauer
+  
+  // Kategorie-Mapping (falls keine dynamische Abfrage möglich ist)
+  CATEGORY_MAP: {
+    "2f1f2fe0cd35ddd19ca98f4b85b16258": "Allgemein",
+    // Weitere Kategorien hier hinzufügen
+  }
 };
 
 // 🧠 Cache-System
@@ -165,6 +275,7 @@ class WebflowApiService {
   constructor() {
     this.cache = new CacheManager();
     this.logger = new Logger('📡 WebflowAPI');
+    this.categoryMap = null; // Wird später mit Kategorien gefüllt
   }
 
   /**
@@ -311,6 +422,11 @@ class WebflowApiService {
     const workerUrl = this.buildWorkerUrl(apiUrl);
     
     try {
+      // Stelle sicher, dass die Kategorie-Map geladen ist
+      if (!this.categoryMap) {
+        await this.loadCategoryMap();
+      }
+      
       return await this.logger.time(
         async () => {
           const data = await this.fetchWithRetry(workerUrl);
@@ -326,13 +442,43 @@ class WebflowApiService {
               id: data.items[0].id,
               fieldKeys: Object.keys(data.items[0].fieldData || {})
             });
+            
+            // Prüfe, ob Expanded-Daten vorhanden sind
+            if (data.items[0].fieldData["video-kategorie_data"]) {
+              this.logger.debug("Erweiterte Kategorie-Daten gefunden!");
+            }
           }
           
-          const videos = data.items.map(item => ({
-            "video-link": item.fieldData["video-link"],
-            "video-name": item.fieldData["video-name"],
-            "video-kategorie": item.fieldData["video-kategorie"]
-          })).filter(video => video["video-link"]);
+          const videos = data.items.map(item => {
+            // Kategorie-ID und Name ermitteln
+            const categoryId = item.fieldData["video-kategorie"];
+            let categoryName = "Nicht angegeben";
+            
+            // Zuerst prüfen, ob erweiterte Daten verfügbar sind
+            if (item.fieldData["video-kategorie_data"]) {
+              // Versuche, den Namen aus den erweiterten Daten zu extrahieren
+              const expandedData = item.fieldData["video-kategorie_data"];
+              
+              if (expandedData.name) {
+                categoryName = expandedData.name;
+              } else if (expandedData.title) {
+                categoryName = expandedData.title;
+              } else {
+                // Fallback zur Map
+                categoryName = this.getCategoryName(categoryId);
+              }
+            } else {
+              // Verwende die Kategorie-Map
+              categoryName = this.getCategoryName(categoryId);
+            }
+            
+            return {
+              "video-link": item.fieldData["video-link"],
+              "video-name": item.fieldData["video-name"],
+              "video-kategorie": categoryName,
+              "video-kategorie-id": categoryId // Original-ID für Debugging
+            };
+          }).filter(video => video["video-link"]);
           
           const invalidVideos = data.items.length - videos.length;
           if (invalidVideos > 0) {
