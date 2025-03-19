@@ -76,14 +76,14 @@ function renderVideos(videos) {
         const videoElement = document.createElement("video");
         videoElement.src = `${videoData["video-link"]}`;
         videoElement.controls = true;
-        videoElement.classList.add("db-video-embed");
+        videoElement.classList.add("db-upload-video");
         videoDiv.appendChild(videoElement);
 
         const detailsDiv = document.createElement("div");
         detailsDiv.classList.add("db-upload-item-details");
         detailsDiv.innerHTML = `
-            <p><strong>${videoData["video-name"] || "Unbenanntes Video"}</strong></p>
-            <p>Kategorie: ${videoData["video-kategorie"] || "Nicht angegeben"}</p>
+            <div class="db-upload-video-title">${videoData["video-name"] || "Unbenanntes Video"}</div>
+            <p class="is-txt-tiny">Kategorie: ${videoData["video-kategorie"] || "Nicht angegeben"}</p>
         `;
 
         wrapperDiv.appendChild(videoDiv);
