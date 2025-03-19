@@ -217,17 +217,10 @@ const WEBFLOW_VIDEO_FEED_CONFIG = {
   WORKER_BASE_URL: "https://bewerbungen.oliver-258.workers.dev/?url=",
   MEMBER_COLLECTION_ID: "6448faf9c5a8a15f6cc05526", // Neue Member-Collection ID
   VIDEO_COLLECTION_ID: "67d806e65cadcadf2f41e659",   // Bisherige User-Collection ID
-  CATEGORY_COLLECTION_ID: "YOUR_CATEGORY_COLLECTION_ID", // ID der Kategorie-Collection (falls bekannt)
   DOM_ELEMENTS: {
     VIDEO_CONTAINER: "video-feed"
   },
   CACHE_DURATION: 5 * 60 * 1000, // 5 Minuten Cache-Dauer
-  
-  // Kategorie-Mapping (falls keine dynamische Abfrage möglich ist)
-  CATEGORY_MAP: {
-    "2f1f2fe0cd35ddd19ca98f4b85b16258": "Allgemein",
-    // Weitere Kategorien hier hinzufügen
-  }
 };
 
 // 🧠 Cache-System
@@ -275,7 +268,6 @@ class WebflowApiService {
   constructor() {
     this.cache = new CacheManager();
     this.logger = new Logger('📡 WebflowAPI');
-    this.categoryMap = null; // Wird später mit Kategorien gefüllt
   }
 
   /**
