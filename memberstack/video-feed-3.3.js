@@ -181,7 +181,54 @@ class VideoFeedApp {
     }
   }
 
-  /**
+ /**
+ * Videos für einen bestimmten User abrufen
+ */
+async getVideosByUserId(userId) {
+  if (!userId) {
+    throw new Error("User ID fehlt");
+  }
+  
+  const cacheKey = `videos_${userId}`;
+  const cachedVideos = this.cache.get(cacheKey);
+  
+  if (cachedVideos) {
+    console.log("📋 Video-Feed: Videos aus Cache geladen", userId);
+    return cachedVideos;
+  }
+  
+  // API-Anfrage
+  const filterQuery = `{"user-id":{"eq":"${userId}"}}`;
+  const apiUrl = `${VIDEO_FEED_CONFIG.API_BASE_URL}/${VIDEO_FEED_CONFIG.VIDEO_COLLECTION_ID}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
+  const workerUrl = this.buildWorkerUrl(apiUrl);
+  
+  try {
+    const data = await this.fetchApi(workerUrl);
+    
+    if (!data.items || data.items.length === 0) {
+      console.log("📋 Video-Feed: Keine Videos gefunden für User", userId);
+      return [];
+    }
+    
+    // Videos extrahieren - HIER ID mit hinzufügen
+    const videos = data.items.map(item => ({
+      "id": item.id, // Webflow Item ID hinzufügen
+      "video-link": item.fieldData["video-link"],
+      "video-name": item.fieldData["video-name"],
+      "video-kategorie": item.fieldData["video-kategorie"]
+    })).filter(video => video["video-link"]);
+    
+    console.log(`📋 Video-Feed: ${videos.length} Videos geladen`);
+    
+    this.cache.set(cacheKey, videos);
+    return videos;
+  } catch (error) {
+    console.error("📋 Video-Feed: Fehler beim Abrufen der Videos", error);
+    throw error;
+  }
+}
+
+/**
  * Videos im Container anzeigen
  */
 renderVideos(videos) {
@@ -240,19 +287,33 @@ renderVideos(videos) {
     // Edit-Button erstellen
     const editButton = document.createElement("button");
     editButton.classList.add("db-upload-settings");
-    editButton.setAttribute("data-video-edit", videoData._id || videoData.id); // Video-ID als Attribut setzen
+    
+    // Videodata-ID als Attribut setzen
+    const videoId = videoData.id;
+    console.log("📋 Video-Feed: Video-ID für Edit-Button:", videoId);
+    
+    editButton.setAttribute("data-video-edit", videoId);
     editButton.innerHTML = `<img src="https://assets.website-files.com/644b227aede7506cf1930ae5/67c7c2b3b5eb71e17e3b4f15_settings-02.svg" alt="Bearbeiten">`;
     editButton.title = "Video bearbeiten";
-    editButton.addEventListener("click", (e) => {
+    
+    // Statt direktem Funktionsaufruf nutzen wir ein event, das von der anderen Datei abgefangen werden kann
+    editButton.onclick = function(e) {
       e.preventDefault();
       e.stopPropagation();
-      // Prüfe, ob die editVideo-Funktion existiert (aus dem zweiten Script)
-      if (typeof editVideo === "function") {
-        editVideo(videoData._id || videoData.id);
-      } else {
-        console.error("📋 Video-Feed: editVideo-Funktion nicht gefunden. Stelle sicher, dass das Edit-Script geladen ist.");
+      
+      // Option 1: Wenn die editVideo-Funktion im globalen Scope ist
+      if (typeof window.editVideo === "function") {
+        window.editVideo(videoId);
+      } 
+      // Option 2: Manuell ein Event auslösen, das vom Edit-Script abgefangen werden kann
+      else {
+        console.log("📋 Video-Feed: Löse Edit-Event aus für Video ID:", videoId);
+        const editEvent = new CustomEvent('videoEditRequest', { 
+          detail: { videoId: videoId } 
+        });
+        document.dispatchEvent(editEvent);
       }
-    });
+    };
     
     // Struktur zusammenfügen
     detailsContainerDiv.appendChild(titleDiv);
