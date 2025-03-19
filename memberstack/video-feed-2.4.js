@@ -588,7 +588,7 @@ class VideoUiManager {
       videoElement.classList.add("db-upload-video");
       videoElement.setAttribute("preload", "metadata"); // Optimierung: Nur Metadaten vorladen
       
-      // Event-Listener für Debugging und Fehlerbehandlung
+      // Debug-Status für Videos
       videoElement.addEventListener("loadedmetadata", () => {
         loadedVideos++;
         this.logger.debug(`Video ${index} geladen (${loadedVideos}/${videos.length})`);
@@ -610,10 +610,25 @@ class VideoUiManager {
 
       const detailsDiv = document.createElement("div");
       detailsDiv.classList.add("db-upload-item-details");
-      detailsDiv.innerHTML = `
-        <div class="db-upload-video-title">${videoData["video-name"] || "Unbenanntes Video"}</div>
-        <p class="is-txt-tiny">Kategorie: ${videoData["video-kategorie"] || "Nicht angegeben"}</p>
-      `;
+      
+      // Neuer Container für Titel und Kategorie
+      const detailsContainerDiv = document.createElement("div");
+      detailsContainerDiv.classList.add("db-upload-details-container");
+      
+      // Titel
+      const titleDiv = document.createElement("div");
+      titleDiv.classList.add("db-upload-video-title");
+      titleDiv.textContent = videoData["video-name"] || "Unbenanntes Video";
+      
+      // Kategorie
+      const categoryP = document.createElement("p");
+      categoryP.classList.add("is-txt-tiny");
+      categoryP.textContent = `Kategorie: ${videoData["video-kategorie"] || "Nicht angegeben"}`;
+      
+      // Struktur zusammensetzen
+      detailsContainerDiv.appendChild(titleDiv);
+      detailsContainerDiv.appendChild(categoryP);
+      detailsDiv.appendChild(detailsContainerDiv);
 
       wrapperDiv.appendChild(videoDiv);
       wrapperDiv.appendChild(detailsDiv);
