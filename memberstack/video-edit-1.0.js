@@ -675,5 +675,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Initialisiere den Delete-Button
     initDeleteButton();
     
+    // EditVideo-Funktion global verfügbar machen
+    window.editVideo = editVideo;
+    
+    // Event-Listener für Edit-Requests aus anderen Skripten
+    document.addEventListener('videoEditRequest', function(e) {
+        if (e.detail && e.detail.videoId) {
+            console.log("🔧 Edit-Event empfangen für Video ID:", e.detail.videoId);
+            editVideo(e.detail.videoId);
+        }
+    });
+    
     console.log("✅ Video Edit/Delete Script vollständig initialisiert");
 });
