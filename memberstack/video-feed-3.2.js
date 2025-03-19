@@ -182,72 +182,92 @@ class VideoFeedApp {
   }
 
   /**
-   * Videos im Container anzeigen
-   */
-  renderVideos(videos) {
-    if (!this.videoContainer) {
-      console.error("📋 Video-Feed: Container nicht gefunden");
-      return;
-    }
-    
-    if (!videos || videos.length === 0) {
-      this.videoContainer.innerHTML = "<p>🚫 Keine Videos gefunden.</p>";
-      return;
-    }
-    
-    this.videoContainer.innerHTML = "";
-    
-    videos.forEach(videoData => {
-      if (!videoData || !videoData["video-link"]) return;
-      
-      const wrapperDiv = document.createElement("div");
-      wrapperDiv.classList.add("db-upload-wrapper-item");
-      
-      const videoDiv = document.createElement("div");
-      videoDiv.classList.add("db-upload-item-video");
-      
-      const videoElement = document.createElement("video");
-      videoElement.src = videoData["video-link"];
-      videoElement.controls = true;
-      videoElement.classList.add("db-upload-video");
-      videoElement.addEventListener("error", () => {
-        videoElement.outerHTML = `
-          <div class="video-error">
-            <p>Video konnte nicht geladen werden</p>
-          </div>
-        `;
-      });
-      
-      videoDiv.appendChild(videoElement);
-      
-      const detailsDiv = document.createElement("div");
-      detailsDiv.classList.add("db-upload-item-details");
-      
-      // Container für Titel und Kategorie
-      const detailsContainerDiv = document.createElement("div");
-      detailsContainerDiv.classList.add("db-upload-details-container");
-      
-      // Titel
-      const titleDiv = document.createElement("div");
-      titleDiv.classList.add("db-upload-video-title");
-      titleDiv.textContent = videoData["video-name"] || "Unbenanntes Video";
-      
-      // Kategorie
-      const categoryP = document.createElement("p");
-      categoryP.classList.add("is-txt-tiny");
-      categoryP.textContent = `Kategorie: ${videoData["video-kategorie"] || "Nicht angegeben"}`;
-      
-      // Struktur zusammenfügen
-      detailsContainerDiv.appendChild(titleDiv);
-      detailsContainerDiv.appendChild(categoryP);
-      detailsDiv.appendChild(detailsContainerDiv);
-      
-      wrapperDiv.appendChild(videoDiv);
-      wrapperDiv.appendChild(detailsDiv);
-      
-      this.videoContainer.appendChild(wrapperDiv);
-    });
+ * Videos im Container anzeigen
+ */
+renderVideos(videos) {
+  if (!this.videoContainer) {
+    console.error("📋 Video-Feed: Container nicht gefunden");
+    return;
   }
+  
+  if (!videos || videos.length === 0) {
+    this.videoContainer.innerHTML = "<p>🚫 Keine Videos gefunden.</p>";
+    return;
+  }
+  
+  this.videoContainer.innerHTML = "";
+  
+  videos.forEach(videoData => {
+    if (!videoData || !videoData["video-link"]) return;
+    
+    const wrapperDiv = document.createElement("div");
+    wrapperDiv.classList.add("db-upload-wrapper-item");
+    
+    const videoDiv = document.createElement("div");
+    videoDiv.classList.add("db-upload-item-video");
+    
+    const videoElement = document.createElement("video");
+    videoElement.src = videoData["video-link"];
+    videoElement.controls = true;
+    videoElement.classList.add("db-upload-video");
+    videoElement.addEventListener("error", () => {
+      videoElement.outerHTML = `
+        <div class="video-error">
+          <p>Video konnte nicht geladen werden</p>
+        </div>
+      `;
+    });
+    
+    videoDiv.appendChild(videoElement);
+    
+    const detailsDiv = document.createElement("div");
+    detailsDiv.classList.add("db-upload-item-details");
+    
+    // Container für Titel und Kategorie
+    const detailsContainerDiv = document.createElement("div");
+    detailsContainerDiv.classList.add("db-upload-details-container");
+    
+    // Titel
+    const titleDiv = document.createElement("div");
+    titleDiv.classList.add("db-upload-video-title");
+    titleDiv.textContent = videoData["video-name"] || "Unbenanntes Video";
+    
+    // Kategorie
+    const categoryP = document.createElement("p");
+    categoryP.classList.add("is-txt-tiny");
+    categoryP.textContent = `Kategorie: ${videoData["video-kategorie"] || "Nicht angegeben"}`;
+    
+    // Edit-Button erstellen
+    const editButton = document.createElement("button");
+    editButton.classList.add("db-upload-settings");
+    editButton.setAttribute("data-video-edit", videoData._id || videoData.id); // Video-ID als Attribut setzen
+    editButton.innerHTML = `<img src="https://assets.website-files.com/644b227aede7506cf1930ae5/67c7c2b3b5eb71e17e3b4f15_settings-02.svg" alt="Bearbeiten">`;
+    editButton.title = "Video bearbeiten";
+    editButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Prüfe, ob die editVideo-Funktion existiert (aus dem zweiten Script)
+      if (typeof editVideo === "function") {
+        editVideo(videoData._id || videoData.id);
+      } else {
+        console.error("📋 Video-Feed: editVideo-Funktion nicht gefunden. Stelle sicher, dass das Edit-Script geladen ist.");
+      }
+    });
+    
+    // Struktur zusammenfügen
+    detailsContainerDiv.appendChild(titleDiv);
+    detailsContainerDiv.appendChild(categoryP);
+    detailsDiv.appendChild(detailsContainerDiv);
+    
+    // Edit-Button zum Details-Container hinzufügen
+    detailsDiv.appendChild(editButton);
+    
+    wrapperDiv.appendChild(videoDiv);
+    wrapperDiv.appendChild(detailsDiv);
+    
+    this.videoContainer.appendChild(wrapperDiv);
+  });
+}
   
   /**
    * Ladeanimation anzeigen
