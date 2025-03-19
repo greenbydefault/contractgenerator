@@ -79,7 +79,7 @@
       this.logger.error("Fehler beim Laden der Kategorien:", error.message);
       return {};
     }
-  },
+  }
   
   /**
    * Konvertiert eine Kategorie-ID in einen lesbaren Namen
