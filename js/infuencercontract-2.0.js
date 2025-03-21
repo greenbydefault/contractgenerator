@@ -571,7 +571,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 renderCheckbox(doc, true, "Nein", 30, y);
                 y += 6;
                 
-                // Problematischen Text Zeichen für Zeichen ausgeben ohne Abstände
+                // Fester Text ohne Leerzeichen für problematische Passage
                 doc.text("→ Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung", 30, y);
                 y += 5;
                 doc.text("   genutzt werden.", 30, y);
@@ -598,27 +598,27 @@ document.addEventListener('DOMContentLoaded', (event) => {
             // §5 Produktion & Freigabe
             y = addParagraphTitle(doc, "§5 Produktion & Freigabe", y);
             
-            // Briefing mit hervorgehobener Variable
-            doc.text("Briefing: Das Briefing wird vom Unternehmen bis ", 30, y);
+            // Briefing mit hervorgehobener Variable - verbesserte Ausrichtung
+            doc.text("Briefing: Das Briefing wird vom Unternehmen bis", 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(briefingDate, 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis "), y);
             doc.setFont("helvetica", "normal");
-            doc.text(" bereitgestellt.", 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis ") + doc.getTextWidth(briefingDate), y);
+            doc.text("bereitgestellt.", 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis ") + doc.getTextWidth(briefingDate) + 2, y);
             y += 8;
             
-            // Skript mit hervorgehobenen Variablen
+            // Skript mit hervorgehobenen Variablen - verbesserte Ausrichtung
             if (scriptDate && scriptDate !== '[Datum/Uhrzeit]') {
                 doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur", 30, y);
                 y += 5;
-                doc.text("Freigabe bis ", 30, y);
+                doc.text("Freigabe bis", 30, y);
                 doc.setFont("helvetica", "bold");
                 doc.text(scriptDate, 30 + doc.getTextWidth("Freigabe bis "), y);
                 doc.setFont("helvetica", "normal");
-                doc.text("/", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate), y);
+                doc.text("/", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + 2, y);
                 doc.setFont("helvetica", "bold");
-                doc.text(scriptTime, 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/"), y);
+                doc.text(scriptTime, 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + 4, y);
                 doc.setFont("helvetica", "normal");
-                doc.text(".", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + doc.getTextWidth(scriptTime), y);
+                doc.text(".", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + doc.getTextWidth(scriptTime) + 6, y);
             } else {
                 doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur", 30, y);
                 y += 5;
@@ -626,14 +626,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
             }
             y += 8;
             
-            // Produktion mit hervorgehobenen Variablen
-            doc.text("Produktion: Die Produktion erfolgt im Zeitraum ", 30, y);
+            // Produktion mit hervorgehobenen Variablen - verbesserte Ausrichtung
+            doc.text("Produktion: Die Produktion erfolgt im Zeitraum", 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(productionStart, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum "), y);
             doc.setFont("helvetica", "normal");
-            doc.text(" – ", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart), y);
+            doc.text("–", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + 3, y);
             doc.setFont("helvetica", "bold");
-            doc.text(productionEnd, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – "), y);
+            doc.text(productionEnd, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth("–") + 6, y);
             
             if (productionLocation && productionLocation !== '[Adresse]') {
                 doc.setFont("helvetica", "normal");
@@ -659,12 +659,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
             // §6 Vergütung
             y = addParagraphTitle(doc, "§6 Vergütung", y);
             
-            // Nettovergütung mit hervorgehobener Variable
+            // Nettovergütung mit hervorgehobener Variable und Euro-Zeichen
             doc.text("Die Nettovergütung beträgt ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(compensation, 30 + doc.getTextWidth("Die Nettovergütung beträgt "), y);
+            doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt "), y);
             doc.setFont("helvetica", "normal");
-            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation), y);
+            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €"), y);
             y += 8;
             
             doc.text("Die Rechnungsstellung erfolgt nach Veröffentlichung.", 30, y);
@@ -823,7 +823,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             // §12 Schlussbestimmungen - Korrigierte und optimierte Version
             y = addParagraphTitle(doc, "§12 Schlussbestimmungen", y);
             
-            // Text in einem Stück mit korrekter Ausrichtung
+            // Text in einem Stück mit korrekter Ausrichtung ohne Abstände
             let schlussText = "Änderungen bedürfen der Schriftform. Gerichtsstand ist ";
             doc.text(schlussText, 30, y);
             doc.setFont("helvetica", "bold");
