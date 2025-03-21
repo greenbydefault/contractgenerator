@@ -77,97 +77,205 @@ document.addEventListener('DOMContentLoaded', (event) => {
         doc.text("[Unterschrift Influencer]", 120, y);
     }
 
+    // Verbesserte Funktion zum Anzeigen von Checkbox-Optionen
+    function renderCheckbox(doc, isChecked, text, x, y) {
+        const checkboxSymbol = isChecked ? "☒" : "☐";
+        doc.text(checkboxSymbol, x, y);
+        doc.text(text, x + 6, y); // 6 Punkte Abstand für bessere Lesbarkeit
+        return y;
+    }
+
     // Hauptfunktion zum Generieren des PDFs
     function generatePDF() {
         console.log('Starting PDF generation');
         try {
             // Daten aus dem Formular extrahieren
             // Unternehmen (Auftraggeber)
-            const companyName = document.getElementById('company-name').value || '[Name des Unternehmens]';
-            const companyContact = document.getElementById('company-contact').value || '[Ansprechpartner]';
-            const companyStreet = document.getElementById('company-street').value || '[Straße]';
-            const companyNumber = document.getElementById('company-number').value || '[Hausnummer]';
-            const companyZip = document.getElementById('company-zip').value || '[PLZ]';
-            const companyCity = document.getElementById('company-city').value || '[Stadt]';
-            const companyCountry = document.getElementById('company-country').value || '[Land]';
+            const companyNameEl = document.getElementById('company-name');
+            const companyName = companyNameEl ? companyNameEl.value : '[Name des Unternehmens]';
+            
+            const companyContactEl = document.getElementById('company-contact');
+            const companyContact = companyContactEl ? companyContactEl.value : '[Ansprechpartner]';
+            
+            const companyStreetEl = document.getElementById('company-street');
+            const companyStreet = companyStreetEl ? companyStreetEl.value : '[Straße]';
+            
+            const companyNumberEl = document.getElementById('company-number');
+            const companyNumber = companyNumberEl ? companyNumberEl.value : '[Hausnummer]';
+            
+            const companyZipEl = document.getElementById('company-zip');
+            const companyZip = companyZipEl ? companyZipEl.value : '[PLZ]';
+            
+            const companyCityEl = document.getElementById('company-city');
+            const companyCity = companyCityEl ? companyCityEl.value : '[Stadt]';
+            
+            const companyCountryEl = document.getElementById('company-country');
+            const companyCountry = companyCountryEl ? companyCountryEl.value : '[Land]';
             
             // Influencer (Creator)
-            const influencerName = document.getElementById('influencer-name').value || '[Name des Influencers]';
-            const influencerStreet = document.getElementById('influencer-street').value || '[Straße Creator]';
-            const influencerNumber = document.getElementById('influencer-number').value || '[Hausnummer Creator]';
-            const influencerZip = document.getElementById('influencer-zip').value || '[PLZ Creator]';
-            const influencerCity = document.getElementById('influencer-city').value || '[Stadt Creator]';
-            const influencerCountry = document.getElementById('influencer-country').value || '[Land Creator]';
+            const influencerNameEl = document.getElementById('influencer-name');
+            const influencerName = influencerNameEl ? influencerNameEl.value : '[Name des Influencers]';
+            
+            const influencerStreetEl = document.getElementById('influencer-street');
+            const influencerStreet = influencerStreetEl ? influencerStreetEl.value : '[Straße Creator]';
+            
+            const influencerNumberEl = document.getElementById('influencer-number');
+            const influencerNumber = influencerNumberEl ? influencerNumberEl.value : '[Hausnummer Creator]';
+            
+            const influencerZipEl = document.getElementById('influencer-zip');
+            const influencerZip = influencerZipEl ? influencerZipEl.value : '[PLZ Creator]';
+            
+            const influencerCityEl = document.getElementById('influencer-city');
+            const influencerCity = influencerCityEl ? influencerCityEl.value : '[Stadt Creator]';
+            
+            const influencerCountryEl = document.getElementById('influencer-country');
+            const influencerCountry = influencerCountryEl ? influencerCountryEl.value : '[Land Creator]';
             
             // Kunde/Marke (falls vorhanden)
-            const clientName = document.getElementById('client-name').value || '[Name / Marke, Adresse]';
-            const clientAddress = document.getElementById('client-address').value || '';
+            const clientNameEl = document.getElementById('client-name');
+            const clientName = clientNameEl ? clientNameEl.value : '[Name / Marke, Adresse]';
+            
+            const clientAddressEl = document.getElementById('client-address');
+            const clientAddress = clientAddressEl ? clientAddressEl.value : '';
             
             // Plattformen
-            const instagramSelected = document.getElementById('platform-instagram').checked;
-            const instagramUsername = document.getElementById('instagram-username').value || '[@nutzername]';
-            const tiktokSelected = document.getElementById('platform-tiktok').checked;
-            const tiktokUsername = document.getElementById('tiktok-username').value || '[@nutzername]';
-            const youtubeSelected = document.getElementById('platform-youtube').checked;
-            const youtubeUrl = document.getElementById('youtube-url').value || '[URL]';
-            const otherSelected = document.getElementById('platform-other').checked;
-            const otherPlatform = document.getElementById('other-platform').value || '[frei eintragen]';
+            const instagramSelectedEl = document.getElementById('platform-instagram');
+            const instagramSelected = instagramSelectedEl ? instagramSelectedEl.checked : false;
+            
+            const instagramUsernameEl = document.getElementById('instagram-username');
+            const instagramUsername = instagramUsernameEl ? instagramUsernameEl.value : '[@nutzername]';
+            
+            const tiktokSelectedEl = document.getElementById('platform-tiktok');
+            const tiktokSelected = tiktokSelectedEl ? tiktokSelectedEl.checked : false;
+            
+            const tiktokUsernameEl = document.getElementById('tiktok-username');
+            const tiktokUsername = tiktokUsernameEl ? tiktokUsernameEl.value : '[@nutzername]';
+            
+            const youtubeSelectedEl = document.getElementById('platform-youtube');
+            const youtubeSelected = youtubeSelectedEl ? youtubeSelectedEl.checked : false;
+            
+            const youtubeUrlEl = document.getElementById('youtube-url');
+            const youtubeUrl = youtubeUrlEl ? youtubeUrlEl.value : '[URL]';
+            
+            const otherSelectedEl = document.getElementById('platform-other');
+            const otherSelected = otherSelectedEl ? otherSelectedEl.checked : false;
+            
+            const otherPlatformEl = document.getElementById('other-platform');
+            const otherPlatform = otherPlatformEl ? otherPlatformEl.value : '[frei eintragen]';
             
             // Inhalte
-            const storySlides = document.getElementById('story-slides').value || '[Anzahl]';
-            const reelsTiktok = document.getElementById('reels-tiktok').value || '[Anzahl]';
-            const feedPosts = document.getElementById('feed-posts').value || '[Anzahl]';
-            const youtubeVideos = document.getElementById('youtube-videos').value || '[Anzahl]';
+            const storySlidesEl = document.getElementById('story-slides');
+            const storySlides = storySlidesEl ? storySlidesEl.value : '[Anzahl]';
+            
+            const reelsTiktokEl = document.getElementById('reels-tiktok');
+            const reelsTiktok = reelsTiktokEl ? reelsTiktokEl.value : '[Anzahl]';
+            
+            const feedPostsEl = document.getElementById('feed-posts');
+            const feedPosts = feedPostsEl ? feedPostsEl.value : '[Anzahl]';
+            
+            const youtubeVideosEl = document.getElementById('youtube-videos');
+            const youtubeVideos = youtubeVideosEl ? youtubeVideosEl.value : '[Anzahl]';
             
             // Zusätzliche Vereinbarungen
-            const collabPost = document.getElementById('collab-post').checked;
-            const companyPublication = document.getElementById('company-publication').checked;
-            const noCompanyPublication = document.getElementById('no-company-publication').checked;
+            const collabPostEl = document.getElementById('collab-post');
+            const collabPost = collabPostEl ? collabPostEl.checked : false;
+            
+            const companyPublicationEl = document.getElementById('company-publication');
+            const companyPublication = companyPublicationEl ? companyPublicationEl.checked : false;
+            
+            const noCompanyPublicationEl = document.getElementById('no-company-publication');
+            const noCompanyPublication = noCompanyPublicationEl ? noCompanyPublicationEl.checked : false;
             
             // Media Buyout
-            const mediaBuyoutYes = document.getElementById('media-buyout-yes').checked;
-            const mediaBuyoutNo = document.getElementById('media-buyout-no').checked;
+            const mediaBuyoutYesEl = document.getElementById('media-buyout-yes');
+            const mediaBuyoutYes = mediaBuyoutYesEl ? mediaBuyoutYesEl.checked : false;
+            
+            const mediaBuyoutNoEl = document.getElementById('media-buyout-no');
+            const mediaBuyoutNo = mediaBuyoutNoEl ? mediaBuyoutNoEl.checked : false;
             
             // Werbekanäle
-            const adInstagram = document.getElementById('ad-instagram')?.checked || false;
-            const adFacebook = document.getElementById('ad-facebook')?.checked || false;
-            const adTiktok = document.getElementById('ad-tiktok')?.checked || false;
-            const adOther = document.getElementById('ad-other')?.checked || false;
+            const adInstagramEl = document.getElementById('ad-instagram');
+            const adInstagram = adInstagramEl ? adInstagramEl.checked : false;
+            
+            const adFacebookEl = document.getElementById('ad-facebook');
+            const adFacebook = adFacebookEl ? adFacebookEl.checked : false;
+            
+            const adTiktokEl = document.getElementById('ad-tiktok');
+            const adTiktok = adTiktokEl ? adTiktokEl.checked : false;
+            
+            const adOtherEl = document.getElementById('ad-other');
+            const adOther = adOtherEl ? adOtherEl.checked : false;
             
             // Werbeoptionen
-            const whitelisting = document.getElementById('whitelisting')?.checked || false;
-            const sparkAd = document.getElementById('spark-ad')?.checked || false;
+            const whitelistingEl = document.getElementById('whitelisting');
+            const whitelisting = whitelistingEl ? whitelistingEl.checked : false;
+            
+            const sparkAdEl = document.getElementById('spark-ad');
+            const sparkAd = sparkAdEl ? sparkAdEl.checked : false;
             
             // Nutzungsdauer
             let usageDuration = '';
-            if (document.getElementById('duration-3')?.checked) usageDuration = '3 Monate';
-            else if (document.getElementById('duration-6')?.checked) usageDuration = '6 Monate';
-            else if (document.getElementById('duration-12')?.checked) usageDuration = '12 Monate';
-            else if (document.getElementById('duration-unlimited')?.checked) usageDuration = 'Unbegrenzt';
+            const duration3El = document.getElementById('duration-3');
+            const duration6El = document.getElementById('duration-6');
+            const duration12El = document.getElementById('duration-12');
+            const durationUnlimitedEl = document.getElementById('duration-unlimited');
+            
+            if (duration3El && duration3El.checked) usageDuration = '3 Monate';
+            else if (duration6El && duration6El.checked) usageDuration = '6 Monate';
+            else if (duration12El && duration12El.checked) usageDuration = '12 Monate';
+            else if (durationUnlimitedEl && durationUnlimitedEl.checked) usageDuration = 'Unbegrenzt';
             else usageDuration = ''; // Wenn nichts ausgewählt ist
             
             // Zeitplan
-            const briefingDate = formatDate(document.getElementById('briefing-date').value) || '[Datum]';
-            const scriptDate = formatDate(document.getElementById('script-date').value) || '[Datum/Uhrzeit]';
-            const scriptTime = document.getElementById('script-time').value || '12:00';
-            const productionStart = formatDate(document.getElementById('production-start').value) || '[von]';
-            const productionEnd = formatDate(document.getElementById('production-end').value) || '[bis]';
-            const productionLocation = document.getElementById('production-location').value || '[Adresse]';
-            const deliveryDate = formatDate(document.getElementById('delivery-date').value) || '[Datum]';
-            const deliveryTime = document.getElementById('delivery-time').value || '12:00';
-            const publicationDate = formatDate(document.getElementById('publication-date').value) || '[Datum]';
+            const briefingDateEl = document.getElementById('briefing-date');
+            const briefingDate = formatDate(briefingDateEl ? briefingDateEl.value : '') || '[Datum]';
+            
+            const scriptDateEl = document.getElementById('script-date');
+            const scriptDate = formatDate(scriptDateEl ? scriptDateEl.value : '') || '[Datum/Uhrzeit]';
+            
+            const scriptTimeEl = document.getElementById('script-time');
+            const scriptTime = scriptTimeEl ? scriptTimeEl.value : '12:00';
+            
+            const productionStartEl = document.getElementById('production-start');
+            const productionStart = formatDate(productionStartEl ? productionStartEl.value : '') || '[von]';
+            
+            const productionEndEl = document.getElementById('production-end');
+            const productionEnd = formatDate(productionEndEl ? productionEndEl.value : '') || '[bis]';
+            
+            const productionLocationEl = document.getElementById('production-location');
+            const productionLocation = productionLocationEl ? productionLocationEl.value : '[Adresse]';
+            
+            const deliveryDateEl = document.getElementById('delivery-date');
+            const deliveryDate = formatDate(deliveryDateEl ? deliveryDateEl.value : '') || '[Datum]';
+            
+            const deliveryTimeEl = document.getElementById('delivery-time');
+            const deliveryTime = deliveryTimeEl ? deliveryTimeEl.value : '12:00';
+            
+            const publicationDateEl = document.getElementById('publication-date');
+            const publicationDate = formatDate(publicationDateEl ? publicationDateEl.value : '') || '[Datum]';
             
             // Vergütung
-            const compensation = document.getElementById('compensation').value || '[€ Betrag]';
+            const compensationEl = document.getElementById('compensation');
+            const compensation = compensationEl ? compensationEl.value : '[€ Betrag]';
+            
             let paymentTerm = '';
-            if (document.getElementById('term-14').checked) paymentTerm = '14 Tage';
-            else if (document.getElementById('term-30').checked) paymentTerm = '30 Tage';
-            else if (document.getElementById('term-45').checked) paymentTerm = '45 Tage';
+            const term14El = document.getElementById('term-14');
+            const term30El = document.getElementById('term-30');
+            const term45El = document.getElementById('term-45');
+            
+            if (term14El && term14El.checked) paymentTerm = '14 Tage';
+            else if (term30El && term30El.checked) paymentTerm = '30 Tage';
+            else if (term45El && term45El.checked) paymentTerm = '45 Tage';
             else paymentTerm = '';
             
-            const additionalCompYes = document.getElementById('additional-yes')?.checked || false;
-            const additionalCompNo = document.getElementById('additional-no')?.checked || false;
-            const additionalCompText = document.getElementById('additional-comp-text')?.value || '[Textfeld falls ja]';
+            const additionalCompYesEl = document.getElementById('additional-yes');
+            const additionalCompYes = additionalCompYesEl ? additionalCompYesEl.checked : false;
+            
+            const additionalCompNoEl = document.getElementById('additional-no');
+            const additionalCompNo = additionalCompNoEl ? additionalCompNoEl.checked : false;
+            
+            const additionalCompTextEl = document.getElementById('additional-comp-text');
+            const additionalCompText = additionalCompTextEl ? additionalCompTextEl.value : '[Textfeld falls ja]';
 
             // PDF erstellen
             const doc = new jsPDF();
@@ -205,32 +313,40 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("Die Veröffentlichung der Inhalte erfolgt auf folgenden Plattformen:", 30, y);
             y += 8;
             
-            // Plattformen auflisten
+            // Plattformen auflisten - verbesserter Ansatz ohne Unicode-Spacing-Probleme
             if (instagramSelected) {
-                doc.text("☒ Instagram (Profil: " + instagramUsername + ")", 30, y);
+                doc.text("✓", 30, y);
+                doc.text("Instagram (Profil: " + instagramUsername + ")", 36, y);
             } else {
-                doc.text("☐ Instagram (Profil: " + instagramUsername + ")", 30, y);
+                doc.text("□", 30, y);
+                doc.text("Instagram (Profil: " + instagramUsername + ")", 36, y);
             }
             y += 6;
             
             if (tiktokSelected) {
-                doc.text("☒ TikTok (Profil: " + tiktokUsername + ")", 30, y);
+                doc.text("✓", 30, y);
+                doc.text("TikTok (Profil: " + tiktokUsername + ")", 36, y);
             } else {
-                doc.text("☐ TikTok (Profil: " + tiktokUsername + ")", 30, y);
+                doc.text("□", 30, y);
+                doc.text("TikTok (Profil: " + tiktokUsername + ")", 36, y);
             }
             y += 6;
             
             if (youtubeSelected) {
-                doc.text("☒ YouTube (Profil: " + youtubeUrl + ")", 30, y);
+                doc.text("✓", 30, y);
+                doc.text("YouTube (Profil: " + youtubeUrl + ")", 36, y);
             } else {
-                doc.text("☐ YouTube (Profil: " + youtubeUrl + ")", 30, y);
+                doc.text("□", 30, y);
+                doc.text("YouTube (Profil: " + youtubeUrl + ")", 36, y);
             }
             y += 6;
             
             if (otherSelected) {
-                doc.text("☒ Sonstiges: " + otherPlatform, 30, y);
+                doc.text("✓", 30, y);
+                doc.text("Sonstiges: " + otherPlatform, 36, y);
             } else {
-                doc.text("☐ Sonstiges: " + otherPlatform, 30, y);
+                doc.text("□", 30, y);
+                doc.text("Sonstiges: " + otherPlatform, 36, y);
             }
             y += 10;
             
@@ -251,27 +367,33 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y += 8;
             
             if (collabPost) {
-                doc.text("☒ Co-Autoren-Post (Instagram Collab): Ja", 30, y);
+                doc.text("✓", 30, y);
+                doc.text("Co-Autoren-Post (Instagram Collab): Ja", 36, y);
             } else {
-                doc.text("☐ Co-Autoren-Post (Instagram Collab): Ja", 30, y);
+                doc.text("□", 30, y);
+                doc.text("Co-Autoren-Post (Instagram Collab): Ja", 36, y);
             }
             y += 6;
             
             if (companyPublication) {
-                doc.text("☒ Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen", 30, y);
+                doc.text("✓", 30, y);
+                doc.text("Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen", 36, y);
                 y += 6;
-                doc.text("eigenem Kanal: Ja", 30, y);
+                doc.text("eigenem Kanal: Ja", 36, y);
             } else {
-                doc.text("☐ Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen", 30, y);
+                doc.text("□", 30, y);
+                doc.text("Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen", 36, y);
                 y += 6;
-                doc.text("eigenem Kanal: Ja", 30, y);
+                doc.text("eigenem Kanal: Ja", 36, y);
             }
             y += 6;
             
             if (noCompanyPublication) {
-                doc.text("☒ Keine zusätzliche Veröffentlichung durch das Unternehmen: Ja", 30, y);
+                doc.text("✓", 30, y);
+                doc.text("Keine zusätzliche Veröffentlichung durch das Unternehmen: Ja", 36, y);
             } else {
-                doc.text("☐ Keine zusätzliche Veröffentlichung durch das Unternehmen: Ja", 30, y);
+                doc.text("□", 30, y);
+                doc.text("Keine zusätzliche Veröffentlichung durch das Unternehmen: Ja", 36, y);
             }
             
             // Neue Seite für §3
@@ -287,86 +409,109 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y += 8;
             
             if (mediaBuyoutYes) {
-                doc.text("☒ Ja", 30, y);
+                doc.text("✓", 30, y);
+                doc.text("Ja", 36, y);
                 y += 8;
                 
                 // Kanäle
                 doc.text("– Kanäle:", 30, y);
                 if (adInstagram) {
-                    doc.text("☒ Instagram", 70, y);
+                    doc.text("✓", 70, y);
+                    doc.text("Instagram", 76, y);
                 } else {
-                    doc.text("☐ Instagram", 70, y);
+                    doc.text("□", 70, y);
+                    doc.text("Instagram", 76, y);
                 }
                 
                 if (adFacebook) {
-                    doc.text("☒ Facebook", 110, y);
+                    doc.text("✓", 110, y);
+                    doc.text("Facebook", 116, y);
                 } else {
-                    doc.text("☐ Facebook", 110, y);
+                    doc.text("□", 110, y);
+                    doc.text("Facebook", 116, y);
                 }
                 
                 if (adTiktok) {
-                    doc.text("☒ TikTok", 150, y);
+                    doc.text("✓", 150, y);
+                    doc.text("TikTok", 156, y);
                 } else {
-                    doc.text("☐ TikTok", 150, y);
+                    doc.text("□", 150, y);
+                    doc.text("TikTok", 156, y);
                 }
                 y += 6;
                 
                 if (adOther) {
-                    doc.text("☒ Sonstiges", 70, y);
+                    doc.text("✓", 70, y);
+                    doc.text("Sonstiges", 76, y);
                 } else {
-                    doc.text("☐ Sonstiges", 70, y);
+                    doc.text("□", 70, y);
+                    doc.text("Sonstiges", 76, y);
                 }
                 y += 8;
                 
                 // Whitelisting
                 doc.text("– Whitelisting (Meta):", 30, y);
                 if (whitelisting) {
-                    doc.text("☒ Ja", 70, y);
+                    doc.text("✓", 70, y);
+                    doc.text("Ja", 76, y);
                 } else {
-                    doc.text("☐ Ja", 70, y);
+                    doc.text("□", 70, y);
+                    doc.text("Ja", 76, y);
                 }
                 y += 6;
                 
                 // Spark Ad
                 doc.text("– Spark Ad (TikTok):", 30, y);
                 if (sparkAd) {
-                    doc.text("☒ Ja", 70, y);
+                    doc.text("✓", 70, y);
+                    doc.text("Ja", 76, y);
                 } else {
-                    doc.text("☐ Ja", 70, y);
+                    doc.text("□", 70, y);
+                    doc.text("Ja", 76, y);
                 }
                 y += 6;
                 
                 // Nutzungsdauer
                 doc.text("– Nutzungsdauer:", 30, y);
                 if (usageDuration === "3 Monate") {
-                    doc.text("☒ 3 Monate", 70, y);
+                    doc.text("✓", 70, y);
+                    doc.text("3 Monate", 76, y);
                 } else {
-                    doc.text("☐ 3 Monate", 70, y);
+                    doc.text("□", 70, y);
+                    doc.text("3 Monate", 76, y);
                 }
                 
                 if (usageDuration === "6 Monate") {
-                    doc.text("☒ 6 Monate", 110, y);
+                    doc.text("✓", 110, y);
+                    doc.text("6 Monate", 116, y);
                 } else {
-                    doc.text("☐ 6 Monate", 110, y);
+                    doc.text("□", 110, y);
+                    doc.text("6 Monate", 116, y);
                 }
                 
                 if (usageDuration === "12 Monate") {
-                    doc.text("☒ 12 Monate", 150, y);
+                    doc.text("✓", 150, y);
+                    doc.text("12 Monate", 156, y);
                 } else {
-                    doc.text("☐ 12 Monate", 150, y);
+                    doc.text("□", 150, y);
+                    doc.text("12 Monate", 156, y);
                 }
                 y += 6;
                 
                 if (usageDuration === "Unbegrenzt") {
-                    doc.text("☒ Unbegrenzt", 70, y);
+                    doc.text("✓", 70, y);
+                    doc.text("Unbegrenzt", 76, y);
                 } else {
-                    doc.text("☐ Unbegrenzt", 70, y);
+                    doc.text("□", 70, y);
+                    doc.text("Unbegrenzt", 76, y);
                 }
                 
             } else {
-                doc.text("☐ Ja", 30, y);
+                doc.text("□", 30, y);
+                doc.text("Ja", 36, y);
                 y += 8;
-                doc.text("☒ Nein", 30, y);
+                doc.text("✓", 30, y);
+                doc.text("Nein", 36, y);
                 y += 6;
                 doc.text("→ Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung", 30, y);
                 y += 6;
@@ -464,39 +609,39 @@ document.addEventListener('DOMContentLoaded', (event) => {
             // Zahlungsziel
             doc.text("Das Zahlungsziel beträgt ", 30, y);
             if (paymentTerm === "14 Tage") {
-                doc.text("☒ 14 Tage ", 160, y, null, null, "right");
+                doc.text("✓ 14 Tage ", 160, y, null, null, "right");
             } else {
-                doc.text("☐ 14 Tage ", 160, y, null, null, "right");
+                doc.text("□ 14 Tage ", 160, y, null, null, "right");
             }
             
             y += 6;
             if (paymentTerm === "30 Tage") {
-                doc.text("☒ 30 Tage ", 160, y, null, null, "right");
+                doc.text("✓ 30 Tage ", 160, y, null, null, "right");
             } else {
-                doc.text("☐ 30 Tage ", 160, y, null, null, "right");
+                doc.text("□ 30 Tage ", 160, y, null, null, "right");
             }
             
             y += 6;
             if (paymentTerm === "45 Tage") {
-                doc.text("☒ 45 Tage.", 160, y, null, null, "right");
+                doc.text("✓ 45 Tage.", 160, y, null, null, "right");
             } else {
-                doc.text("☐ 45 Tage.", 160, y, null, null, "right");
+                doc.text("□ 45 Tage.", 160, y, null, null, "right");
             }
             y += 8;
             
             // Zusätzliche Vergütung
             doc.text("Eine zusätzliche Vergütung ", 30, y);
             if (additionalCompNo) {
-                doc.text("☒ ist nicht ", 160, y, null, null, "right");
+                doc.text("✓ ist nicht ", 160, y, null, null, "right");
             } else {
-                doc.text("☐ ist nicht ", 160, y, null, null, "right");
+                doc.text("□ ist nicht ", 160, y, null, null, "right");
             }
             
             y += 6;
             if (additionalCompYes) {
-                doc.text("☒ ist vereinbart: " + additionalCompText, 160, y, null, null, "right");
+                doc.text("✓ ist vereinbart: " + additionalCompText, 160, y, null, null, "right");
             } else {
-                doc.text("☐ ist vereinbart: " + additionalCompText, 160, y, null, null, "right");
+                doc.text("□ ist vereinbart: " + additionalCompText, 160, y, null, null, "right");
             }
             y += 8;
             
@@ -618,8 +763,13 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.save('influencer-marketing-vertrag.pdf');
             console.log('PDF saved successfully');
             
-            // Erfolgsanzeige
-            document.getElementById('success-animation').classList.remove('hidden');
+            // Erfolgsanzeige - mit Null-Check
+            const successAnimation = document.getElementById('success-animation');
+            if (successAnimation) {
+                successAnimation.classList.remove('hidden');
+            } else {
+                console.log("Element 'success-animation' nicht gefunden. Erfolgsanimation kann nicht angezeigt werden.");
+            }
             
         } catch (error) {
             console.error('Ein Fehler ist während der PDF-Generierung aufgetreten:', error);
@@ -635,30 +785,43 @@ document.addEventListener('DOMContentLoaded', (event) => {
     }
     
     // Event-Listener für den "Vertrag generieren"-Button
-    document.getElementById('generate-contract').addEventListener('click', function() {
-        console.log('Generate contract button clicked');
-        
-        // Prüfen, ob Pflichtfelder ausgefüllt sind
-        const requiredFields = document.querySelectorAll('.form-input-field[required]');
-        let allFilled = true;
-        
-        requiredFields.forEach(field => {
-            if (field.value.trim() === '') {
-                allFilled = false;
-                field.classList.add('error');
+    const generateContractButton = document.getElementById('generate-contract');
+    if (generateContractButton) {
+        generateContractButton.addEventListener('click', function() {
+            console.log('Generate contract button clicked');
+            
+            // Prüfen, ob Pflichtfelder ausgefüllt sind
+            const requiredFields = document.querySelectorAll('.form-input-field[required]');
+            let allFilled = true;
+            
+            requiredFields.forEach(field => {
+                if (field.value.trim() === '') {
+                    allFilled = false;
+                    field.classList.add('error');
+                }
+            });
+            
+            if (!allFilled) {
+                alert('Bitte fülle alle erforderlichen Felder aus, bevor du den Vertrag generierst.');
+                return;
             }
+            
+            generatePDF();
         });
-        
-        if (!allFilled) {
-            alert('Bitte fülle alle erforderlichen Felder aus, bevor du den Vertrag generierst.');
-            return;
-        }
-        
-        generatePDF();
-    });
+    } else {
+        console.log("Element 'generate-contract' nicht gefunden. Button-Ereignisbehandlung konnte nicht hinzugefügt werden.");
+    }
     
     // Event-Listener für den Download-Button
-    document.getElementById('download-button').addEventListener('click', function() {
-        document.getElementById('success-animation').classList.add('hidden');
-    });
+    const downloadButton = document.getElementById('download-button');
+    if (downloadButton) {
+        downloadButton.addEventListener('click', function() {
+            const successAnimation = document.getElementById('success-animation');
+            if (successAnimation) {
+                successAnimation.classList.add('hidden');
+            }
+        });
+    } else {
+        console.log("Element 'download-button' nicht gefunden. Button-Ereignisbehandlung konnte nicht hinzugefügt werden.");
+    }
 });
