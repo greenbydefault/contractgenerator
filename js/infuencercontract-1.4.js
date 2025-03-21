@@ -65,7 +65,13 @@ document.addEventListener('DOMContentLoaded', (event) => {
         let y = doc.internal.pageSize.height - 50; // 50 Einheiten vom unteren Rand
 
         doc.text("Ort, Datum", 30, y);
-        y += 15;
+        doc.text("Ort, Datum", 120, y);
+        y += 20;
+        
+        // Unterschriftslinien
+        doc.line(30, y, 90, y); // Linie für Unternehmen
+        doc.line(120, y, 180, y); // Linie für Influencer
+        y += 10;
         
         doc.text("[Unterschrift Unternehmen]", 30, y);
         doc.text("[Unterschrift Influencer]", 120, y);
@@ -458,36 +464,39 @@ document.addEventListener('DOMContentLoaded', (event) => {
             // Zahlungsziel
             doc.text("Das Zahlungsziel beträgt ", 30, y);
             if (paymentTerm === "14 Tage") {
-                doc.text("☒ 14 Tage ", 30 + doc.getTextWidth("Das Zahlungsziel beträgt "), y);
+                doc.text("☒ 14 Tage ", 160, y, null, null, "right");
             } else {
-                doc.text("☐ 14 Tage ", 30 + doc.getTextWidth("Das Zahlungsziel beträgt "), y);
+                doc.text("☐ 14 Tage ", 160, y, null, null, "right");
             }
             
+            y += 6;
             if (paymentTerm === "30 Tage") {
-                doc.text("☒ 30 Tage ", 30 + doc.getTextWidth("Das Zahlungsziel beträgt ☐ 14 Tage "), y);
+                doc.text("☒ 30 Tage ", 160, y, null, null, "right");
             } else {
-                doc.text("☐ 30 Tage ", 30 + doc.getTextWidth("Das Zahlungsziel beträgt ☐ 14 Tage "), y);
+                doc.text("☐ 30 Tage ", 160, y, null, null, "right");
             }
             
+            y += 6;
             if (paymentTerm === "45 Tage") {
-                doc.text("☒ 45 Tage.", 30 + doc.getTextWidth("Das Zahlungsziel beträgt ☐ 14 Tage ☐ 30 Tage "), y);
+                doc.text("☒ 45 Tage.", 160, y, null, null, "right");
             } else {
-                doc.text("☐ 45 Tage.", 30 + doc.getTextWidth("Das Zahlungsziel beträgt ☐ 14 Tage ☐ 30 Tage "), y);
+                doc.text("☐ 45 Tage.", 160, y, null, null, "right");
             }
             y += 8;
             
             // Zusätzliche Vergütung
             doc.text("Eine zusätzliche Vergütung ", 30, y);
             if (additionalCompNo) {
-                doc.text("☒ ist nicht ", 30 + doc.getTextWidth("Eine zusätzliche Vergütung "), y);
+                doc.text("☒ ist nicht ", 160, y, null, null, "right");
             } else {
-                doc.text("☐ ist nicht ", 30 + doc.getTextWidth("Eine zusätzliche Vergütung "), y);
+                doc.text("☐ ist nicht ", 160, y, null, null, "right");
             }
             
+            y += 6;
             if (additionalCompYes) {
-                doc.text("☒ ist vereinbart: " + additionalCompText, 30 + doc.getTextWidth("Eine zusätzliche Vergütung ☐ ist nicht "), y);
+                doc.text("☒ ist vereinbart: " + additionalCompText, 160, y, null, null, "right");
             } else {
-                doc.text("☐ ist vereinbart: " + additionalCompText, 30 + doc.getTextWidth("Eine zusätzliche Vergütung ☐ ist nicht "), y);
+                doc.text("☐ ist vereinbart: " + additionalCompText, 160, y, null, null, "right");
             }
             y += 8;
             
@@ -533,8 +542,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.setFont("helvetica", "normal");
             doc.text("Der Influencer verpflichtet sich zur ordnungsgemäßen Werbekennzeichnung", 30, y);
             y += 6;
-            // WICHTIG: Normale Anführungszeichen verwenden, nicht die typografischen
-            doc.text("(\"Werbung\" / \"Anzeige\"). Bei einem Verstoß dagegen, haftet der Influencer für die", 30, y);
+            // Reguläre Anführungszeichen für die Darstellung
+            doc.text('("Werbung" / "Anzeige"). Bei einem Verstoß dagegen, haftet der Influencer für die', 30, y);
             y += 6;
             doc.text("entstandenen Schäden.", 30, y);
             y += 12;
