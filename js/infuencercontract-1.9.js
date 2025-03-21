@@ -38,14 +38,21 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     }
 
-    // Funktion zum Erstellen des Inhaltsverzeichnisses
+    // Verbesserte und einheitliche Darstellung der Paragraphen-Überschriften
+    function addParagraphTitle(doc, title, y) {
+        doc.setFont("helvetica", "bold");
+        doc.text(title, 30, y);
+        doc.setFont("helvetica", "normal");
+        return y + 8; // Einheitlicher Abstand nach jeder Überschrift
+    }
+    
+    // Funktion zum Erstellen des Inhaltsverzeichnisses - optimiert für bessere Lesbarkeit
     function addTableOfContents(doc) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(14);
         doc.text('Inhaltsverzeichnis', 105, 40, null, null, 'center');
         
         doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
         
         let y = 60;
         const paragraphs = [
@@ -57,17 +64,20 @@ document.addEventListener('DOMContentLoaded', (event) => {
             { num: "§6", title: "Vergütung", page: 5 },
             { num: "§7", title: "Qualität & Upload", page: 5 },
             { num: "§8", title: "Rechte Dritter & Musik", page: 5 },
-            { num: "§9", title: "Werbekennzeichnung & Exklusivität", page: 5 },
-            { num: "§10", title: "Verbindlichkeit Briefing & Skript", page: 5 },
-            { num: "§11", title: "Datenschutz & Vertraulichkeit", page: 5 },
-            { num: "§12", title: "Schlussbestimmungen", page: 5 }
+            { num: "§9", title: "Werbekennzeichnung & Exklusivität", page: 6 },
+            { num: "§10", title: "Verbindlichkeit Briefing & Skript", page: 6 },
+            { num: "§11", title: "Datenschutz & Vertraulichkeit", page: 6 },
+            { num: "§12", title: "Schlussbestimmungen", page: 6 }
         ];
         
+        // Bessere Verteilung der Paragraphen auf die Seiten
         paragraphs.forEach(para => {
+            doc.setFont("helvetica", "bold");
             doc.text(para.num, 30, y);
-            doc.text(para.title, 40, y); // Weniger Abstand zwischen Nummer und Titel (von 50 auf 40)
+            doc.setFont("helvetica", "normal");
+            doc.text(para.title, 45, y); // Weniger Abstand zwischen Nummer und Titel
             doc.text(para.page.toString(), 170, y);
-            y += 12;
+            y += 10; // Reduzierter Abstand zwischen den Einträgen für kompakteres Layout
         });
         
         doc.addPage();
@@ -162,7 +172,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         addTableOfContents(doc);
     }
 
-    // Funktion zum Hinzufügen von Unterschriftenfeldern
+    // Funktion zum Hinzufügen von Unterschriftsfeldern
     function addSignatureFields(doc) {
         // Stellen Sie sicher, dass wir am Ende des Dokuments arbeiten
         let y = doc.internal.pageSize.height - 50; // 50 Einheiten vom unteren Rand
@@ -180,23 +190,24 @@ document.addEventListener('DOMContentLoaded', (event) => {
         doc.text("[Unterschrift Influencer]", 120, y);
     }
 
-    // Verbesserte Funktion zum Anzeigen von Checkbox-Optionen
+    // Verbesserte Funktion zum Anzeigen von Checkbox-Optionen mit kleineren Boxen
     function renderCheckbox(doc, isChecked, text, x, y) {
-        // Verwende eine Lösung ohne Sonderzeichen mit dünneren Linien
+        // Verwende eine Lösung ohne Sonderzeichen mit dünneren Linien und kleinerer Box
+        const boxSize = 4; // Reduziert von 5 auf 4
         if (isChecked) {
             // Zeichne ein Kästchen mit Kreuz (X)
-            doc.rect(x, y - 4, 5, 5); // Position leicht angepasst für visuelle Ausrichtung
+            doc.rect(x, y - 3.5, boxSize, boxSize); // Position leicht angepasst
             doc.setLineWidth(0.2); // Dünnere Linie für das Kreuz
-            doc.line(x, y - 4, x + 5, y + 1); // Diagonal von links oben nach rechts unten
-            doc.line(x, y + 1, x + 5, y - 4); // Diagonal von links unten nach rechts oben
+            doc.line(x, y - 3.5, x + boxSize, y + 0.5); // Diagonal von links oben nach rechts unten
+            doc.line(x, y + 0.5, x + boxSize, y - 3.5); // Diagonal von links unten nach rechts oben
             doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
         } else {
             // Zeichne ein leeres Kästchen
-            doc.rect(x, y - 4, 5, 5); // Position leicht angepasst für visuelle Ausrichtung
+            doc.rect(x, y - 3.5, boxSize, boxSize); // Position leicht angepasst
         }
         
-        // Setze Text daneben
-        doc.text(text, x + 8, y); // 8 Punkte Abstand für bessere Lesbarkeit
+        // Setze Text daneben mit weniger Abstand
+        doc.text(text, x + boxSize + 3, y); // Reduzierter Abstand (von 8 auf 6)
         return y;
     }
     
@@ -417,57 +428,49 @@ document.addEventListener('DOMContentLoaded', (event) => {
             let y = 30;
             
             // §1 Vertragsgegenstand
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text("§1 Vertragsgegenstand", 30, y);
-            y += 10;
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§1 Vertragsgegenstand", y);
             doc.text("Der Influencer verpflichtet sich zur Erstellung und Veröffentlichung werblicher Inhalte", 30, y);
-            y += 6;
+            y += 5;
             doc.text("zugunsten des Unternehmens bzw. einer vom Unternehmen vertretenen Marke.", 30, y);
             y += 8;
             
             // Client info falls vorhanden
             const clientInfo = clientAddress ? clientName + ", " + clientAddress : clientName;
             doc.text("Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden " + clientInfo + ".", 30, y);
-            y += 6;
+            y += 5;
             doc.text("Alle Leistungen erfolgen im Namen und auf Rechnung des Unternehmens.", 30, y);
             y += 12;
             
             // §2 Plattformen & Veröffentlichung
-            doc.setFont("helvetica", "bold");
-            doc.text("§2 Plattformen & Veröffentlichung", 30, y);
-            y += 10;
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§2 Plattformen & Veröffentlichung", y);
             doc.text("Die Veröffentlichung der Inhalte erfolgt auf folgenden Plattformen:", 30, y);
             y += 8;
             
             // Plattformen auflisten - verbesserter Ansatz ohne Unicode-Spacing-Probleme
             y = renderCheckbox(doc, instagramSelected, "Instagram (Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(instagramUsername, 30 + doc.getTextWidth("Instagram (Profil: ") + 8, y);
+            doc.text(instagramUsername, 30 + doc.getTextWidth("Instagram (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("Instagram (Profil: ") + 8 + doc.getTextWidth(instagramUsername), y);
+            doc.text(")", 30 + doc.getTextWidth("Instagram (Profil: ") + 7 + doc.getTextWidth(instagramUsername), y);
             y += 6;
             
             y = renderCheckbox(doc, tiktokSelected, "TikTok (Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(tiktokUsername, 30 + doc.getTextWidth("TikTok (Profil: ") + 8, y);
+            doc.text(tiktokUsername, 30 + doc.getTextWidth("TikTok (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("TikTok (Profil: ") + 8 + doc.getTextWidth(tiktokUsername), y);
+            doc.text(")", 30 + doc.getTextWidth("TikTok (Profil: ") + 7 + doc.getTextWidth(tiktokUsername), y);
             y += 6;
             
             y = renderCheckbox(doc, youtubeSelected, "YouTube (Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(youtubeUrl, 30 + doc.getTextWidth("YouTube (Profil: ") + 8, y);
+            doc.text(youtubeUrl, 30 + doc.getTextWidth("YouTube (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("YouTube (Profil: ") + 8 + doc.getTextWidth(youtubeUrl), y);
+            doc.text(")", 30 + doc.getTextWidth("YouTube (Profil: ") + 7 + doc.getTextWidth(youtubeUrl), y);
             y += 6;
             
             y = renderCheckbox(doc, otherSelected, "Sonstiges: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(otherPlatform, 30 + doc.getTextWidth("Sonstiges: ") + 8, y);
+            doc.text(otherPlatform, 30 + doc.getTextWidth("Sonstiges: ") + 7, y);
             doc.setFont("helvetica", "normal");
             y += 10;
             
@@ -480,21 +483,21 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.setFont("helvetica", "bold");
             doc.text(storySlides, 30 + doc.getTextWidth("• Story-Slides: "), y);
             doc.setFont("helvetica", "normal");
-            y += 6;
+            y += 5;
             
             // Reels / TikTok Videos mit hervorgehobener Variable
             doc.text("• Reels / TikTok Videos: ", 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(reelsTiktok, 30 + doc.getTextWidth("• Reels / TikTok Videos: "), y);
             doc.setFont("helvetica", "normal");
-            y += 6;
+            y += 5;
             
             // Feed-Posts mit hervorgehobener Variable
             doc.text("• Feed-Posts (Bild/Karussell): ", 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(feedPosts, 30 + doc.getTextWidth("• Feed-Posts (Bild/Karussell): "), y);
             doc.setFont("helvetica", "normal");
-            y += 6;
+            y += 5;
             
             // YouTube Video mit hervorgehobener Variable
             doc.text("• YouTube Video: ", 30, y);
@@ -512,20 +515,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y += 6;
             
             // Checkbox für Veröffentlichung durch Unternehmen
-            if (companyPublication) {
-                doc.rect(30, y - 4, 5, 5);
-                doc.setLineWidth(0.5);
-                doc.line(30, y - 4, 35, y + 1);
-                doc.line(30, y + 1, 35, y - 4);
-                doc.text("Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen", 38, y);
-                y += 6;
-                doc.text("eigenem Kanal: Ja", 38, y);
-            } else {
-                doc.rect(30, y - 4, 5, 5);
-                doc.text("Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen", 38, y);
-                y += 6;
-                doc.text("eigenem Kanal: Ja", 38, y);
-            }
+            renderCheckbox(doc, companyPublication, "Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen", 30, y);
+            y += 5;
+            doc.text("eigenem Kanal: Ja", 30 + 7, y);
             y += 6;
             
             // Checkbox für keine Veröffentlichung
@@ -536,10 +528,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y = 30;
             
             // §3 Nutzung für Werbung (Media Buyout)
-            doc.setFont("helvetica", "bold");
-            doc.text("§3 Nutzung für Werbung (Media Buyout)", 30, y);
-            y += 10;
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§3 Nutzung für Werbung (Media Buyout)", y);
             doc.text("Darf der erstellte Content für Werbezwecke genutzt werden?", 30, y);
             y += 8;
             
@@ -584,36 +573,31 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 
                 // Problematischen Text Zeichen für Zeichen ausgeben ohne Abstände
                 doc.text("→ Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung", 30, y);
-                y += 6;
+                y += 5;
                 doc.text("   genutzt werden.", 30, y);
             }
             y += 12;
             
             // §4 Rechteübertragung
-            doc.setFont("helvetica", "bold");
-            doc.text("§4 Rechteübertragung", 30, y);
-            y += 10;
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§4 Rechteübertragung", y);
             doc.text("Nur bei Zustimmung zur Nutzung für Werbung (§3) überträgt der Influencer dem", 30, y);
-            y += 6;
+            y += 5;
             doc.text("Unternehmen für die gewählte Nutzungsdauer ein einfaches Nutzungsrecht an den", 30, y);
-            y += 6;
+            y += 5;
             doc.text("erstellten Inhalten zur Verwendung in den vereinbarten Kanälen. Das Unternehmen ist", 30, y);
-            y += 6;
+            y += 5;
             doc.text("berechtigt, die Inhalte dem benannten Kunden zur Nutzung zu überlassen.", 30, y);
             y += 8;
             doc.text("Die Inhalte dürfen technisch angepasst und bearbeitet werden. Die Weitergabe an", 30, y);
-            y += 6;
+            y += 5;
             doc.text("sonstige Dritte ist nicht gestattet. Nach Ablauf der Nutzungsdauer erlischt das", 30, y);
-            y += 6;
+            y += 5;
             doc.text("Nutzungsrecht.", 30, y);
             y += 12;
             
             // §5 Produktion & Freigabe
-            doc.setFont("helvetica", "bold");
-            doc.text("§5 Produktion & Freigabe", 30, y);
-            y += 10;
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§5 Produktion & Freigabe", y);
+            
             // Briefing mit hervorgehobener Variable
             doc.text("Briefing: Das Briefing wird vom Unternehmen bis ", 30, y);
             doc.setFont("helvetica", "bold");
@@ -625,7 +609,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             // Skript mit hervorgehobenen Variablen
             if (scriptDate && scriptDate !== '[Datum/Uhrzeit]') {
                 doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur", 30, y);
-                y += 6;
+                y += 5;
                 doc.text("Freigabe bis ", 30, y);
                 doc.setFont("helvetica", "bold");
                 doc.text(scriptDate, 30 + doc.getTextWidth("Freigabe bis "), y);
@@ -637,7 +621,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 doc.text(".", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + doc.getTextWidth(scriptTime), y);
             } else {
                 doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur", 30, y);
-                y += 6;
+                y += 5;
                 doc.text("Freigabe bis [Datum/Uhrzeit].", 30, y);
             }
             y += 8;
@@ -654,7 +638,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             if (productionLocation && productionLocation !== '[Adresse]') {
                 doc.setFont("helvetica", "normal");
                 doc.text(", ggf. am Produktionsort", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – ") + doc.getTextWidth(productionEnd), y);
-                y += 6;
+                y += 5;
                 doc.setFont("helvetica", "bold");
                 doc.text(productionLocation, 30, y);
                 doc.setFont("helvetica", "normal");
@@ -665,43 +649,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
             }
             y += 8;
             
-            // Überprüfen, ob wir eine neue Seite benötigen
-            if (y > 250) {
-                doc.addPage();
-                y = 30;
-            }
-            
-            // Abgabe mit hervorgehobenen Variablen
-            doc.text("Abgabe: Die finale Content-Abgabe erfolgt bis ", 30, y);
-            doc.setFont("helvetica", "bold");
-            doc.text(deliveryDate, 30 + doc.getTextWidth("Abgabe: Die finale Content-Abgabe erfolgt bis "), y);
-            doc.setFont("helvetica", "normal");
-            doc.text("/", 30 + doc.getTextWidth("Abgabe: Die finale Content-Abgabe erfolgt bis ") + doc.getTextWidth(deliveryDate), y);
-            doc.setFont("helvetica", "bold");
-            doc.text(deliveryTime, 30 + doc.getTextWidth("Abgabe: Die finale Content-Abgabe erfolgt bis ") + doc.getTextWidth(deliveryDate) + doc.getTextWidth("/"), y);
-            doc.setFont("helvetica", "normal");
-            doc.text(".", 30 + doc.getTextWidth("Abgabe: Die finale Content-Abgabe erfolgt bis ") + doc.getTextWidth(deliveryDate) + doc.getTextWidth("/") + doc.getTextWidth(deliveryTime), y);
-            y += 8;
-            
-            // Veröffentlichung mit hervorgehobener Variable
-            doc.text("Veröffentlichung: Geplanter Veröffentlichungstermin: ", 30, y);
-            doc.setFont("helvetica", "bold");
-            doc.text(publicationDate, 30 + doc.getTextWidth("Veröffentlichung: Geplanter Veröffentlichungstermin: "), y);
-            doc.setFont("helvetica", "normal");
-            y += 8;
-            
-            doc.text("Maximal zwei Korrekturschleifen sind vereinbart. Eine Produktion darf erst nach", 30, y);
-            y += 6;
-            doc.text("Freigabe durch das Unternehmen erfolgen.", 30, y);
-            y += 8;
-            
-            doc.text("Exklusivität am Tag der Veröffentlichung:", 30, y);
-            y += 6;
-            doc.text("Der Creator verpflichtet sich am Tag der Veröffentlichung für keine andere Marke", 30, y);
-            y += 6;
-            doc.text("Werbung auf dem Kanal zu platzieren.", 30, y);
-            y += 12;
-            
             // §5 Produktion & Freigabe - Ende
             y += 8;
             
@@ -710,10 +657,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y = 30; // Zurück zur Startposition
             
             // §6 Vergütung
-            doc.setFont("helvetica", "bold");
-            doc.text("§6 Vergütung", 30, y);
-            y += 10;
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§6 Vergütung", y);
             
             // Nettovergütung mit hervorgehobener Variable
             doc.text("Die Nettovergütung beträgt ", 30, y);
@@ -731,40 +675,40 @@ document.addEventListener('DOMContentLoaded', (event) => {
             
             // Zeichne Checkboxen manuell mit dünneren Linien
             if (paymentTerm === "14 Tage") {
-                doc.rect(120, y - 4, 5, 5);
+                doc.rect(120, y - 3.5, 4, 4);
                 doc.setLineWidth(0.2); // Dünnere Linie
-                doc.line(120, y - 4, 125, y + 1);
-                doc.line(120, y + 1, 125, y - 4);
+                doc.line(120, y - 3.5, 124, y + 0.5);
+                doc.line(120, y + 0.5, 124, y - 3.5);
                 doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
                 doc.text("14 Tage", 127, y);
             } else {
-                doc.rect(120, y - 4, 5, 5);
+                doc.rect(120, y - 3.5, 4, 4);
                 doc.text("14 Tage", 127, y);
             }
             
             y += 6;
             if (paymentTerm === "30 Tage") {
-                doc.rect(120, y - 4, 5, 5);
+                doc.rect(120, y - 3.5, 4, 4);
                 doc.setLineWidth(0.2); // Dünnere Linie
-                doc.line(120, y - 4, 125, y + 1);
-                doc.line(120, y + 1, 125, y - 4);
+                doc.line(120, y - 3.5, 124, y + 0.5);
+                doc.line(120, y + 0.5, 124, y - 3.5);
                 doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
                 doc.text("30 Tage", 127, y);
             } else {
-                doc.rect(120, y - 4, 5, 5);
+                doc.rect(120, y - 3.5, 4, 4);
                 doc.text("30 Tage", 127, y);
             }
             
             y += 6;
             if (paymentTerm === "45 Tage") {
-                doc.rect(120, y - 4, 5, 5);
+                doc.rect(120, y - 3.5, 4, 4);
                 doc.setLineWidth(0.2); // Dünnere Linie
-                doc.line(120, y - 4, 125, y + 1);
-                doc.line(120, y + 1, 125, y - 4);
+                doc.line(120, y - 3.5, 124, y + 0.5);
+                doc.line(120, y + 0.5, 124, y - 3.5);
                 doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
                 doc.text("45 Tage", 127, y);
             } else {
-                doc.rect(120, y - 4, 5, 5);
+                doc.rect(120, y - 3.5, 4, 4);
                 doc.text("45 Tage", 127, y);
             }
             y += 8;
@@ -773,30 +717,30 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("Eine zusätzliche Vergütung", 30, y);
             
             if (additionalCompNo) {
-                doc.rect(120, y - 4, 5, 5);
+                doc.rect(120, y - 3.5, 4, 4);
                 doc.setLineWidth(0.2); // Dünnere Linie
-                doc.line(120, y - 4, 125, y + 1);
-                doc.line(120, y + 1, 125, y - 4);
+                doc.line(120, y - 3.5, 124, y + 0.5);
+                doc.line(120, y + 0.5, 124, y - 3.5);
                 doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
                 doc.text("ist nicht", 127, y);
             } else {
-                doc.rect(120, y - 4, 5, 5);
+                doc.rect(120, y - 3.5, 4, 4);
                 doc.text("ist nicht", 127, y);
             }
             
             y += 6;
             if (additionalCompYes) {
-                doc.rect(120, y - 4, 5, 5);
+                doc.rect(120, y - 3.5, 4, 4);
                 doc.setLineWidth(0.2); // Dünnere Linie
-                doc.line(120, y - 4, 125, y + 1);
-                doc.line(120, y + 1, 125, y - 4);
+                doc.line(120, y - 3.5, 124, y + 0.5);
+                doc.line(120, y + 0.5, 124, y - 3.5);
                 doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
                 doc.text("ist vereinbart: ", 127, y);
                 doc.setFont("helvetica", "bold");
                 doc.text(additionalCompText, 127 + doc.getTextWidth("ist vereinbart: "), y);
                 doc.setFont("helvetica", "normal");
             } else {
-                doc.rect(120, y - 4, 5, 5);
+                doc.rect(120, y - 3.5, 4, 4);
                 doc.text("ist vereinbart: ", 127, y);
                 doc.setFont("helvetica", "bold");
                 doc.text(additionalCompText, 127 + doc.getTextWidth("ist vereinbart: "), y);
@@ -807,75 +751,59 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("Bei Nichterfüllung entfällt die Vergütungspflicht.", 30, y);
             y += 12;
             
-            // Neue Seite wenn nötig
-            if (y > 250) {
-                doc.addPage();
-                y = 30;
-            }
-            
             // §7 Qualität & Upload
-            doc.setFont("helvetica", "bold");
-            doc.text("§7 Qualität & Upload", 30, y);
-            y += 10;
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§7 Qualität & Upload", y);
+            
             doc.text("Die Inhalte sind in hochwertiger Bild- und Tonqualität zu erstellen. Untertitel und", 30, y);
-            y += 6;
+            y += 5;
             doc.text("Grafiken sind korrekt zu platzieren. Der Upload erfolgt ausschließlich via Drive,", 30, y);
-            y += 6;
+            y += 5;
             doc.text("WeTransfer oder E-Mail (kein Messenger). Dateibenennung:", 30, y);
-            y += 6;
+            y += 5;
             doc.text("[Unternehmen_Creator_VideoX_VersionY]", 30, y);
-            y += 12;
+            y += 10;
             
             // §8 Rechte Dritter & Musik
-            doc.setFont("helvetica", "bold");
-            doc.text("§8 Rechte Dritter & Musik", 30, y);
-            y += 10;
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§8 Rechte Dritter & Musik", y);
+            
             doc.text("Der Influencer darf keine fremden Marken, Logos oder Namen ohne Zustimmung", 30, y);
-            y += 6;
+            y += 5;
             doc.text("verwenden. Persönlichkeitsrechte Dritter dürfen nicht verletzt werden. Bei Nutzung", 30, y);
-            y += 6;
+            y += 5;
             doc.text("lizenzfreier Musik ist die Quelle anzugeben. Für alle Verstöße haftet der Influencer.", 30, y);
             y += 12;
             
+            // Neue Seite für die restlichen Paragraphen
+            doc.addPage();
+            y = 30; // Zurück zur Startposition
+            
             // §9 Werbekennzeichnung & Exklusivität
-            doc.setFont("helvetica", "bold");
-            doc.text("§9 Werbekennzeichnung & Exklusivität", 30, y);
-            y += 10;
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§9 Werbekennzeichnung & Exklusivität", y);
+            
             doc.text("Der Influencer verpflichtet sich zur ordnungsgemäßen Werbekennzeichnung", 30, y);
-            y += 6;
+            y += 5;
             // Reguläre Anführungszeichen für die Darstellung
             doc.text('("Werbung" / "Anzeige"). Bei einem Verstoß dagegen, haftet der Influencer für die', 30, y);
-            y += 6;
+            y += 5;
             doc.text("entstandenen Schäden.", 30, y);
             y += 12;
             
-            // Neue Seite wenn nötig
-            if (y > 250) {
-                doc.addPage();
-                y = 30;
-            }
-            
             // §10 Verbindlichkeit Briefing & Skript
-            doc.setFont("helvetica", "bold");
-            doc.text("§10 Verbindlichkeit Briefing & Skript", 30, y);
-            y += 10;
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§10 Verbindlichkeit Briefing & Skript", y);
+            
             doc.text("Der Influencer verpflichtet sich, die im Briefing festgelegten Do's and Don'ts sowie alle", 30, y);
-            y += 6;
+            y += 5;
             doc.text("sonstigen schriftlichen Vorgaben und das ggf. freigegebene Skript vollständig", 30, y);
-            y += 6;
+            y += 5;
             doc.text("einzuhalten.", 30, y);
             y += 8;
             
             doc.text("Bei Verstoß kann das Unternehmen:", 30, y);
-            y += 6;
+            y += 5;
             doc.text("1. Nachbesserung verlangen", 30, y);
-            y += 6;
+            y += 5;
             doc.text("2. eine Neuproduktion auf eigene Kosten fordern", 30, y);
-            y += 6;
+            y += 5;
             doc.text("3. bei wiederholtem Verstoß vom Vertrag zurücktreten", 30, y);
             y += 8;
             
@@ -883,29 +811,19 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y += 12;
             
             // §11 Datenschutz & Vertraulichkeit
-            doc.setFont("helvetica", "bold");
-            doc.text("§11 Datenschutz & Vertraulichkeit", 30, y);
-            y += 10;
-            doc.setFont("helvetica", "normal");
+            y = addParagraphTitle(doc, "§11 Datenschutz & Vertraulichkeit", y);
+            
             doc.text("Beide Parteien verpflichten sich zur Einhaltung der DSGVO. Daten werden", 30, y);
-            y += 6;
+            y += 5;
             doc.text("ausschließlich zur Vertragserfüllung genutzt. Vertraulichkeit gilt auch über das", 30, y);
-            y += 6;
+            y += 5;
             doc.text("Vertragsende hinaus.", 30, y);
             y += 12;
             
-            // Neue Seite wenn nötig
-            if (y > 250) {
-                doc.addPage();
-                y = 30;
-            }
+            // §12 Schlussbestimmungen - Korrigierte und optimierte Version
+            y = addParagraphTitle(doc, "§12 Schlussbestimmungen", y);
             
-            // §12 Schlussbestimmungen - mit mehr Abstand und korrekte Formatierung
-            doc.setFont("helvetica", "bold");
-            doc.text("§12 Schlussbestimmungen", 30, y);
-            y += 12;
-            doc.setFont("helvetica", "normal");
-            
+            // Text in einem Stück mit korrekter Ausrichtung
             let schlussText = "Änderungen bedürfen der Schriftform. Gerichtsstand ist ";
             doc.text(schlussText, 30, y);
             doc.setFont("helvetica", "bold");
@@ -913,30 +831,27 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.setFont("helvetica", "normal");
             doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth(schlussText) + doc.getTextWidth(companyCity), y);
             
-            y += 10; // Mehr Abstand
+            y += 8; // Abstand nach der ersten Zeile
             
             doc.text("Bundesrepublik Deutschland. Sollte eine Bestimmung unwirksam sein, bleibt der", 30, y);
-            y += 10; // Mehr Abstand
+            y += 8; // Abstand nach der zweiten Zeile
             
             doc.text("Vertrag im Übrigen wirksam.", 30, y);
             
-            y += 50; // Deutlich mehr Abstand vor den Unterschriftsfeldern
+            y += 30; // Großzügiger Abstand vor den Unterschriftsfeldern (aber nicht zu groß)
             
-            // Unterschriftszeilen mit mehr Platz
-            doc.text("Ort, Datum", 30, y);
-            doc.text("Ort, Datum", 120, y);
-            y += 20; // Mehr Platz für Datum
+            // Nur ein Satz von Unterschriftsfeldern, optimiert und mit mehr Platz
+            doc.text("Ort, Datum", 50, y);
+            doc.text("Ort, Datum", 140, y);
+            y += 15; // Sinnvoller Abstand für die Datumsangabe
             
             // Unterschriftslinien
             doc.line(30, y, 90, y); // Linie für Unternehmen
             doc.line(120, y, 180, y); // Linie für Influencer
-            y += 10; // Mehr Platz
+            y += 8; // Abstand nach den Linien
             
-            doc.text("[Unterschrift Unternehmen]", 30, y);
-            doc.text("[Unterschrift Influencer]", 120, y);
-            
-            // Unterschriftsfelder hinzufügen
-            addSignatureFields(doc);
+            doc.text("[Unterschrift Unternehmen]", 35, y);
+            doc.text("[Unterschrift Influencer]", 125, y);
             
             // Wasserzeichen hinzufügen
             addWatermark(doc);
