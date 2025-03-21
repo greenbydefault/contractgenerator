@@ -525,7 +525,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.setFont("helvetica", "normal");
             doc.text("Der Influencer verpflichtet sich zur ordnungsgemäßen Werbekennzeichnung", 30, y);
             y += 6;
-            doc.text("(„Werbung" / „Anzeige"). Bei einem Verstoß dagegen, haftet der Influencer für die", 30, y);
+            doc.text("Werbung / Anzeige Bei einem Verstoß dagegen, haftet der Influencer für die", 30, y);
             y += 6;
             doc.text("entstandenen Schäden.", 30, y);
             y += 10;
