@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', (event) => {
-    console.log("Influencer Script vollständig geladen und bereit.");
+    console.log("Dokument vollständig geladen und bereit.");
 
     if (typeof jsPDF === 'undefined') {
         console.error('jsPDF ist nicht geladen oder nicht definiert.');
@@ -35,39 +35,27 @@ document.addEventListener('DOMContentLoaded', (event) => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(18);
         doc.text('INFLUENCER-MARKETING-VERTRAG', 105, 80, null, null, 'center');
-        doc.setFont("helvetica", "normal");
+        
+        doc.setFontSize(14);
+        doc.text('Vertragspartner', 105, 120, null, null, 'center');
+        
         doc.setFontSize(12);
-        doc.text('zwischen', 105, 90, null, null, 'center');
+        doc.setFont("helvetica", "bold");
+        doc.text('Unternehmen (Auftraggeber):', 30, 150);
+        doc.setFont("helvetica", "normal");
+        doc.text('Name: ' + companyName, 30, 160);
+        doc.text('Vertreten durch: ' + companyContact, 30, 170);
+        doc.text('Straße: ' + companyStreet + ', Nr.: ' + companyNumber, 30, 180);
+        doc.text('PLZ: ' + companyZip + ', Stadt: ' + companyCity + ', Land: ' + companyCountry, 30, 190);
         
-        // Unternehmen
-        let y = 100;
-        doc.text(companyName, 105, y, null, null, 'center');
-        y += 6;
-        doc.text(`Vertreten durch: ${companyContact}`, 105, y, null, null, 'center');
-        y += 6;
-        doc.text(`${companyStreet} ${companyNumber}`, 105, y, null, null, 'center');
-        y += 6;
-        doc.text(`${companyZip} ${companyCity}`, 105, y, null, null, 'center');
-        y += 6;
-        doc.text(companyCountry, 105, y, null, null, 'center');
-        y += 10;
-        doc.text('- im Folgenden kurz "Unternehmen" genannt –', 105, y, null, null, 'center');
-        y += 20;
-        doc.text('und', 105, y, null, null, 'center');
+        doc.setFont("helvetica", "bold");
+        doc.text('Influencer (Creator):', 30, 210);
+        doc.setFont("helvetica", "normal");
+        doc.text('Name: ' + influencerName, 30, 220);
+        doc.text('Straße: ' + influencerStreet + ', Nr.: ' + influencerNumber, 30, 230);
+        doc.text('PLZ: ' + influencerZip + ', Stadt: ' + influencerCity + ', Land: ' + influencerCountry, 30, 240);
         
-        // Influencer
-        y += 10;
-        doc.text(influencerName, 105, y, null, null, 'center');
-        y += 6;
-        doc.text(`${influencerStreet} ${influencerNumber}`, 105, y, null, null, 'center');
-        y += 6;
-        doc.text(`${influencerZip} ${influencerCity}`, 105, y, null, null, 'center');
-        y += 6;
-        doc.text(influencerCountry, 105, y, null, null, 'center');
-        y += 20;
-        doc.text('- im Folgenden kurz "Influencer" genannt -', 105, y, null, null, 'center');
-        
-        // Nächste Seite für Inhaltsverzeichnis und Vertragstext
+        // Nächste Seite
         doc.addPage();
     }
 
@@ -76,56 +64,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
         // Stellen Sie sicher, dass wir am Ende des Dokuments arbeiten
         let y = doc.internal.pageSize.height - 50; // 50 Einheiten vom unteren Rand
 
-        // Allgemeine Einstellungen für die Position
-        const leftColumnX = 30; // X-Position für das linke Feld (Unternehmen)
-        const rightColumnX = doc.internal.pageSize.width / 2 + 20; // X-Position für das rechte Feld (Influencer)
-        doc.setFontSize(9);
+        doc.text("Ort, Datum", 30, y);
+        y += 15;
         
-        // Text für das Unternehmen
-        doc.text("Ort:", leftColumnX, y);
-        doc.text("Datum:", leftColumnX, y + 10);
-        doc.text("Unterschrift:", leftColumnX, y + 20);
-        // Linie für die Unterschrift des Unternehmens
-        doc.line(leftColumnX, y + 25, leftColumnX + 60, y + 25); // Unterschriftlinie
-
-        // Text für den Influencer
-        doc.text("Ort:", rightColumnX, y);
-        doc.text("Datum:", rightColumnX, y + 10);
-        doc.text("Unterschrift:", rightColumnX, y + 20);
-        // Linie für die Unterschrift des Influencers
-        doc.line(rightColumnX, y + 25, rightColumnX + 60, y + 25); // Unterschriftlinie
-    }
-
-    // Funktion zum Hinzufügen des Inhaltsverzeichnisses
-    function addTableOfContents(doc, y) {
-        y += 30;
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text("Inhaltsverzeichnis", 30, y);
-        y += 10;
-
-        const contents = [
-            "§1 Vertragsgegenstand                                                                 3",
-            "§2 Plattformen & Veröffentlichung                                                    3",
-            "§3 Nutzung für Werbung (Media Buyout)                                                4",
-            "§4 Rechteübertragung                                                                 4",
-            "§5 Produktion & Freigabe                                                             5",
-            "§6 Vergütung                                                                         6",
-            "§7 Qualität & Upload                                                                 6",
-            "§8 Rechte Dritter & Musik                                                            7",
-            "§9 Werbekennzeichnung & Exklusivität                                                 7",
-            "§10 Verbindlichkeit Briefing & Skript                                                8",
-            "§11 Datenschutz & Vertraulichkeit                                                    8",
-            "§12 Schlussbestimmungen                                                              9"
-        ];
-
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        contents.forEach(line => {
-            doc.text(line, 30, y);
-            y += 6;
-        });
-        return y;
+        doc.text("[Unterschrift Unternehmen]", 30, y);
+        doc.text("[Unterschrift Influencer]", 120, y);
     }
 
     // Hauptfunktion zum Generieren des PDFs
@@ -140,7 +83,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             const companyNumber = document.getElementById('company-number').value || '[Hausnummer]';
             const companyZip = document.getElementById('company-zip').value || '[PLZ]';
             const companyCity = document.getElementById('company-city').value || '[Stadt]';
-            const companyCountry = document.getElementById('company-country').value || 'Deutschland';
+            const companyCountry = document.getElementById('company-country').value || '[Land]';
             
             // Influencer (Creator)
             const influencerName = document.getElementById('influencer-name').value || '[Name des Influencers]';
@@ -148,11 +91,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
             const influencerNumber = document.getElementById('influencer-number').value || '[Hausnummer Creator]';
             const influencerZip = document.getElementById('influencer-zip').value || '[PLZ Creator]';
             const influencerCity = document.getElementById('influencer-city').value || '[Stadt Creator]';
-            const influencerCountry = document.getElementById('influencer-country').value || 'Deutschland';
+            const influencerCountry = document.getElementById('influencer-country').value || '[Land Creator]';
             
             // Kunde/Marke (falls vorhanden)
-            const clientName = document.getElementById('client-name').value;
-            const clientAddress = document.getElementById('client-address').value;
+            const clientName = document.getElementById('client-name').value || '[Name / Marke, Adresse]';
+            const clientAddress = document.getElementById('client-address').value || '';
             
             // Plattformen
             const instagramSelected = document.getElementById('platform-instagram').checked;
@@ -165,10 +108,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
             const otherPlatform = document.getElementById('other-platform').value || '[frei eintragen]';
             
             // Inhalte
-            const storySlides = document.getElementById('story-slides').value || '0';
-            const reelsTiktok = document.getElementById('reels-tiktok').value || '0';
-            const feedPosts = document.getElementById('feed-posts').value || '0';
-            const youtubeVideos = document.getElementById('youtube-videos').value || '0';
+            const storySlides = document.getElementById('story-slides').value || '[Anzahl]';
+            const reelsTiktok = document.getElementById('reels-tiktok').value || '[Anzahl]';
+            const feedPosts = document.getElementById('feed-posts').value || '[Anzahl]';
+            const youtubeVideos = document.getElementById('youtube-videos').value || '[Anzahl]';
             
             // Zusätzliche Vereinbarungen
             const collabPost = document.getElementById('collab-post').checked;
@@ -180,14 +123,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
             const mediaBuyoutNo = document.getElementById('media-buyout-no').checked;
             
             // Werbekanäle
-            const adInstagram = document.getElementById('ad-instagram')?.checked;
-            const adFacebook = document.getElementById('ad-facebook')?.checked;
-            const adTiktok = document.getElementById('ad-tiktok')?.checked;
-            const adOther = document.getElementById('ad-other')?.checked;
+            const adInstagram = document.getElementById('ad-instagram')?.checked || false;
+            const adFacebook = document.getElementById('ad-facebook')?.checked || false;
+            const adTiktok = document.getElementById('ad-tiktok')?.checked || false;
+            const adOther = document.getElementById('ad-other')?.checked || false;
             
             // Werbeoptionen
-            const whitelisting = document.getElementById('whitelisting')?.checked;
-            const sparkAd = document.getElementById('spark-ad')?.checked;
+            const whitelisting = document.getElementById('whitelisting')?.checked || false;
+            const sparkAd = document.getElementById('spark-ad')?.checked || false;
             
             // Nutzungsdauer
             let usageDuration = '';
@@ -195,14 +138,15 @@ document.addEventListener('DOMContentLoaded', (event) => {
             else if (document.getElementById('duration-6')?.checked) usageDuration = '6 Monate';
             else if (document.getElementById('duration-12')?.checked) usageDuration = '12 Monate';
             else if (document.getElementById('duration-unlimited')?.checked) usageDuration = 'Unbegrenzt';
+            else usageDuration = ''; // Wenn nichts ausgewählt ist
             
             // Zeitplan
             const briefingDate = formatDate(document.getElementById('briefing-date').value) || '[Datum]';
-            const scriptDate = formatDate(document.getElementById('script-date').value) || '[Datum]';
+            const scriptDate = formatDate(document.getElementById('script-date').value) || '[Datum/Uhrzeit]';
             const scriptTime = document.getElementById('script-time').value || '12:00';
             const productionStart = formatDate(document.getElementById('production-start').value) || '[von]';
             const productionEnd = formatDate(document.getElementById('production-end').value) || '[bis]';
-            const productionLocation = document.getElementById('production-location').value;
+            const productionLocation = document.getElementById('production-location').value || '[Adresse]';
             const deliveryDate = formatDate(document.getElementById('delivery-date').value) || '[Datum]';
             const deliveryTime = document.getElementById('delivery-time').value || '12:00';
             const publicationDate = formatDate(document.getElementById('publication-date').value) || '[Datum]';
@@ -213,27 +157,20 @@ document.addEventListener('DOMContentLoaded', (event) => {
             if (document.getElementById('term-14').checked) paymentTerm = '14 Tage';
             else if (document.getElementById('term-30').checked) paymentTerm = '30 Tage';
             else if (document.getElementById('term-45').checked) paymentTerm = '45 Tage';
+            else paymentTerm = '';
             
-            const additionalCompYes = document.getElementById('additional-yes')?.checked;
-            const additionalCompText = document.getElementById('additional-comp-text')?.value || '';
+            const additionalCompYes = document.getElementById('additional-yes')?.checked || false;
+            const additionalCompNo = document.getElementById('additional-no')?.checked || false;
+            const additionalCompText = document.getElementById('additional-comp-text')?.value || '[Textfeld falls ja]';
 
             // PDF erstellen
             const doc = new jsPDF();
             
-            // Logo hinzufügen (optional, falls du ein Logo hast)
-            // const imgData = 'data:image/jpeg;base64,...'; // Hier dein Logo als Base64-String
-            // doc.addImage(imgData, 'JPEG', 88, 30, 32, 32);
-            
             // Deckblatt hinzufügen
             addCoverPage(doc, companyName, companyContact, companyStreet, companyNumber, companyZip, companyCity, companyCountry, influencerName, influencerStreet, influencerNumber, influencerZip, influencerCity, influencerCountry);
             
-            // Inhaltsverzeichnis
-            let y = 10;
-            y = addTableOfContents(doc, y);
-            
-            // Hauptteil des Vertrags
-            doc.addPage();
-            y = 20;
+            // Vertragsinhalt
+            let y = 30;
             
             // §1 Vertragsgegenstand
             doc.setFontSize(12);
@@ -248,13 +185,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y += 8;
             
             // Client info falls vorhanden
-            if (clientName || clientAddress) {
-                doc.text("Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden " + 
-                         clientName + (clientAddress ? ", " + clientAddress : "") + ".", 30, y);
-                y += 6;
-                doc.text("Alle Leistungen erfolgen im Namen und auf Rechnung des Unternehmens.", 30, y);
-                y += 8;
-            }
+            const clientInfo = clientAddress ? clientName + ", " + clientAddress : clientName;
+            doc.text("Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden " + clientInfo + ".", 30, y);
+            y += 6;
+            doc.text("Alle Leistungen erfolgen im Namen und auf Rechnung des Unternehmens.", 30, y);
+            y += 12;
             
             // §2 Plattformen & Veröffentlichung
             doc.setFont("helvetica", "bold");
@@ -268,28 +203,28 @@ document.addEventListener('DOMContentLoaded', (event) => {
             if (instagramSelected) {
                 doc.text("☒ Instagram (Profil: " + instagramUsername + ")", 30, y);
             } else {
-                doc.text("☐ Instagram", 30, y);
+                doc.text("☐ Instagram (Profil: " + instagramUsername + ")", 30, y);
             }
             y += 6;
             
             if (tiktokSelected) {
                 doc.text("☒ TikTok (Profil: " + tiktokUsername + ")", 30, y);
             } else {
-                doc.text("☐ TikTok", 30, y);
+                doc.text("☐ TikTok (Profil: " + tiktokUsername + ")", 30, y);
             }
             y += 6;
             
             if (youtubeSelected) {
                 doc.text("☒ YouTube (Profil: " + youtubeUrl + ")", 30, y);
             } else {
-                doc.text("☐ YouTube", 30, y);
+                doc.text("☐ YouTube (Profil: " + youtubeUrl + ")", 30, y);
             }
             y += 6;
             
             if (otherSelected) {
                 doc.text("☒ Sonstiges: " + otherPlatform, 30, y);
             } else {
-                doc.text("☐ Sonstiges", 30, y);
+                doc.text("☐ Sonstiges: " + otherPlatform, 30, y);
             }
             y += 10;
             
@@ -312,7 +247,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             if (collabPost) {
                 doc.text("☒ Co-Autoren-Post (Instagram Collab): Ja", 30, y);
             } else {
-                doc.text("☐ Co-Autoren-Post (Instagram Collab): Nein", 30, y);
+                doc.text("☐ Co-Autoren-Post (Instagram Collab): Ja", 30, y);
             }
             y += 6;
             
@@ -323,22 +258,19 @@ document.addEventListener('DOMContentLoaded', (event) => {
             } else {
                 doc.text("☐ Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen", 30, y);
                 y += 6;
-                doc.text("eigenem Kanal: Nein", 30, y);
+                doc.text("eigenem Kanal: Ja", 30, y);
             }
             y += 6;
             
             if (noCompanyPublication) {
                 doc.text("☒ Keine zusätzliche Veröffentlichung durch das Unternehmen: Ja", 30, y);
             } else {
-                doc.text("☐ Keine zusätzliche Veröffentlichung durch das Unternehmen: Nein", 30, y);
+                doc.text("☐ Keine zusätzliche Veröffentlichung durch das Unternehmen: Ja", 30, y);
             }
-            y += 10;
             
             // Neue Seite für §3
-            if (y > 240) {
-                doc.addPage();
-                y = 20;
-            }
+            doc.addPage();
+            y = 30;
             
             // §3 Nutzung für Werbung (Media Buyout)
             doc.setFont("helvetica", "bold");
@@ -354,34 +286,87 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 
                 // Kanäle
                 doc.text("– Kanäle:", 30, y);
+                if (adInstagram) {
+                    doc.text("☒ Instagram", 70, y);
+                } else {
+                    doc.text("☐ Instagram", 70, y);
+                }
+                
+                if (adFacebook) {
+                    doc.text("☒ Facebook", 110, y);
+                } else {
+                    doc.text("☐ Facebook", 110, y);
+                }
+                
+                if (adTiktok) {
+                    doc.text("☒ TikTok", 150, y);
+                } else {
+                    doc.text("☐ TikTok", 150, y);
+                }
                 y += 6;
-                doc.text(adInstagram ? "☒ Instagram" : "☐ Instagram", 40, y);
-                doc.text(adFacebook ? "☒ Facebook" : "☐ Facebook", 90, y);
-                doc.text(adTiktok ? "☒ TikTok" : "☐ TikTok", 140, y);
-                y += 6;
-                doc.text(adOther ? "☒ Sonstiges" : "☐ Sonstiges", 40, y);
+                
+                if (adOther) {
+                    doc.text("☒ Sonstiges", 70, y);
+                } else {
+                    doc.text("☐ Sonstiges", 70, y);
+                }
                 y += 8;
                 
                 // Whitelisting
-                doc.text("– Whitelisting (Meta): " + (whitelisting ? "☒ Ja" : "☐ Ja"), 30, y);
+                doc.text("– Whitelisting (Meta):", 30, y);
+                if (whitelisting) {
+                    doc.text("☒ Ja", 70, y);
+                } else {
+                    doc.text("☐ Ja", 70, y);
+                }
                 y += 6;
                 
                 // Spark Ad
-                doc.text("– Spark Ad (TikTok): " + (sparkAd ? "☒ Ja" : "☐ Ja"), 30, y);
+                doc.text("– Spark Ad (TikTok):", 30, y);
+                if (sparkAd) {
+                    doc.text("☒ Ja", 70, y);
+                } else {
+                    doc.text("☐ Ja", 70, y);
+                }
                 y += 6;
                 
                 // Nutzungsdauer
-                doc.text("– Nutzungsdauer: " + usageDuration, 30, y);
+                doc.text("– Nutzungsdauer:", 30, y);
+                if (usageDuration === "3 Monate") {
+                    doc.text("☒ 3 Monate", 70, y);
+                } else {
+                    doc.text("☐ 3 Monate", 70, y);
+                }
+                
+                if (usageDuration === "6 Monate") {
+                    doc.text("☒ 6 Monate", 110, y);
+                } else {
+                    doc.text("☐ 6 Monate", 110, y);
+                }
+                
+                if (usageDuration === "12 Monate") {
+                    doc.text("☒ 12 Monate", 150, y);
+                } else {
+                    doc.text("☐ 12 Monate", 150, y);
+                }
                 y += 6;
+                
+                if (usageDuration === "Unbegrenzt") {
+                    doc.text("☒ Unbegrenzt", 70, y);
+                } else {
+                    doc.text("☐ Unbegrenzt", 70, y);
+                }
+                
             } else {
-                doc.text("☒ Nein", 30, y);
+                doc.text("☐ Ja", 30, y);
                 y += 8;
+                doc.text("☒ Nein", 30, y);
+                y += 6;
                 doc.text("→ Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung", 30, y);
                 y += 6;
                 doc.text("genutzt werden.", 30, y);
-                y += 6;
             }
-            y += 8;
+            y += 12;
             
             // §4 Rechteübertragung
             doc.setFont("helvetica", "bold");
@@ -401,13 +386,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("sonstige Dritte ist nicht gestattet. Nach Ablauf der Nutzungsdauer erlischt das", 30, y);
             y += 6;
             doc.text("Nutzungsrecht.", 30, y);
-            y += 10;
-            
-            // Neue Seite für §5
-            if (y > 240) {
-                doc.addPage();
-                y = 20;
-            }
+            y += 12;
             
             // §5 Produktion & Freigabe
             doc.setFont("helvetica", "bold");
@@ -417,7 +396,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("Briefing: Das Briefing wird vom Unternehmen bis " + briefingDate + " bereitgestellt.", 30, y);
             y += 8;
             
-            if (scriptDate) {
+            if (scriptDate && scriptDate !== '[Datum/Uhrzeit]') {
                 doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur", 30, y);
                 y += 6;
                 doc.text("Freigabe bis " + scriptDate + "/" + scriptTime + ".", 30, y);
@@ -428,8 +407,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
             }
             y += 8;
             
+            // Produktion
             doc.text("Produktion: Die Produktion erfolgt im Zeitraum " + productionStart + " – " + productionEnd, 30, y);
-            if (productionLocation) {
+            if (productionLocation && productionLocation !== '[Adresse]') {
                 doc.text(", ggf. am Produktionsort", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum " + productionStart + " – " + productionEnd), y);
                 y += 6;
                 doc.text(productionLocation + ".", 30, y);
@@ -438,9 +418,17 @@ document.addEventListener('DOMContentLoaded', (event) => {
             }
             y += 8;
             
+            // Überprüfen, ob wir eine neue Seite benötigen
+            if (y > 250) {
+                doc.addPage();
+                y = 30;
+            }
+            
+            // Abgabe
             doc.text("Abgabe: Die finale Content-Abgabe erfolgt bis " + deliveryDate + "/" + deliveryTime + ".", 30, y);
             y += 8;
             
+            // Veröffentlichung
             doc.text("Veröffentlichung: Geplanter Veröffentlichungstermin: " + publicationDate, 30, y);
             y += 8;
             
@@ -454,37 +442,63 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("Der Creator verpflichtet sich am Tag der Veröffentlichung für keine andere Marke", 30, y);
             y += 6;
             doc.text("Werbung auf dem Kanal zu platzieren.", 30, y);
-            y += 10;
-            
-            // Neue Seite für §6
-            if (y > 240) {
-                doc.addPage();
-                y = 20;
-            }
+            y += 12;
             
             // §6 Vergütung
             doc.setFont("helvetica", "bold");
             doc.text("§6 Vergütung", 30, y);
             y += 10;
             doc.setFont("helvetica", "normal");
-            doc.text("Die Nettovergütung beträgt € " + compensation + ".", 30, y);
+            doc.text("Die Nettovergütung beträgt " + compensation + ".", 30, y);
             y += 8;
             
             doc.text("Die Rechnungsstellung erfolgt nach Veröffentlichung.", 30, y);
             y += 8;
             
-            doc.text("Das Zahlungsziel beträgt " + paymentTerm + ".", 30, y);
+            // Zahlungsziel
+            doc.text("Das Zahlungsziel beträgt ", 30, y);
+            if (paymentTerm === "14 Tage") {
+                doc.text("☒ 14 Tage ", 30 + doc.getTextWidth("Das Zahlungsziel beträgt "), y);
+            } else {
+                doc.text("☐ 14 Tage ", 30 + doc.getTextWidth("Das Zahlungsziel beträgt "), y);
+            }
+            
+            if (paymentTerm === "30 Tage") {
+                doc.text("☒ 30 Tage ", 30 + doc.getTextWidth("Das Zahlungsziel beträgt ☐ 14 Tage "), y);
+            } else {
+                doc.text("☐ 30 Tage ", 30 + doc.getTextWidth("Das Zahlungsziel beträgt ☐ 14 Tage "), y);
+            }
+            
+            if (paymentTerm === "45 Tage") {
+                doc.text("☒ 45 Tage.", 30 + doc.getTextWidth("Das Zahlungsziel beträgt ☐ 14 Tage ☐ 30 Tage "), y);
+            } else {
+                doc.text("☐ 45 Tage.", 30 + doc.getTextWidth("Das Zahlungsziel beträgt ☐ 14 Tage ☐ 30 Tage "), y);
+            }
             y += 8;
             
-            if (additionalCompYes) {
-                doc.text("Eine zusätzliche Vergütung ist vereinbart: " + additionalCompText, 30, y);
+            // Zusätzliche Vergütung
+            doc.text("Eine zusätzliche Vergütung ", 30, y);
+            if (additionalCompNo) {
+                doc.text("☒ ist nicht ", 30 + doc.getTextWidth("Eine zusätzliche Vergütung "), y);
             } else {
-                doc.text("Eine zusätzliche Vergütung ist nicht vereinbart.", 30, y);
+                doc.text("☐ ist nicht ", 30 + doc.getTextWidth("Eine zusätzliche Vergütung "), y);
+            }
+            
+            if (additionalCompYes) {
+                doc.text("☒ ist vereinbart: " + additionalCompText, 30 + doc.getTextWidth("Eine zusätzliche Vergütung ☐ ist nicht "), y);
+            } else {
+                doc.text("☐ ist vereinbart: " + additionalCompText, 30 + doc.getTextWidth("Eine zusätzliche Vergütung ☐ ist nicht "), y);
             }
             y += 8;
             
             doc.text("Bei Nichterfüllung entfällt die Vergütungspflicht.", 30, y);
-            y += 10;
+            y += 12;
+            
+            // Neue Seite wenn nötig
+            if (y > 250) {
+                doc.addPage();
+                y = 30;
+            }
             
             // §7 Qualität & Upload
             doc.setFont("helvetica", "bold");
@@ -498,13 +512,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("WeTransfer oder E-Mail (kein Messenger). Dateibenennung:", 30, y);
             y += 6;
             doc.text("[Unternehmen_Creator_VideoX_VersionY]", 30, y);
-            y += 10;
-            
-            // Neue Seite für §8
-            if (y > 240) {
-                doc.addPage();
-                y = 20;
-            }
+            y += 12;
             
             // §8 Rechte Dritter & Musik
             doc.setFont("helvetica", "bold");
@@ -516,7 +524,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("verwenden. Persönlichkeitsrechte Dritter dürfen nicht verletzt werden. Bei Nutzung", 30, y);
             y += 6;
             doc.text("lizenzfreier Musik ist die Quelle anzugeben. Für alle Verstöße haftet der Influencer.", 30, y);
-            y += 10;
+            y += 12;
             
             // §9 Werbekennzeichnung & Exklusivität
             doc.setFont("helvetica", "bold");
@@ -525,15 +533,16 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.setFont("helvetica", "normal");
             doc.text("Der Influencer verpflichtet sich zur ordnungsgemäßen Werbekennzeichnung", 30, y);
             y += 6;
-            doc.text("Werbung / Anzeige Bei einem Verstoß dagegen, haftet der Influencer für die", 30, y);
+            // WICHTIG: Normale Anführungszeichen verwenden, nicht die typografischen
+            doc.text("(\"Werbung\" / \"Anzeige\"). Bei einem Verstoß dagegen, haftet der Influencer für die", 30, y);
             y += 6;
             doc.text("entstandenen Schäden.", 30, y);
-            y += 10;
+            y += 12;
             
-            // Neue Seite für §10
-            if (y > 240) {
+            // Neue Seite wenn nötig
+            if (y > 250) {
                 doc.addPage();
-                y = 20;
+                y = 30;
             }
             
             // §10 Verbindlichkeit Briefing & Skript
@@ -558,7 +567,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y += 8;
             
             doc.text("Vergütung entfällt bei Nichterfüllung.", 30, y);
-            y += 10;
+            y += 12;
             
             // §11 Datenschutz & Vertraulichkeit
             doc.setFont("helvetica", "bold");
@@ -570,12 +579,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("ausschließlich zur Vertragserfüllung genutzt. Vertraulichkeit gilt auch über das", 30, y);
             y += 6;
             doc.text("Vertragsende hinaus.", 30, y);
-            y += 10;
+            y += 12;
             
-            // Neue Seite für §12
-            if (y > 240) {
+            // Neue Seite wenn nötig
+            if (y > 250) {
                 doc.addPage();
-                y = 20;
+                y = 30;
             }
             
             // §12 Schlussbestimmungen
@@ -588,7 +597,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("Bundesrepublik Deutschland. Sollte eine Bestimmung unwirksam sein, bleibt der", 30, y);
             y += 6;
             doc.text("Vertrag im Übrigen wirksam.", 30, y);
-            y += 20;
+            y += 30;
             
             // Unterschriftsfelder hinzufügen
             addSignatureFields(doc);
@@ -605,6 +614,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             
         } catch (error) {
             console.error('Ein Fehler ist während der PDF-Generierung aufgetreten:', error);
+            alert('Beim Generieren des PDFs ist ein Fehler aufgetreten: ' + error.message);
         }
     }
     
