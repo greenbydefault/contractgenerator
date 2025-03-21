@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', (event) => {
-    console.log("Dokument vollständig geladen und bereit.");
+    console.log("Influencer Script vollständig geladen und bereit.");
 
     if (typeof jsPDF === 'undefined') {
         console.error('jsPDF ist nicht geladen oder nicht definiert.');
