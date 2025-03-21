@@ -49,23 +49,23 @@ document.addEventListener('DOMContentLoaded', (event) => {
         
         let y = 60;
         const paragraphs = [
-            { num: "§1", title: "Vertragsgegenstand", page: 2 },
-            { num: "§2", title: "Plattformen & Veröffentlichung", page: 2 },
-            { num: "§3", title: "Nutzung für Werbung (Media Buyout)", page: 3 },
-            { num: "§4", title: "Rechteübertragung", page: 3 },
-            { num: "§5", title: "Produktion & Freigabe", page: 3 },
-            { num: "§6", title: "Vergütung", page: 3 },
-            { num: "§7", title: "Qualität & Upload", page: 4 },
-            { num: "§8", title: "Rechte Dritter & Musik", page: 4 },
-            { num: "§9", title: "Werbekennzeichnung & Exklusivität", page: 4 },
-            { num: "§10", title: "Verbindlichkeit Briefing & Skript", page: 4 },
-            { num: "§11", title: "Datenschutz & Vertraulichkeit", page: 4 },
-            { num: "§12", title: "Schlussbestimmungen", page: 4 }
+            { num: "§1", title: "Vertragsgegenstand", page: 3 },
+            { num: "§2", title: "Plattformen & Veröffentlichung", page: 3 },
+            { num: "§3", title: "Nutzung für Werbung (Media Buyout)", page: 4 },
+            { num: "§4", title: "Rechteübertragung", page: 4 },
+            { num: "§5", title: "Produktion & Freigabe", page: 4 },
+            { num: "§6", title: "Vergütung", page: 5 },
+            { num: "§7", title: "Qualität & Upload", page: 5 },
+            { num: "§8", title: "Rechte Dritter & Musik", page: 5 },
+            { num: "§9", title: "Werbekennzeichnung & Exklusivität", page: 5 },
+            { num: "§10", title: "Verbindlichkeit Briefing & Skript", page: 5 },
+            { num: "§11", title: "Datenschutz & Vertraulichkeit", page: 5 },
+            { num: "§12", title: "Schlussbestimmungen", page: 5 }
         ];
         
         paragraphs.forEach(para => {
             doc.text(para.num, 30, y);
-            doc.text(para.title, 50, y);
+            doc.text(para.title, 40, y); // Weniger Abstand zwischen Nummer und Titel (von 50 auf 40)
             doc.text(para.page.toString(), 170, y);
             y += 12;
         });
@@ -182,13 +182,14 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     // Verbesserte Funktion zum Anzeigen von Checkbox-Optionen
     function renderCheckbox(doc, isChecked, text, x, y) {
-        // Verwende eine Lösung ohne Sonderzeichen
+        // Verwende eine Lösung ohne Sonderzeichen mit dünneren Linien
         if (isChecked) {
             // Zeichne ein Kästchen mit Kreuz (X)
             doc.rect(x, y - 4, 5, 5); // Position leicht angepasst für visuelle Ausrichtung
-            doc.setLineWidth(0.5);
+            doc.setLineWidth(0.2); // Dünnere Linie für das Kreuz
             doc.line(x, y - 4, x + 5, y + 1); // Diagonal von links oben nach rechts unten
             doc.line(x, y + 1, x + 5, y - 4); // Diagonal von links unten nach rechts oben
+            doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
         } else {
             // Zeichne ein leeres Kästchen
             doc.rect(x, y - 4, 5, 5); // Position leicht angepasst für visuelle Ausrichtung
@@ -580,6 +581,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 y += 8;
                 renderCheckbox(doc, true, "Nein", 30, y);
                 y += 6;
+                
+                // Problematischen Text Zeichen für Zeichen ausgeben ohne Abstände
                 doc.text("→ Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung", 30, y);
                 y += 6;
                 doc.text("   genutzt werden.", 30, y);
@@ -699,6 +702,13 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("Werbung auf dem Kanal zu platzieren.", 30, y);
             y += 12;
             
+            // §5 Produktion & Freigabe - Ende
+            y += 8;
+            
+            // Neue Seite für §6 Vergütung
+            doc.addPage();
+            y = 30; // Zurück zur Startposition
+            
             // §6 Vergütung
             doc.setFont("helvetica", "bold");
             doc.text("§6 Vergütung", 30, y);
@@ -719,12 +729,13 @@ document.addEventListener('DOMContentLoaded', (event) => {
             // Zahlungsziel mit verbesserten Checkboxen
             doc.text("Das Zahlungsziel beträgt", 30, y);
             
-            // Zeichne Checkboxen manuell ohne Unicode für bessere Kompatibilität
+            // Zeichne Checkboxen manuell mit dünneren Linien
             if (paymentTerm === "14 Tage") {
                 doc.rect(120, y - 4, 5, 5);
-                doc.setLineWidth(0.5);
+                doc.setLineWidth(0.2); // Dünnere Linie
                 doc.line(120, y - 4, 125, y + 1);
                 doc.line(120, y + 1, 125, y - 4);
+                doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
                 doc.text("14 Tage", 127, y);
             } else {
                 doc.rect(120, y - 4, 5, 5);
@@ -734,9 +745,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y += 6;
             if (paymentTerm === "30 Tage") {
                 doc.rect(120, y - 4, 5, 5);
-                doc.setLineWidth(0.5);
+                doc.setLineWidth(0.2); // Dünnere Linie
                 doc.line(120, y - 4, 125, y + 1);
                 doc.line(120, y + 1, 125, y - 4);
+                doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
                 doc.text("30 Tage", 127, y);
             } else {
                 doc.rect(120, y - 4, 5, 5);
@@ -746,9 +758,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y += 6;
             if (paymentTerm === "45 Tage") {
                 doc.rect(120, y - 4, 5, 5);
-                doc.setLineWidth(0.5);
+                doc.setLineWidth(0.2); // Dünnere Linie
                 doc.line(120, y - 4, 125, y + 1);
                 doc.line(120, y + 1, 125, y - 4);
+                doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
                 doc.text("45 Tage", 127, y);
             } else {
                 doc.rect(120, y - 4, 5, 5);
@@ -761,9 +774,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
             
             if (additionalCompNo) {
                 doc.rect(120, y - 4, 5, 5);
-                doc.setLineWidth(0.5);
+                doc.setLineWidth(0.2); // Dünnere Linie
                 doc.line(120, y - 4, 125, y + 1);
                 doc.line(120, y + 1, 125, y - 4);
+                doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
                 doc.text("ist nicht", 127, y);
             } else {
                 doc.rect(120, y - 4, 5, 5);
@@ -773,9 +787,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y += 6;
             if (additionalCompYes) {
                 doc.rect(120, y - 4, 5, 5);
-                doc.setLineWidth(0.5);
+                doc.setLineWidth(0.2); // Dünnere Linie
                 doc.line(120, y - 4, 125, y + 1);
                 doc.line(120, y + 1, 125, y - 4);
+                doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
                 doc.text("ist vereinbart: ", 127, y);
                 doc.setFont("helvetica", "bold");
                 doc.text(additionalCompText, 127 + doc.getTextWidth("ist vereinbart: "), y);
@@ -885,23 +900,40 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 y = 30;
             }
             
-            // §12 Schlussbestimmungen - mit mehr Abstand
+            // §12 Schlussbestimmungen - mit mehr Abstand und korrekte Formatierung
             doc.setFont("helvetica", "bold");
             doc.text("§12 Schlussbestimmungen", 30, y);
-            y += 10;
+            y += 12;
             doc.setFont("helvetica", "normal");
-            doc.text("Änderungen bedürfen der Schriftform. Gerichtsstand ist ", 30, y);
+            
+            let schlussText = "Änderungen bedürfen der Schriftform. Gerichtsstand ist ";
+            doc.text(schlussText, 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(companyCity, 30 + doc.getTextWidth("Änderungen bedürfen der Schriftform. Gerichtsstand ist "), y);
+            doc.text(companyCity, 30 + doc.getTextWidth(schlussText), y);
             doc.setFont("helvetica", "normal");
-            doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth("Änderungen bedürfen der Schriftform. Gerichtsstand ist ") + doc.getTextWidth(companyCity), y);
-            y += 8; // Mehr Abstand
+            doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth(schlussText) + doc.getTextWidth(companyCity), y);
+            
+            y += 10; // Mehr Abstand
             
             doc.text("Bundesrepublik Deutschland. Sollte eine Bestimmung unwirksam sein, bleibt der", 30, y);
-            y += 8; // Mehr Abstand
+            y += 10; // Mehr Abstand
             
             doc.text("Vertrag im Übrigen wirksam.", 30, y);
-            y += 40; // Deutlich mehr Abstand vor den Unterschriftsfeldern
+            
+            y += 50; // Deutlich mehr Abstand vor den Unterschriftsfeldern
+            
+            // Unterschriftszeilen mit mehr Platz
+            doc.text("Ort, Datum", 30, y);
+            doc.text("Ort, Datum", 120, y);
+            y += 20; // Mehr Platz für Datum
+            
+            // Unterschriftslinien
+            doc.line(30, y, 90, y); // Linie für Unternehmen
+            doc.line(120, y, 180, y); // Linie für Influencer
+            y += 10; // Mehr Platz
+            
+            doc.text("[Unterschrift Unternehmen]", 30, y);
+            doc.text("[Unterschrift Influencer]", 120, y);
             
             // Unterschriftsfelder hinzufügen
             addSignatureFields(doc);
