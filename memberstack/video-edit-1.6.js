@@ -42,8 +42,6 @@ function buildWorkerUrl(apiUrl) {
 // Speichert das aktuell bearbeitete Video
 let currentVideoData = null;
 
-// Keine Cache-Variable mehr notwendig, da wir direkt das Mapping verwenden
-
 // 📥 Video bearbeiten - Öffnet das Modal und füllt die Felder
 async function editVideo(videoId) {
     if (!videoId) {
@@ -198,13 +196,6 @@ async function fillEditForm(videoData) {
         }
     }
     
-    // Felder füllen
-    setFieldValue(window.WEBFLOW_API.EDIT_NAME_FIELD, videoData.fieldData["video-name"] || videoData.fieldData["name"]);
-    setFieldValue(window.WEBFLOW_API.EDIT_CATEGORY_FIELD, categoryName);
-    setFieldValue(window.WEBFLOW_API.EDIT_DESCRIPTION_FIELD, videoData.fieldData["video-beschreibung"]);
-    setFieldValue(window.WEBFLOW_API.EDIT_PUBLIC_FIELD, videoData.fieldData["offentliches-video"]);
-}
-
     // Felder füllen
     setFieldValue(window.WEBFLOW_API.EDIT_NAME_FIELD, videoData.fieldData["video-name"] || videoData.fieldData["name"]);
     setFieldValue(window.WEBFLOW_API.EDIT_CATEGORY_FIELD, categoryName);
