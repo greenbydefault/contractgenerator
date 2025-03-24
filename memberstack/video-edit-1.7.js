@@ -1,25 +1,18 @@
 // 🌐 Webflow API Integration zur Bearbeitung und Löschung eines CMS Collection Items
 
-// 🔧 Konfiguration - Globale Konstanten (ergänzend zum Upload-Script)
-window.WEBFLOW_API = window.WEBFLOW_API || {
+// 🔧 Konfiguration - Globale Konstanten
+window.WEBFLOW_API = window.WEBFLOW_API || {};
+
+// Grundkonfiguration
+window.WEBFLOW_API = {
+    ...window.WEBFLOW_API,
     BASE_URL: "https://api.webflow.com/v2/collections",
     WORKER_BASE_URL: "https://upload.oliver-258.workers.dev/?url=",
     COLLECTION_ID: "67d806e65cadcadf2f41e659", // Collection ID für Videos
     MEMBERS_COLLECTION_ID: "6448faf9c5a8a15f6cc05526", // Collection ID für Members
     DEBUG_MODE: true,
-    // Direktes Mapping für Kategorien (hier müssen alle 12 Kategorien eingetragen werden)
-    CATEGORY_MAPPING: {
-        "a6a0530c5c476df59cb16022541a8233": "Travel",
-        "f7375698898acddde00653547c8fa793": "Entertainment",
-        "d9e7f4c91b3e5a8022c3a6497f1d8b55": "Home & Living", // Korrigierte ID
-        "0e068df04f18438e4a5b68d397782f36": "Food"
-        // Füge hier alle weiteren Kategorien hinzu
-    }
-};
-
-// Erweitere die Konfiguration um Edit-spezifische Werte
-window.WEBFLOW_API = {
-    ...window.WEBFLOW_API,
+    
+    // Edit-spezifische Werte
     EDIT_MODAL_ID: "upload-edit",
     EDIT_FORM_ID: "video-edit-form",
     EDIT_NAME_FIELD: "Name Edit",
@@ -32,6 +25,15 @@ window.WEBFLOW_API = {
     UPLOADCARE_WORKER_URL: "https://deleteuploadcare.oliver-258.workers.dev", // Dein Worker für Uploadcare-Operationen
     NAME_CHAR_LIMIT: 64,
     DESCRIPTION_CHAR_LIMIT: 144
+};
+
+// Explizite Zuweisung des Kategorie-Mappings (separat, um Konflikte zu vermeiden)
+window.WEBFLOW_API.CATEGORY_MAPPING = {
+    "a6a0530c5c476df59cb16022541a8233": "Travel",
+    "f7375698898acddde00653547c8fa793": "Entertainment",
+    "d9e7f4c91b3e5a8022c3a6497f1d8b55": "Home & Living", 
+    "0e068df04f18438e4a5b68d397782f36": "Food"
+    // Hier kannst du weitere Kategorien hinzufügen
 };
 
 // 🛠️ Hilfsfunktion zur Erstellung der Worker-URL (identisch zum Upload-Script)
