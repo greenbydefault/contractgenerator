@@ -10,7 +10,8 @@ window.WEBFLOW_API = window.WEBFLOW_API || {
     // Direktes Mapping für Kategorien (hier müssen alle 12 Kategorien eingetragen werden)
     CATEGORY_MAPPING: {
         "a6a0530c5c476df59cb16022541a8233": "Travel", // Beispiel - mit deinen IDs und Namen ersetzen
-        "f7375698898acddde00653547c8fa793": "Entertainment",       // Beispiel - mit deinen IDs und Namen ersetzen
+        "f7375698898acddde00653547c8fa793": "Entertainment",
+        "a6a0530c5c476df59cb16022541a8233": "Home & Living",// Beispiel - mit deinen IDs und Namen ersetzen
         "0e068df04f18438e4a5b68d397782f36": "Food"       // Beispiel - mit deinen IDs und Namen ersetzen
         // Füge hier alle weiteren Kategorien hinzu
     }
