@@ -40,8 +40,6 @@ window.WEBFLOW_API.CATEGORY_MAPPING = {
     "827b3ec71e6dd2e64687ac4a2bcde003": "Art & Culture",
     "17907bdb5206dc3d81ffc984f810e58b": "Household",
     "d9e7f4c91b3e5a8022c3a6497f1d8b55": "Home & Living" 
-
-    // Hier kannst du weitere Kategorien hinzufügen
 };
 
 // 🛠️ Hilfsfunktion zur Erstellung der Worker-URL (identisch zum Upload-Script)
@@ -449,16 +447,25 @@ async function deleteUploadcareFile(fileUuid) {
         console.log(`🗑️ Lösche Uploadcare-Datei mit UUID: ${fileUuid}`);
         
         // Verwende den Worker für die Uploadcare-API
+        // Der Worker erwartet eine DELETE-Anfrage und kümmert sich um die Authentifizierung
         const response = await fetch(`${window.WEBFLOW_API.UPLOADCARE_WORKER_URL}?uuid=${fileUuid}`, {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.uploadcare-v0.7+json'
             }
         });
 
         if (!response.ok) {
             const errorText = await response.text();
             console.error("❌ Fehler beim Löschen der Uploadcare-Datei:", response.status, errorText);
+            
+            // Wenn der Fehler 405 Method Not Allowed ist, versuche es mit POST als Fallback
+            if (response.status === 405) {
+                console.log("⚠️ DELETE nicht erlaubt, versuche mit POST...");
+                return await deleteWithPost(fileUuid);
+            }
+            
             return false;
         }
 
@@ -466,6 +473,35 @@ async function deleteUploadcareFile(fileUuid) {
         return true;
     } catch (error) {
         console.error("❌ Fehler beim Löschen der Uploadcare-Datei:", error);
+        return false;
+    }
+}
+
+/**
+ * Fallback-Methode zum Löschen mit POST
+ * @param {string} fileUuid - Die UUID der zu löschenden Datei
+ * @returns {Promise<boolean>} True, wenn erfolgreich gelöscht
+ */
+async function deleteWithPost(fileUuid) {
+    try {
+        const response = await fetch(`${window.WEBFLOW_API.UPLOADCARE_WORKER_URL}?uuid=${fileUuid}&method=delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.uploadcare-v0.7+json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ Fehler beim POST-Löschen der Uploadcare-Datei:", response.status, errorText);
+            return false;
+        }
+
+        console.log(`✅ Uploadcare-Datei ${fileUuid} erfolgreich per POST gelöscht`);
+        return true;
+    } catch (error) {
+        console.error("❌ Fehler beim POST-Löschen der Uploadcare-Datei:", error);
         return false;
     }
 }
