@@ -446,10 +446,10 @@ async function deleteUploadcareFile(fileUuid) {
     try {
         console.log(`🗑️ Lösche Uploadcare-Datei mit UUID: ${fileUuid}`);
         
-        // Verwende den Worker für die Uploadcare-API
-        // Der Worker erwartet eine DELETE-Anfrage und kümmert sich um die Authentifizierung
+        // Die einfachste Methode: Sende einen GET-Request an den Worker
+        // Der Worker sollte so konfiguriert sein, dass er immer DELETE an Uploadcare sendet
         const response = await fetch(`${window.WEBFLOW_API.UPLOADCARE_WORKER_URL}?uuid=${fileUuid}`, {
-            method: 'DELETE',
+            method: 'GET', // Verwende GET für den Worker, er sollte intern DELETE an Uploadcare senden
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/vnd.uploadcare-v0.7+json'
@@ -459,13 +459,6 @@ async function deleteUploadcareFile(fileUuid) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error("❌ Fehler beim Löschen der Uploadcare-Datei:", response.status, errorText);
-            
-            // Wenn der Fehler 405 Method Not Allowed ist, versuche es mit POST als Fallback
-            if (response.status === 405) {
-                console.log("⚠️ DELETE nicht erlaubt, versuche mit POST...");
-                return await deleteWithPost(fileUuid);
-            }
-            
             return false;
         }
 
@@ -473,35 +466,6 @@ async function deleteUploadcareFile(fileUuid) {
         return true;
     } catch (error) {
         console.error("❌ Fehler beim Löschen der Uploadcare-Datei:", error);
-        return false;
-    }
-}
-
-/**
- * Fallback-Methode zum Löschen mit POST
- * @param {string} fileUuid - Die UUID der zu löschenden Datei
- * @returns {Promise<boolean>} True, wenn erfolgreich gelöscht
- */
-async function deleteWithPost(fileUuid) {
-    try {
-        const response = await fetch(`${window.WEBFLOW_API.UPLOADCARE_WORKER_URL}?uuid=${fileUuid}&method=delete`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/vnd.uploadcare-v0.7+json'
-            }
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("❌ Fehler beim POST-Löschen der Uploadcare-Datei:", response.status, errorText);
-            return false;
-        }
-
-        console.log(`✅ Uploadcare-Datei ${fileUuid} erfolgreich per POST gelöscht`);
-        return true;
-    } catch (error) {
-        console.error("❌ Fehler beim POST-Löschen der Uploadcare-Datei:", error);
         return false;
     }
 }
@@ -652,6 +616,9 @@ async function deleteVideo(videoId) {
         
         // 1. Zuerst Video-Daten abrufen (falls noch nicht geladen)
         const videoData = currentVideoData || await getVideoById(videoId);
+        if (!videoData) {
+            throw new Error("Video-Daten konnten nicht geladen werden");
+        }
         
         // 2. Uploadcare-Datei löschen, falls vorhanden
         if (videoData && videoData.fieldData["video-link"]) {
@@ -661,10 +628,17 @@ async function deleteVideo(videoId) {
             if (fileUuid) {
                 console.log(`🔍 Uploadcare-UUID gefunden: ${fileUuid}`);
                 try {
-                    await deleteUploadcareFile(fileUuid);
+                    // WICHTIG: Wir brechen ab, wenn die Uploadcare-Datei nicht gelöscht werden kann
+                    const uploadcareDeleted = await deleteUploadcareFile(fileUuid);
+                    if (!uploadcareDeleted) {
+                        console.error("❌ Uploadcare-Datei konnte nicht gelöscht werden. Breche Löschvorgang ab.");
+                        return false;
+                    }
+                    console.log("✅ Uploadcare-Datei erfolgreich gelöscht. Fahre mit Webflow-Löschung fort.");
                 } catch (uploadcareError) {
-                    console.warn("⚠️ Fehler beim Löschen der Uploadcare-Datei:", uploadcareError);
-                    // Wir machen trotzdem mit dem Löschen des Videos weiter
+                    console.error("❌ Fehler beim Löschen der Uploadcare-Datei:", uploadcareError);
+                    console.error("❌ Abbruch des Löschvorgangs, um Dateninkonsistenzen zu vermeiden.");
+                    return false;
                 }
             }
         }
@@ -687,7 +661,7 @@ async function deleteVideo(videoId) {
                 }
             } catch (memberError) {
                 console.warn("⚠️ Fehler beim Entfernen aus dem Member-Feed:", memberError);
-                // Wir machen trotzdem mit dem Löschen des Videos weiter
+                // Wir können hier weitermachen, da die Uploadcare-Datei bereits gelöscht wurde
             }
         }
         
