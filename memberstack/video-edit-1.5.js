@@ -9,10 +9,10 @@ window.WEBFLOW_API = window.WEBFLOW_API || {
     DEBUG_MODE: true,
     // Direktes Mapping für Kategorien (hier müssen alle 12 Kategorien eingetragen werden)
     CATEGORY_MAPPING: {
-        "a6a0530c5c476df59cb16022541a8233": "Travel", // Beispiel - mit deinen IDs und Namen ersetzen
+        "a6a0530c5c476df59cb16022541a8233": "Travel",
         "f7375698898acddde00653547c8fa793": "Entertainment",
-        "a6a0530c5c476df59cb16022541a8233": "Home & Living",// Beispiel - mit deinen IDs und Namen ersetzen
-        "0e068df04f18438e4a5b68d397782f36": "Food"       // Beispiel - mit deinen IDs und Namen ersetzen
+        "d9e7f4c91b3e5a8022c3a6497f1d8b55": "Home & Living", // Korrigierte ID
+        "0e068df04f18438e4a5b68d397782f36": "Food"
         // Füge hier alle weiteren Kategorien hinzu
     }
 };
@@ -188,12 +188,22 @@ async function fillEditForm(videoData) {
     
     // Versuche, den Kategorie-Namen aus dem Mapping zu finden
     if (categoryValue && typeof categoryValue === 'string') {
+        console.log(`🔍 Suche Kategorie-Mapping für ID: ${categoryValue}`);
+        console.log("📊 Verfügbare Kategorien:", window.WEBFLOW_API.CATEGORY_MAPPING);
+        
         const mappedName = getCategoryName(categoryValue);
         if (mappedName !== categoryValue) {
             categoryName = mappedName;
             console.log(`✅ Kategorie-Name aus Mapping gefunden: ${categoryName} für ID: ${categoryValue}`);
         }
     }
+    
+    // Felder füllen
+    setFieldValue(window.WEBFLOW_API.EDIT_NAME_FIELD, videoData.fieldData["video-name"] || videoData.fieldData["name"]);
+    setFieldValue(window.WEBFLOW_API.EDIT_CATEGORY_FIELD, categoryName);
+    setFieldValue(window.WEBFLOW_API.EDIT_DESCRIPTION_FIELD, videoData.fieldData["video-beschreibung"]);
+    setFieldValue(window.WEBFLOW_API.EDIT_PUBLIC_FIELD, videoData.fieldData["offentliches-video"]);
+}
 
     // Felder füllen
     setFieldValue(window.WEBFLOW_API.EDIT_NAME_FIELD, videoData.fieldData["video-name"] || videoData.fieldData["name"]);
