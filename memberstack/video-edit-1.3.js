@@ -6,7 +6,14 @@ window.WEBFLOW_API = window.WEBFLOW_API || {
     WORKER_BASE_URL: "https://upload.oliver-258.workers.dev/?url=",
     COLLECTION_ID: "67d806e65cadcadf2f41e659", // Collection ID für Videos
     MEMBERS_COLLECTION_ID: "6448faf9c5a8a15f6cc05526", // Collection ID für Members
-    DEBUG_MODE: true
+    DEBUG_MODE: true,
+    // Direktes Mapping für Kategorien (hier müssen alle 12 Kategorien eingetragen werden)
+    CATEGORY_MAPPING: {
+        "a6a0530c5c476df59cb16022541a8233": "Travel", // Beispiel - mit deinen IDs und Namen ersetzen
+        "f7375698898acddde00653547c8fa793": "Entertainment",       // Beispiel - mit deinen IDs und Namen ersetzen
+        "0e068df04f18438e4a5b68d397782f36": "Food"       // Beispiel - mit deinen IDs und Namen ersetzen
+        // Füge hier alle weiteren Kategorien hinzu
+    }
 };
 
 // Erweitere die Konfiguration um Edit-spezifische Werte
@@ -21,7 +28,9 @@ window.WEBFLOW_API = {
     EDIT_SAVE_BUTTON: "video-edit-save",
     EDIT_DELETE_BUTTON: "video-delete-button",
     DELETE_CONFIRM_MODAL_ID: "delete-confirm-modal",
-    UPLOADCARE_WORKER_URL: "https://deleteuploadcare.oliver-258.workers.dev" // Dein Worker für Uploadcare-Operationen
+    UPLOADCARE_WORKER_URL: "https://deleteuploadcare.oliver-258.workers.dev", // Dein Worker für Uploadcare-Operationen
+    NAME_CHAR_LIMIT: 64,
+    DESCRIPTION_CHAR_LIMIT: 144
 };
 
 // 🛠️ Hilfsfunktion zur Erstellung der Worker-URL (identisch zum Upload-Script)
@@ -31,6 +40,8 @@ function buildWorkerUrl(apiUrl) {
 
 // Speichert das aktuell bearbeitete Video
 let currentVideoData = null;
+
+// Keine Cache-Variable mehr notwendig, da wir direkt das Mapping verwenden
 
 // 📥 Video bearbeiten - Öffnet das Modal und füllt die Felder
 async function editVideo(videoId) {
@@ -61,7 +72,10 @@ async function editVideo(videoId) {
         }
 
         // Fülle die Formularfelder mit den vorhandenen Daten
-        fillEditForm(videoData);
+        await fillEditForm(videoData);
+
+        // Initialisiere die Zeichenzähler für die Text-Eingabefelder
+        initCharacterCounters();
 
     } catch (error) {
         console.error("❌ Fehler beim Laden der Video-Informationen:", error);
@@ -105,8 +119,22 @@ async function getVideoById(videoId) {
     }
 }
 
+// Funktion zum Abrufen der Kategorie-Namen aus dem Mapping
+function getCategoryName(categoryId) {
+    if (!categoryId) return "";
+    
+    // Prüfe, ob die Kategorie-ID im Mapping existiert
+    if (window.WEBFLOW_API.CATEGORY_MAPPING && window.WEBFLOW_API.CATEGORY_MAPPING[categoryId]) {
+        return window.WEBFLOW_API.CATEGORY_MAPPING[categoryId];
+    }
+    
+    // Fallback: Gib die ID zurück, wenn kein Mapping gefunden wurde
+    console.warn(`⚠️ Keine Kategorie-Zuordnung für ID: ${categoryId}`);
+    return categoryId;
+}
+
 // Formular mit Video-Daten füllen
-function fillEditForm(videoData) {
+async function fillEditForm(videoData) {
     if (!videoData || !videoData.fieldData) {
         console.warn("⚠️ Keine Video-Daten zum Füllen des Formulars");
         return;
@@ -152,12 +180,133 @@ function fillEditForm(videoData) {
         
         console.log(`✅ Feld '${fieldName}' gesetzt:`, value);
     }
+    
+    // Versuche, die Kategorie-ID in einen lesbaren Namen umzuwandeln
+    let categoryValue = videoData.fieldData["video-kategorie"];
+    let categoryName = categoryValue;
+    
+    // Versuche, den Kategorie-Namen aus dem Mapping zu finden
+    if (categoryValue && typeof categoryValue === 'string') {
+        const mappedName = getCategoryName(categoryValue);
+        if (mappedName !== categoryValue) {
+            categoryName = mappedName;
+            console.log(`✅ Kategorie-Name aus Mapping gefunden: ${categoryName} für ID: ${categoryValue}`);
+        }
+    }
 
     // Felder füllen
     setFieldValue(window.WEBFLOW_API.EDIT_NAME_FIELD, videoData.fieldData["video-name"] || videoData.fieldData["name"]);
-    setFieldValue(window.WEBFLOW_API.EDIT_CATEGORY_FIELD, videoData.fieldData["video-kategorie"]);
+    setFieldValue(window.WEBFLOW_API.EDIT_CATEGORY_FIELD, categoryName);
     setFieldValue(window.WEBFLOW_API.EDIT_DESCRIPTION_FIELD, videoData.fieldData["video-beschreibung"]);
     setFieldValue(window.WEBFLOW_API.EDIT_PUBLIC_FIELD, videoData.fieldData["offentliches-video"]);
+}
+
+// Initialisiere die Zeichenzähler für Name und Beschreibung
+function initCharacterCounters() {
+    const form = document.getElementById(window.WEBFLOW_API.EDIT_FORM_ID) || 
+                 document.querySelector(`[data-modal-id="${window.WEBFLOW_API.EDIT_MODAL_ID}"] form`);
+    
+    if (!form) {
+        console.warn("⚠️ Formular für Zeichenzähler nicht gefunden");
+        return;
+    }
+    
+    // Finde die Eingabefelder und ihre Counter-Elemente
+    const nameField = findField(form, window.WEBFLOW_API.EDIT_NAME_FIELD);
+    const descriptionField = findField(form, window.WEBFLOW_API.EDIT_DESCRIPTION_FIELD);
+    
+    if (nameField) {
+        setupCharacterCounter(nameField, window.WEBFLOW_API.NAME_CHAR_LIMIT);
+    }
+    
+    if (descriptionField) {
+        setupCharacterCounter(descriptionField, window.WEBFLOW_API.DESCRIPTION_CHAR_LIMIT);
+    }
+    
+    console.log("✅ Zeichenzähler initialisiert");
+}
+
+// Hilfsfunktion zum Finden eines Formularfeldes
+function findField(form, fieldName) {
+    const selectors = [
+        `[name="${fieldName}"]`,
+        `[data-name="${fieldName}"]`, 
+        `#${fieldName.replace(/\s+/g, "-").toLowerCase()}`
+    ];
+    
+    for (const selector of selectors) {
+        const field = form.querySelector(selector);
+        if (field) return field;
+    }
+    
+    console.warn(`⚠️ Feld '${fieldName}' für Zeichenzähler nicht gefunden`);
+    return null;
+}
+
+// Zeichenzähler für ein Feld einrichten
+function setupCharacterCounter(field, limit) {
+    // Prüfe, ob das Feld ein Counter-Element angegeben hat
+    const counterSelector = field.getAttribute('data-char-counter');
+    let counterElement = null;
+    
+    if (counterSelector) {
+        // Wenn ein Selektor im data-Attribut angegeben ist, suche das Element
+        counterElement = document.querySelector(counterSelector);
+    } else {
+        // Wenn kein Selektor angegeben ist, erstelle ein neues Element
+        const counterEl = document.createElement('div');
+        counterEl.className = 'char-counter';
+        counterEl.style.marginTop = '5px';
+        counterEl.style.fontSize = '12px';
+        counterEl.style.color = '#666';
+        
+        // Füge das Counter-Element nach dem Feld ein
+        field.parentNode.insertBefore(counterEl, field.nextSibling);
+        counterElement = counterEl;
+    }
+    
+    if (!counterElement) {
+        console.warn("⚠️ Kein Counter-Element für Feld gefunden:", field);
+        return;
+    }
+    
+    // Setze den Grenzwert als Attribut am Feld
+    field.setAttribute('data-char-limit', limit);
+    
+    // Initiale Aktualisierung des Zählers
+    updateCharCounter(field, counterElement);
+    
+    // Event-Listener für Eingaben
+    field.addEventListener('input', () => {
+        updateCharCounter(field, counterElement);
+    });
+    
+    console.log(`✅ Zeichenzähler für Feld eingerichtet, Limit: ${limit}`);
+}
+
+// Aktualisiert den Zeichenzähler für ein Feld
+function updateCharCounter(field, counterElement) {
+    const limit = parseInt(field.getAttribute('data-char-limit') || "0", 10);
+    const currentLength = field.value.length;
+    const remaining = limit - currentLength;
+    
+    // Aktualisiere den Text des Zählers
+    counterElement.textContent = `${currentLength}/${limit} Zeichen`;
+    
+    // Visuelles Feedback zum Zeichenlimit
+    if (remaining < 0) {
+        // Über dem Limit
+        counterElement.style.color = '#cc0000';
+        field.style.borderColor = '#cc0000';
+    } else if (remaining < limit * 0.1) {
+        // Fast am Limit (weniger als 10% übrig)
+        counterElement.style.color = '#ff9900';
+        field.style.borderColor = '#ff9900';
+    } else {
+        // Genug Platz
+        counterElement.style.color = '#666';
+        field.style.borderColor = '';
+    }
 }
 
 // Video-Daten aktualisieren
@@ -578,6 +727,22 @@ function initSaveButtonListener(button) {
         
         if (!form) {
             console.error("❌ Edit-Formular nicht gefunden");
+            return;
+        }
+        
+        // Validiere die Zeichenlänge
+        const nameField = findField(form, window.WEBFLOW_API.EDIT_NAME_FIELD);
+        const descField = findField(form, window.WEBFLOW_API.EDIT_DESCRIPTION_FIELD);
+        
+        if (nameField && nameField.value.length > window.WEBFLOW_API.NAME_CHAR_LIMIT) {
+            alert(`Der Name darf maximal ${window.WEBFLOW_API.NAME_CHAR_LIMIT} Zeichen lang sein.`);
+            nameField.focus();
+            return;
+        }
+        
+        if (descField && descField.value.length > window.WEBFLOW_API.DESCRIPTION_CHAR_LIMIT) {
+            alert(`Die Beschreibung darf maximal ${window.WEBFLOW_API.DESCRIPTION_CHAR_LIMIT} Zeichen lang sein.`);
+            descField.focus();
             return;
         }
         
