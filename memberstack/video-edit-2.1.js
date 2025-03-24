@@ -1,5 +1,3 @@
-// 🌐 Webflow API Integration zur Bearbeitung und Löschung eines CMS Collection Items
-
 // 🔧 Konfiguration - Globale Konstanten
 window.WEBFLOW_API = window.WEBFLOW_API || {};
 
@@ -24,7 +22,11 @@ window.WEBFLOW_API = {
     DELETE_CONFIRM_MODAL_ID: "delete-confirm-modal",
     UPLOADCARE_WORKER_URL: "https://deleteuploadcare.oliver-258.workers.dev", // Dein Worker für Uploadcare-Operationen
     NAME_CHAR_LIMIT: 64,
-    DESCRIPTION_CHAR_LIMIT: 144
+    DESCRIPTION_CHAR_LIMIT: 144,
+    
+    // TEMPORÄRER BYPASS für Uploadcare-Löschung
+    // Auf true setzen, um die Uploadcare-Löschung zu überspringen, falls der Worker Probleme macht
+    SKIP_UPLOADCARE_DELETE: false
 };
 
 // Explizite Zuweisung des Kategorie-Mappings (separat, um Konflikte zu vermeiden)
@@ -446,14 +448,19 @@ async function deleteUploadcareFile(fileUuid) {
     try {
         console.log(`🗑️ Lösche Uploadcare-Datei mit UUID: ${fileUuid}`);
         
-        // Die einfachste Methode: Sende einen GET-Request an den Worker
-        // Der Worker sollte so konfiguriert sein, dass er immer DELETE an Uploadcare sendet
-        const response = await fetch(`${window.WEBFLOW_API.UPLOADCARE_WORKER_URL}?uuid=${fileUuid}`, {
-            method: 'GET', // Verwende GET für den Worker, er sollte intern DELETE an Uploadcare senden
+        // Verwende den Worker für die Uploadcare-API
+        // Wichtig: Der aktuelle Worker akzeptiert nur POST und OPTIONS, nicht DELETE oder GET für die Löschfunktion
+        const response = await fetch(`${window.WEBFLOW_API.UPLOADCARE_WORKER_URL}`, {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/vnd.uploadcare-v0.7+json'
-            }
+            },
+            // Sende die UUID im Body statt als URL-Parameter
+            body: JSON.stringify({
+                uuid: fileUuid,
+                action: 'delete'
+            })
         });
 
         if (!response.ok) {
@@ -620,15 +627,15 @@ async function deleteVideo(videoId) {
             throw new Error("Video-Daten konnten nicht geladen werden");
         }
         
-        // 2. Uploadcare-Datei löschen, falls vorhanden
-        if (videoData && videoData.fieldData["video-link"]) {
+        // 2. Uploadcare-Datei löschen, falls vorhanden UND SKIP_UPLOADCARE_DELETE nicht aktiviert ist
+        if (videoData && videoData.fieldData["video-link"] && !window.WEBFLOW_API.SKIP_UPLOADCARE_DELETE) {
             const videoUrl = videoData.fieldData["video-link"];
             const fileUuid = extractUploadcareUuid(videoUrl);
             
             if (fileUuid) {
                 console.log(`🔍 Uploadcare-UUID gefunden: ${fileUuid}`);
                 try {
-                    // WICHTIG: Wir brechen ab, wenn die Uploadcare-Datei nicht gelöscht werden kann
+                    // Wir brechen ab, wenn die Uploadcare-Datei nicht gelöscht werden kann
                     const uploadcareDeleted = await deleteUploadcareFile(fileUuid);
                     if (!uploadcareDeleted) {
                         console.error("❌ Uploadcare-Datei konnte nicht gelöscht werden. Breche Löschvorgang ab.");
@@ -641,6 +648,9 @@ async function deleteVideo(videoId) {
                     return false;
                 }
             }
+        } else if (window.WEBFLOW_API.SKIP_UPLOADCARE_DELETE) {
+            console.warn("⚠️ SKIP_UPLOADCARE_DELETE ist aktiviert. Uploadcare-Dateien werden nicht gelöscht!");
+            console.warn("⚠️ Dies kann zu 'Datei-Leichen' in Uploadcare führen!");
         }
         
         // 3. Versuche, das Video aus dem Member-Feed zu entfernen
@@ -661,7 +671,7 @@ async function deleteVideo(videoId) {
                 }
             } catch (memberError) {
                 console.warn("⚠️ Fehler beim Entfernen aus dem Member-Feed:", memberError);
-                // Wir können hier weitermachen, da die Uploadcare-Datei bereits gelöscht wurde
+                // Wir können hier weitermachen
             }
         }
         
@@ -679,6 +689,12 @@ async function deleteVideo(videoId) {
         // Bei DELETE gibt die API möglicherweise keinen Inhalt zurück (204 No Content)
         if (response.status === 204 || response.ok) {
             console.log("✅ Video erfolgreich gelöscht");
+            
+            // Zeige Warnung, wenn die Uploadcare-Datei nicht gelöscht wurde
+            if (window.WEBFLOW_API.SKIP_UPLOADCARE_DELETE) {
+                console.warn("✅ Video gelöscht, aber Uploadcare-Datei bleibt bestehen!");
+            }
+            
             return true;
         }
         
