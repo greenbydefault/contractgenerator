@@ -31,8 +31,16 @@ window.WEBFLOW_API = {
 window.WEBFLOW_API.CATEGORY_MAPPING = {
     "a6a0530c5c476df59cb16022541a8233": "Travel",
     "f7375698898acddde00653547c8fa793": "Entertainment",
-    "d9e7f4c91b3e5a8022c3a6497f1d8b55": "Home & Living", 
-    "0e068df04f18438e4a5b68d397782f36": "Food"
+    "0e068df04f18438e4a5b68d397782f36": "Food",
+    "2f1f2fe0cd35ddd19ca98f4b85b16258": "Beauty",
+    "d98ec62473786dfe4b680ffaff56df3d": "Fashion",
+    "7a825bdb2886afb7afc15ace93407334": "Fitness",
+    "172297c1eff716fecb37e1086835fb54": "Technology",
+    "0150c802834f25c5eb9a235e5f333086": "Gaming",
+    "827b3ec71e6dd2e64687ac4a2bcde003": "Art & Culture",
+    "17907bdb5206dc3d81ffc984f810e58b": "Household",
+    "d9e7f4c91b3e5a8022c3a6497f1d8b55": "Home & Living" 
+
     // Hier kannst du weitere Kategorien hinzufügen
 };
 
