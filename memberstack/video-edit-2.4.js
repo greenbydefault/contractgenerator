@@ -1,68 +1,4 @@
-// Hilfsfunktionen für den Fortschrittsbalken
-// Aktualisiere den benutzerdefinierten Fortschrittsbalken
-function updateCustomProgressBar(modalElement, progress, isSuccess = true, errorMessage = "", isWarning = false) {
-    // Finde die Fortschrittsbalken-Elemente im aktuellen Modal-Kontext
-    const progressBar = modalElement.querySelector(`[${window.WEBFLOW_API.PROGRESS_BAR_ATTR}]`);
-    const progressText = modalElement.querySelector(`[${window.WEBFLOW_API.PROGRESS_TEXT_ATTR}]`);
-    const progressPercentage = modalElement.querySelector(`[${window.WEBFLOW_API.PROGRESS_PERCENTAGE_ATTR}]`);
-    const progressImg = modalElement.querySelector(`[${window.WEBFLOW_API.PROGRESS_IMG_ATTR}]`);
-    
-    if (!progressBar || !progressText || !progressPercentage) {
-        console.warn("⚠️ Fortschrittsbalken-Elemente nicht gefunden");
-        return;
-    }
-    
-    // Konvertiere Fortschritt in Prozent
-    const percent = Math.round(progress * 100);
-    
-    // Aktualisiere die Fortschrittsbalken-Breite
-    progressBar.style.width = `${percent}%`;
-    
-    // Aktualisiere die Prozentanzeige
-    progressPercentage.textContent = `${percent}%`;
-    
-    // Färbe den Balken je nach Status
-    if (isWarning) {
-        // Warnungszustand - gelb
-        progressBar.style.backgroundColor = '#FFC107'; 
-        progressText.textContent = errorMessage || "Aktion teilweise erfolgreich, aber es gibt ein Problem.";
-    } else if (isSuccess) {
-        // Erfolg - grün
-        progressBar.style.backgroundColor = '#4CAF50'; 
-        progressText.textContent = percent === 100 ? "Aktion erfolgreich abgeschlossen!" : "Wird bearbeitet...";
-    } else {
-        // Fehler - rot
-        progressBar.style.backgroundColor = '#FF6974'; 
-        progressText.textContent = errorMessage || "Es ist leider ein Fehler aufgetreten. Bitte versuche es erneut.";
-    }
-
-    // Optional: Bild aktualisieren, falls vorhanden
-    if (progressImg) {
-        // Hier könnte das Bild je nach Status geändert werden
-        // z.B. progressImg.src = isSuccess ? 'success.png' : 'error.png';
-    }
-}
-
-// Zeige den benutzerdefinierten Fortschrittsbalken an
-function showCustomProgressBar(modalElement) {
-    const progressWrapper = modalElement.querySelector(`[${window.WEBFLOW_API.PROGRESS_WRAPPER_ATTR}]`);
-    
-    if (progressWrapper) {
-        progressWrapper.style.display = 'block';
-        updateCustomProgressBar(modalElement, 0, true); // Initialisiere den Balken mit 0%
-    } else {
-        console.warn("⚠️ Fortschrittsbalken-Wrapper nicht gefunden");
-    }
-}
-
-// Verstecke den benutzerdefinierten Fortschrittsbalken
-function hideCustomProgressBar(modalElement) {
-    const progressWrapper = modalElement.querySelector(`[${window.WEBFLOW_API.PROGRESS_WRAPPER_ATTR}]`);
-    
-    if (progressWrapper) {
-        progressWrapper.style.display = 'none';
-    }
-}// 🔧 Konfiguration - Globale Konstanten
+// 🔧 Konfiguration - Globale Konstanten
 window.WEBFLOW_API = window.WEBFLOW_API || {};
 
 // Grundkonfiguration
@@ -90,7 +26,7 @@ window.WEBFLOW_API = {
     
     // TEMPORÄRER BYPASS für Uploadcare-Löschung
     // Auf true setzen, um die Uploadcare-Löschung zu überspringen, falls der Worker Probleme macht
-    SKIP_UPLOADCARE_DELETE: true
+    SKIP_UPLOADCARE_DELETE: false
 };
 
 // Explizite Zuweisung des Kategorie-Mappings (separat, um Konflikte zu vermeiden)
@@ -823,13 +759,6 @@ function initSaveButtonListener(button) {
             return;
         }
         
-        // Finde das Modal-Element
-        const editModal = document.querySelector(`[data-modal-id="${window.WEBFLOW_API.EDIT_MODAL_ID}"]`);
-        if (!editModal) {
-            console.error("❌ Edit-Modal nicht gefunden");
-            return;
-        }
-        
         // Formular finden
         const form = document.getElementById(window.WEBFLOW_API.EDIT_FORM_ID) || 
                      document.querySelector(`[data-modal-id="${window.WEBFLOW_API.EDIT_MODAL_ID}"] form`);
@@ -844,28 +773,14 @@ function initSaveButtonListener(button) {
         const descField = findField(form, window.WEBFLOW_API.EDIT_DESCRIPTION_FIELD);
         
         if (nameField && nameField.value.length > window.WEBFLOW_API.NAME_CHAR_LIMIT) {
-            // Zeige Fehlermeldung mit dem Fortschrittsbalken
-            showCustomProgressBar(editModal);
-            updateCustomProgressBar(editModal, 0.3, false, `Der Name darf maximal ${window.WEBFLOW_API.NAME_CHAR_LIMIT} Zeichen lang sein.`);
+            alert(`Der Name darf maximal ${window.WEBFLOW_API.NAME_CHAR_LIMIT} Zeichen lang sein.`);
             nameField.focus();
-            
-            // Nach 3 Sekunden den Fortschrittsbalken ausblenden
-            setTimeout(() => {
-                hideCustomProgressBar(editModal);
-            }, 3000);
             return;
         }
         
         if (descField && descField.value.length > window.WEBFLOW_API.DESCRIPTION_CHAR_LIMIT) {
-            // Zeige Fehlermeldung mit dem Fortschrittsbalken
-            showCustomProgressBar(editModal);
-            updateCustomProgressBar(editModal, 0.3, false, `Die Beschreibung darf maximal ${window.WEBFLOW_API.DESCRIPTION_CHAR_LIMIT} Zeichen lang sein.`);
+            alert(`Die Beschreibung darf maximal ${window.WEBFLOW_API.DESCRIPTION_CHAR_LIMIT} Zeichen lang sein.`);
             descField.focus();
-            
-            // Nach 3 Sekunden den Fortschrittsbalken ausblenden
-            setTimeout(() => {
-                hideCustomProgressBar(editModal);
-            }, 3000);
             return;
         }
         
@@ -878,10 +793,6 @@ function initSaveButtonListener(button) {
             button.textContent = "Wird gespeichert...";
         }
         
-        // Zeige den Fortschrittsbalken an
-        showCustomProgressBar(editModal);
-        updateCustomProgressBar(editModal, 0.1, true, "Speichere Änderungen...");
-        
         try {
             // Hole die Formulardaten
             const formData = {
@@ -893,52 +804,34 @@ function initSaveButtonListener(button) {
             
             // Validiere die Daten
             if (!formData.name) {
-                // Zeige Fehlermeldung mit dem Fortschrittsbalken
-                updateCustomProgressBar(editModal, 0.3, false, "Bitte gib einen Namen für das Video ein.");
-                
-                // Button zurücksetzen
-                button.disabled = false;
-                if (button.type === 'submit') {
-                    button.value = originalText;
-                } else {
-                    button.textContent = originalText;
-                }
-                
-                // Nach 3 Sekunden den Fortschrittsbalken ausblenden
-                setTimeout(() => {
-                    hideCustomProgressBar(editModal);
-                }, 3000);
+                alert("Bitte gib einen Namen für das Video ein.");
                 return;
             }
             
             console.log("📝 Formulardaten zum Speichern:", formData);
-            updateCustomProgressBar(editModal, 0.4, true, "Daten werden verarbeitet...");
             
             // Führe das Update durch
             const result = await updateVideo(formData);
             
             if (result) {
                 console.log("✅ Video erfolgreich aktualisiert:", result);
-                updateCustomProgressBar(editModal, 1.0, true, "Änderungen erfolgreich gespeichert!");
                 
-                // Nach einer kurzen Verzögerung das Modal schließen und die Seite neu laden
+                // Schließe das Modal
+                const editModal = document.querySelector(`[data-modal-id="${window.WEBFLOW_API.EDIT_MODAL_ID}"]`);
+                if (editModal && window.modalManager) {
+                    window.modalManager.closeModal(editModal);
+                }
+                
+                // Optional: Seite neu laden, um die Änderungen anzuzeigen
                 setTimeout(() => {
-                    // Schließe das Modal
-                    if (editModal && window.modalManager) {
-                        window.modalManager.closeModal(editModal);
-                    }
-                    
-                    // Seite neu laden, um die Änderungen anzuzeigen
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 500);
-                }, 1500);
+                    window.location.reload();
+                }, 500);
             } else {
                 throw new Error("Unbekannter Fehler beim Aktualisieren des Videos");
             }
         } catch (error) {
             console.error("❌ Fehler beim Speichern:", error);
-            updateCustomProgressBar(editModal, 0.5, false, "Fehler beim Speichern der Änderungen. Bitte versuche es erneut.");
+            alert("Fehler beim Speichern der Änderungen. Bitte versuche es erneut.");
         } finally {
             // Button zurücksetzen
             button.disabled = false;
@@ -968,89 +861,12 @@ function initDeleteButton() {
         
         if (!currentVideoData) {
             console.error("❌ Keine aktuellen Video-Daten zum Löschen");
-            
-            // Finde das Modal-Element
-            const editModal = document.querySelector(`[data-modal-id="${window.WEBFLOW_API.EDIT_MODAL_ID}"]`);
-            if (editModal) {
-                // Zeige Fehlermeldung mit dem Fortschrittsbalken
-                showCustomProgressBar(editModal);
-                updateCustomProgressBar(editModal, 0.5, false, "Keine Video-Daten gefunden. Bitte lade die Seite neu.");
-            }
             return;
         }
         
-        // Bestätigungsdialog in Form des Fortschrittsbalkens
-        const editModal = document.querySelector(`[data-modal-id="${window.WEBFLOW_API.EDIT_MODAL_ID}"]`);
-        if (editModal) {
-            // Zeige Bestätigungsdialog mit dem Fortschrittsbalken
-            showCustomProgressBar(editModal);
-            updateCustomProgressBar(editModal, 0, true, "Möchtest du dieses Video wirklich löschen?");
-            
-            // Verstecke den Lösch-Button vorübergehend
-            deleteButton.style.display = 'none';
-            
-            // Erstelle Ja/Nein-Buttons
-            const buttonContainer = document.createElement('div');
-            buttonContainer.className = 'confirm-buttons';
-            buttonContainer.style.display = 'flex';
-            buttonContainer.style.justifyContent = 'center';
-            buttonContainer.style.gap = '10px';
-            buttonContainer.style.marginTop = '15px';
-            
-            // Ja-Button (Bestätigung)
-            const confirmButton = document.createElement('button');
-            confirmButton.textContent = 'Ja, löschen';
-            confirmButton.style.backgroundColor = '#FF6974';
-            confirmButton.style.color = 'white';
-            confirmButton.style.padding = '8px 16px';
-            confirmButton.style.border = 'none';
-            confirmButton.style.borderRadius = '4px';
-            confirmButton.style.cursor = 'pointer';
-            
-            // Nein-Button (Abbrechen)
-            const cancelButton = document.createElement('button');
-            cancelButton.textContent = 'Abbrechen';
-            cancelButton.style.backgroundColor = '#E0E0E0';
-            cancelButton.style.color = 'black';
-            cancelButton.style.padding = '8px 16px';
-            cancelButton.style.border = 'none';
-            cancelButton.style.borderRadius = '4px';
-            cancelButton.style.cursor = 'pointer';
-            
-            // Event-Listener für die Buttons
-            confirmButton.addEventListener('click', () => {
-                // Entferne die Buttons
-                buttonContainer.remove();
-                // Zeige den Lösch-Button wieder an
-                deleteButton.style.display = '';
-                // Führe die Löschung durch
-                handleVideoDelete(currentVideoData.id, deleteButton);
-            });
-            
-            cancelButton.addEventListener('click', () => {
-                // Entferne die Buttons
-                buttonContainer.remove();
-                // Verstecke den Fortschrittsbalken
-                hideCustomProgressBar(editModal);
-                // Zeige den Lösch-Button wieder an
-                deleteButton.style.display = '';
-            });
-            
-            // Füge die Buttons zum Container hinzu
-            buttonContainer.appendChild(cancelButton);
-            buttonContainer.appendChild(confirmButton);
-            
-            // Finde den Fortschrittsbalken-Wrapper
-            const progressWrapper = editModal.querySelector(`[${window.WEBFLOW_API.PROGRESS_WRAPPER_ATTR}]`);
-            if (progressWrapper) {
-                // Füge die Buttons nach dem Fortschrittsbalken ein
-                progressWrapper.appendChild(buttonContainer);
-            }
-        } else {
-            // Fallback auf den alten Bestätigungsdialog
-            if (confirm("Bist du sicher, dass du dieses Video löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.")) {
-                handleVideoDelete(currentVideoData.id, deleteButton);
-            }
+        // Bestätigungsdialog anzeigen
+        if (confirm("Bist du sicher, dass du dieses Video löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.")) {
+            handleVideoDelete(currentVideoData.id, deleteButton);
         }
     });
     
@@ -1064,87 +880,38 @@ async function handleVideoDelete(videoId, button) {
         return;
     }
     
-    // Finde das Modal-Element
-    const editModal = document.querySelector(`[data-modal-id="${window.WEBFLOW_API.EDIT_MODAL_ID}"]`);
-    if (!editModal) {
-        console.error("❌ Edit-Modal nicht gefunden");
-        return;
-    }
-    
     // Ändere den Button-Text während des Löschens
     const originalText = button.textContent;
     button.disabled = true;
     button.textContent = "Wird gelöscht...";
     
-    // Zeige den Fortschrittsbalken an
-    showCustomProgressBar(editModal);
-    updateCustomProgressBar(editModal, 0.1, true, "Video wird gelöscht...");
-    
     try {
         // Führe das Löschen durch
-        updateCustomProgressBar(editModal, 0.3, true, "Löschvorgang gestartet...");
+        const result = await deleteVideo(videoId);
         
-        // Führe das Löschen schrittweise durch und aktualisiere den Fortschrittsbalken
-        const result = await deleteVideo(videoId, (progress, message) => {
-            // Callback für Fortschrittsbalken-Updates
-            updateCustomProgressBar(editModal, progress, true, message);
-        });
-        
-        if (result.success) {
+        if (result) {
             console.log("✅ Video erfolgreich gelöscht");
             
-            // Erfolgreicher Abschluss - zeige 100%
-            updateCustomProgressBar(editModal, 1.0, true, result.message || "Video erfolgreich gelöscht!");
-            
-            // Schließe das Modal nach kurzer Verzögerung
-            setTimeout(() => {
-                if (editModal && window.modalManager) {
-                    window.modalManager.closeModal(editModal);
-                    
-                    // Optional: Seite neu laden, um die Änderungen anzuzeigen
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 500);
-                }
-            }, 1500); // Verzögerung, damit der Nutzer die Erfolgsmeldung sehen kann
-        } else {
-            // Teilweise Erfolg mit Warnung
-            if (result.warning) {
-                updateCustomProgressBar(editModal, 0.9, true, result.message, true);
-                
-                // Schließe das Modal nach längerer Verzögerung
-                setTimeout(() => {
-                    if (editModal && window.modalManager) {
-                        window.modalManager.closeModal(editModal);
-                        
-                        // Optional: Seite neu laden
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 500);
-                    }
-                }, 3000); // Längere Verzögerung bei Warnungen
-            } else {
-                // Echter Fehler
-                updateCustomProgressBar(editModal, 0.5, false, result.message || "Fehler beim Löschen des Videos. Bitte versuche es erneut.");
-                
-                // Setze den Button zurück nach einer Verzögerung
-                setTimeout(() => {
-                    button.disabled = false;
-                    button.textContent = originalText;
-                }, 3000);
+            // Schließe das Modal
+            const editModal = document.querySelector(`[data-modal-id="${window.WEBFLOW_API.EDIT_MODAL_ID}"]`);
+            if (editModal && window.modalManager) {
+                window.modalManager.closeModal(editModal);
             }
+            
+            // Optional: Seite neu laden, um die Änderungen anzuzeigen
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        } else {
+            throw new Error("Unbekannter Fehler beim Löschen des Videos");
         }
     } catch (error) {
         console.error("❌ Fehler beim Löschen:", error);
-        
-        // Zeige Fehlermeldung
-        updateCustomProgressBar(editModal, 0.5, false, "Fehler beim Löschen des Videos. Bitte versuche es erneut.");
-        
-        // Setze den Button zurück nach einer Verzögerung
-        setTimeout(() => {
-            button.disabled = false;
-            button.textContent = originalText;
-        }, 3000);
+        alert("Fehler beim Löschen des Videos. Bitte versuche es erneut.");
+    } finally {
+        // Button zurücksetzen
+        button.disabled = false;
+        button.textContent = originalText;
     }
 }
 
@@ -1221,98 +988,5 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
     
-    // Prüfe, ob Fortschrittsbalken-Elemente vorhanden sind und erstelle sie falls nötig
-    initProgressBars();
-    
     console.log("✅ Video Edit/Delete Script vollständig initialisiert");
 });
-
-// Initialisierung der Fortschrittsbalken
-function initProgressBars() {
-    // Finde alle Modals, die Fortschrittsbalken benötigen könnten
-    const editModal = document.querySelector(`[data-modal-id="${window.WEBFLOW_API.EDIT_MODAL_ID}"]`);
-    if (editModal) {
-        createProgressBarIfNeeded(editModal);
-    }
-    
-    const deleteModal = document.querySelector(`[data-modal-id="${window.WEBFLOW_API.DELETE_CONFIRM_MODAL_ID}"]`);
-    if (deleteModal) {
-        createProgressBarIfNeeded(deleteModal);
-    }
-}
-
-// Erstelle Fortschrittsbalken-Elemente, falls sie nicht vorhanden sind
-function createProgressBarIfNeeded(modalElement) {
-    // Prüfe, ob bereits ein Fortschrittsbalken vorhanden ist
-    const existingWrapper = modalElement.querySelector(`[${window.WEBFLOW_API.PROGRESS_WRAPPER_ATTR}]`);
-    if (existingWrapper) {
-        console.log("✅ Fortschrittsbalken bereits vorhanden");
-        return;
-    }
-    
-    console.log("🔧 Erstelle neuen Fortschrittsbalken im Modal");
-    
-    // Erstelle die Fortschrittsbalken-Elemente
-    const wrapper = document.createElement('div');
-    wrapper.setAttribute(window.WEBFLOW_API.PROGRESS_WRAPPER_ATTR, '');
-    wrapper.style.display = 'none';
-    wrapper.style.marginTop = '20px';
-    wrapper.style.marginBottom = '20px';
-    
-    const barContainer = document.createElement('div');
-    barContainer.style.backgroundColor = '#f0f0f0';
-    barContainer.style.borderRadius = '4px';
-    barContainer.style.overflow = 'hidden';
-    barContainer.style.height = '8px';
-    barContainer.style.marginBottom = '10px';
-    
-    const bar = document.createElement('div');
-    bar.setAttribute(window.WEBFLOW_API.PROGRESS_BAR_ATTR, '');
-    bar.style.backgroundColor = '#4CAF50';
-    bar.style.height = '100%';
-    bar.style.width = '0%';
-    bar.style.transition = 'width 0.3s ease';
-    
-    const infoContainer = document.createElement('div');
-    infoContainer.style.display = 'flex';
-    infoContainer.style.justifyContent = 'space-between';
-    infoContainer.style.alignItems = 'center';
-    
-    const text = document.createElement('div');
-    text.setAttribute(window.WEBFLOW_API.PROGRESS_TEXT_ATTR, '');
-    text.textContent = 'Bereit...';
-    text.style.fontSize = '14px';
-    
-    const percentage = document.createElement('div');
-    percentage.setAttribute(window.WEBFLOW_API.PROGRESS_PERCENTAGE_ATTR, '');
-    percentage.textContent = '0%';
-    percentage.style.fontSize = '14px';
-    percentage.style.fontWeight = 'bold';
-    
-    // Optional: Bild-Element für Status-Icons
-    const img = document.createElement('div');
-    img.setAttribute(window.WEBFLOW_API.PROGRESS_IMG_ATTR, '');
-    
-    // Zusammenbauen der Elemente
-    barContainer.appendChild(bar);
-    infoContainer.appendChild(text);
-    infoContainer.appendChild(percentage);
-    
-    wrapper.appendChild(barContainer);
-    wrapper.appendChild(infoContainer);
-    wrapper.appendChild(img);
-    
-    // Finde eine geeignete Stelle zum Einfügen des Fortschrittsbalkens
-    // Bevorzugt nach dem Haupttitel oder vor den Buttons
-    const insertTarget = modalElement.querySelector('.w-form') || 
-                         modalElement.querySelector('form') || 
-                         modalElement.firstElementChild;
-    
-    if (insertTarget) {
-        insertTarget.appendChild(wrapper);
-        console.log("✅ Fortschrittsbalken erfolgreich hinzugefügt");
-    } else {
-        console.warn("⚠️ Konnte keinen geeigneten Einfügepunkt für den Fortschrittsbalken finden");
-        modalElement.appendChild(wrapper);
-    }
-}
