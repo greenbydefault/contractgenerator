@@ -115,11 +115,13 @@ class VideoFeedApp {
    * Worker-URL erstellen für Cross-Origin-Anfragen
    */
   buildWorkerUrl(apiUrl) {
-    // Direkte Verwendung des Worker-URL-Basis ohne Konfiguration
-    const workerBaseUrl = window.WEBFLOW_API.WORKER_BASE_URL || "https://bewerbungen.oliver-258.workers.dev/?url=";
-    console.log("📋 Video-Feed: Worker-Basis-URL:", workerBaseUrl);
+    // Direkte Verwendung des Worker-URL-Basis ohne Fallback
+    if (!window.WEBFLOW_API.WORKER_BASE_URL) {
+      console.error("📋 Video-Feed: Keine WORKER_BASE_URL in der Konfiguration definiert!");
+      return apiUrl; // Direkter Versuch ohne Worker als Notfall-Fallback
+    }
     
-    return `${workerBaseUrl}${encodeURIComponent(apiUrl)}`;
+    return `${window.WEBFLOW_API.WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
   }
 
   /**
@@ -170,13 +172,18 @@ class VideoFeedApp {
       return cachedUser;
     }
     
-    // Collection ID direkt verwenden, um Fehler zu vermeiden
-    const memberCollectionId = window.WEBFLOW_API.MEMBER_COLLECTION_ID || "6448faf9c5a8a15f6cc05526";
-    console.log("📋 Video-Feed: Member Collection ID:", memberCollectionId);
+    // Collection ID verwenden ohne Fallback
+    if (!window.WEBFLOW_API.MEMBER_COLLECTION_ID) {
+      throw new Error("MEMBER_COLLECTION_ID nicht in der Konfiguration definiert");
+    }
+    
+    if (!window.WEBFLOW_API.BASE_URL) {
+      throw new Error("BASE_URL nicht in der Konfiguration definiert");
+    }
     
     // API-Anfrage
     const filterQuery = `{"memberstack-id":{"eq":"${memberstackId}"}}`;
-    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${memberCollectionId}/items?live=true&limit=1&filter=${encodeURIComponent(filterQuery)}`;
+    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBER_COLLECTION_ID}/items?live=true&limit=1&filter=${encodeURIComponent(filterQuery)}`;
     const workerUrl = this.buildWorkerUrl(apiUrl);
     
     try {
@@ -216,9 +223,14 @@ class VideoFeedApp {
       return cachedVideos;
     }
     
-    // Collection ID direkt verwenden, um Fehler zu vermeiden
-    const videoCollectionId = window.WEBFLOW_API.VIDEO_COLLECTION_ID || "67d806e65cadcadf2f41e659";
-    console.log("📋 Video-Feed: Video Collection ID:", videoCollectionId);
+    // Collection ID verwenden ohne Fallback
+    if (!window.WEBFLOW_API.VIDEO_COLLECTION_ID) {
+      throw new Error("VIDEO_COLLECTION_ID nicht in der Konfiguration definiert");
+    }
+    
+    if (!window.WEBFLOW_API.BASE_URL) {
+      throw new Error("BASE_URL nicht in der Konfiguration definiert");
+    }
     
     // Wir testen verschiedene Feldnamen, da der richtige Feldname in Webflow 
     // möglicherweise nicht "user-id" ist
@@ -231,13 +243,19 @@ class VideoFeedApp {
     
     let videos = [];
     
+    // Verwende den bereits bekannten erfolgreichen Feldnamen, wenn vorhanden
+    if (window.WEBFLOW_API.USER_ID_FIELD_NAME) {
+      console.log(`📋 Video-Feed: Verwende bekannten Feldnamen "${window.WEBFLOW_API.USER_ID_FIELD_NAME}"`);
+      possibleFieldNames.unshift(window.WEBFLOW_API.USER_ID_FIELD_NAME);
+    }
+    
     // Versuche jeden möglichen Feldnamen
     for (const fieldName of possibleFieldNames) {
       if (videos.length > 0) break; // Breche ab, wenn Videos gefunden wurden
       
       // API-Anfrage mit dem aktuellen Feldnamen
       const filterQuery = `{"${fieldName}":{"eq":"${userId}"}}`;
-      const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${videoCollectionId}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
+      const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.VIDEO_COLLECTION_ID}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
       const workerUrl = this.buildWorkerUrl(apiUrl);
       
       console.log(`📋 Video-Feed: Versuche Filter mit Feld "${fieldName}": ${filterQuery}`);
@@ -284,13 +302,26 @@ class VideoFeedApp {
    * Berücksichtigt die Memberstack-API-Struktur
    */
   getMembershipLimit(member) {
-    // Direkte Limits als Fallback definieren
-    const FREE_LIMIT = 1;
-    const PAID_LIMIT = 12;
+    // Harte Limits aus Konfiguration lesen ohne Fallbacks
+    let freeLimit, paidLimit;
+    
+    if (typeof window.WEBFLOW_API.FREE_MEMBER_LIMIT === 'number') {
+      freeLimit = window.WEBFLOW_API.FREE_MEMBER_LIMIT;
+    } else {
+      console.warn("📋 Video-Feed: FREE_MEMBER_LIMIT nicht definiert oder keine Zahl");
+      freeLimit = 1; // Letzter Fallback für den Notfall
+    }
+    
+    if (typeof window.WEBFLOW_API.PAID_MEMBER_LIMIT === 'number') {
+      paidLimit = window.WEBFLOW_API.PAID_MEMBER_LIMIT;
+    } else {
+      console.warn("📋 Video-Feed: PAID_MEMBER_LIMIT nicht definiert oder keine Zahl");
+      paidLimit = 12; // Letzter Fallback für den Notfall
+    }
     
     if (!member || !member.data) {
-      console.log("📋 Video-Feed: Kein Member-Objekt, verwende FREE_MEMBER_LIMIT", FREE_LIMIT);
-      return FREE_LIMIT;
+      console.log("📋 Video-Feed: Kein Member-Objekt, verwende FREE_MEMBER_LIMIT:", freeLimit);
+      return freeLimit;
     }
     
     // Prüfen ob Paid-Member anhand der planConnections
@@ -315,7 +346,7 @@ class VideoFeedApp {
       console.log("📋 Video-Feed: Paid-Member erkannt über acl/status");
     }
     
-    const limit = isPaid ? PAID_LIMIT : FREE_LIMIT;
+    const limit = isPaid ? paidLimit : freeLimit;
     console.log(`📋 Video-Feed: Mitglied (${isPaid ? 'PAID' : 'FREE'}) erhält Limit:`, limit);
     
     return limit;
@@ -708,15 +739,28 @@ class VideoFeedApp {
   init() {
     // Sofortige Initialisierung, um DOM-Ready-Probleme zu vermeiden
     const initApp = () => {
-      // Container-ID direkt als String verwenden statt über Config, um Fehler zu vermeiden
-      const containerId = "video-feed";
-      console.log("📋 Video-Feed: Suche nach Container mit ID:", containerId);
+      // Prüfen, ob alle erforderlichen Konfigurationen vorhanden sind
+      if (!window.WEBFLOW_API.BASE_URL) {
+        console.error("📋 Video-Feed: BASE_URL nicht in der WEBFLOW_API Konfiguration definiert");
+      }
+      
+      if (!window.WEBFLOW_API.WORKER_BASE_URL) {
+        console.error("📋 Video-Feed: WORKER_BASE_URL nicht in der WEBFLOW_API Konfiguration definiert");
+      }
+      
+      if (!window.WEBFLOW_API.MEMBER_COLLECTION_ID) {
+        console.error("📋 Video-Feed: MEMBER_COLLECTION_ID nicht in der WEBFLOW_API Konfiguration definiert");
+      }
+      
+      if (!window.WEBFLOW_API.VIDEO_COLLECTION_ID) {
+        console.error("📋 Video-Feed: VIDEO_COLLECTION_ID nicht in der WEBFLOW_API Konfiguration definiert");
+      }
       
       // Video-Container finden
-      this.videoContainer = document.getElementById(containerId);
+      this.videoContainer = document.getElementById(window.WEBFLOW_API.VIDEO_CONTAINER_ID);
       
       if (!this.videoContainer) {
-        console.error("📋 Video-Feed: Container-Element nicht gefunden! ID:", containerId);
+        console.error("📋 Video-Feed: Container-Element nicht gefunden! ID:", window.WEBFLOW_API.VIDEO_CONTAINER_ID);
         
         // Fallback: Versuche den Container über Klasse zu finden
         const containerByClass = document.querySelector(".db-upload-wrapper");
@@ -732,11 +776,11 @@ class VideoFeedApp {
       console.log("📋 Video-Feed: Container erfolgreich gefunden");
       
       // Upload-Counter Element finden
-      this.uploadCounter = document.getElementById("uploads-counter");
+      this.uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
       if (this.uploadCounter) {
         console.log("📋 Video-Feed: Upload-Counter gefunden");
       } else {
-        console.log("📋 Video-Feed: Kein Upload-Counter gefunden mit ID 'uploads-counter'");
+        console.log("📋 Video-Feed: Kein Upload-Counter gefunden");
       }
       
       // Upload-Fortschrittsbalken finden
@@ -744,7 +788,7 @@ class VideoFeedApp {
       if (this.uploadProgress) {
         console.log("📋 Video-Feed: Upload-Fortschrittsbalken gefunden");
       } else {
-        console.log("📋 Video-Feed: Kein Fortschrittsbalken gefunden mit ID 'uploads-progress'");
+        console.log("📋 Video-Feed: Kein Fortschrittsbalken gefunden");
       }
       
       // Upload-Limit-Meldungs-Element suchen
@@ -752,7 +796,7 @@ class VideoFeedApp {
       if (this.limitMessageEl) {
         console.log("📋 Video-Feed: Upload-Limit-Meldungs-Element gefunden");
       } else {
-        console.log("📋 Video-Feed: Kein Upload-Limit-Meldungs-Element gefunden mit ID 'upload-limit-message'");
+        console.log("📋 Video-Feed: Kein Upload-Limit-Meldungs-Element gefunden");
       }
       
       // Event-Listener für Video-Feed-Updates
