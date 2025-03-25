@@ -401,7 +401,7 @@ class VideoFeedApp {
       // Normaler Upload-Button
       const uploadButton = document.createElement("a");
       uploadButton.href = "#"; // Link zur Upload-Seite
-      uploadButton.classList.add("db-button-medium-gradient-pink");
+      uploadButton.classList.add("db-upload-more-upload-button");
       uploadButton.textContent = "Lade dein erstes Video hoch";
       
       // Event-Listener für Upload-Button (kann an Upload-Modal oder Seite weiterleiten)
@@ -545,7 +545,7 @@ class VideoFeedApp {
       
       const addButton = document.createElement("a");
       addButton.href = "#";
-      addButton.classList.add("db-button-medium-gradient-pink");
+      addButton.classList.add("db-upload-more-upload-button");
       addButton.textContent = "Video hinzufügen";
       
       addButton.addEventListener("click", (e) => {
