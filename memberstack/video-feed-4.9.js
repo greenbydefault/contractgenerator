@@ -3,50 +3,37 @@
 
 /**
  * Globale Konfiguration für das Video-Feed-Skript
- * Wird mit einem globalen Objekt für alle Skripte zugänglich gemacht
  */
 window.WEBFLOW_API = window.WEBFLOW_API || {};
 
-// Grundkonfiguration erweitern
-window.WEBFLOW_API = {
-  ...window.WEBFLOW_API,
-  // API-Konfiguration
-  BASE_URL: window.WEBFLOW_API.BASE_URL || "https://api.webflow.com/v2/collections",
-  WORKER_BASE_URL: window.WEBFLOW_API.WORKER_BASE_URL || "https://bewerbungen.oliver-258.workers.dev/?url=",
-  MEMBER_COLLECTION_ID: window.WEBFLOW_API.MEMBER_COLLECTION_ID || "6448faf9c5a8a15f6cc05526", 
-  VIDEO_COLLECTION_ID: window.WEBFLOW_API.VIDEO_COLLECTION_ID || "67d806e65cadcadf2f41e659",
-  
-  // UI-Konfiguration
-  VIDEO_CONTAINER_ID: window.WEBFLOW_API.VIDEO_CONTAINER_ID || "video-feed",
-  UPLOAD_COUNTER_ID: window.WEBFLOW_API.UPLOAD_COUNTER_ID || "uploads-counter",
-  UPLOAD_PROGRESS_ID: window.WEBFLOW_API.UPLOAD_PROGRESS_ID || "uploads-progress",
-  UPLOAD_LIMIT_MESSAGE_ID: window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID || "upload-limit-message",
-  
-  // Cache-Konfiguration
-  CACHE_DURATION: window.WEBFLOW_API.CACHE_DURATION || 5 * 60 * 1000, // 5 Minuten Cache
-  
-  // Memberstack Limits
-  FREE_MEMBER_LIMIT: window.WEBFLOW_API.FREE_MEMBER_LIMIT || 1,
-  PAID_MEMBER_LIMIT: window.WEBFLOW_API.PAID_MEMBER_LIMIT || 12,
-  
-  // Debug-Modus
-  DEBUG_MODE: window.WEBFLOW_API.DEBUG_MODE !== undefined ? window.WEBFLOW_API.DEBUG_MODE : true
-};
+// Grundkonfiguration mit Fallbacks
+window.WEBFLOW_API.BASE_URL = window.WEBFLOW_API.BASE_URL || "https://api.webflow.com/v2/collections";
+window.WEBFLOW_API.WORKER_BASE_URL = window.WEBFLOW_API.WORKER_BASE_URL || "https://bewerbungen.oliver-258.workers.dev/?url=";
+window.WEBFLOW_API.MEMBER_COLLECTION_ID = window.WEBFLOW_API.MEMBER_COLLECTION_ID || "6448faf9c5a8a15f6cc05526";
+window.WEBFLOW_API.VIDEO_COLLECTION_ID = window.WEBFLOW_API.VIDEO_COLLECTION_ID || "67d806e65cadcadf2f41e659";
+window.WEBFLOW_API.VIDEO_CONTAINER_ID = window.WEBFLOW_API.VIDEO_CONTAINER_ID || "video-feed";
+window.WEBFLOW_API.UPLOAD_COUNTER_ID = window.WEBFLOW_API.UPLOAD_COUNTER_ID || "uploads-counter";
+window.WEBFLOW_API.UPLOAD_PROGRESS_ID = window.WEBFLOW_API.UPLOAD_PROGRESS_ID || "uploads-progress";
+window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID = window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID || "upload-limit-message";
+window.WEBFLOW_API.FREE_MEMBER_LIMIT = window.WEBFLOW_API.FREE_MEMBER_LIMIT || 1;
+window.WEBFLOW_API.PAID_MEMBER_LIMIT = window.WEBFLOW_API.PAID_MEMBER_LIMIT || 12;
 
-// Kategorie-Mapping aus dem zweiten Skript übernehmen
-window.WEBFLOW_API.CATEGORY_MAPPING = {
-  "a1c318daa4a4fdc904d0ea6ae57e9eb6": "Travel",
-  "f7375698898acddde00653547c8fa793": "Entertainment",
-  "0e068df04f18438e4a5b68d397782f36": "Food",
-  "2f1f2fe0cd35ddd19ca98f4b85b16258": "Beauty",
-  "d98ec62473786dfe4b680ffaff56df3d": "Fashion",
-  "7a825bdb2886afb7afc15ace93407334": "Fitness",
-  "172297c1eff716fecb37e1086835fb54": "Technology",
-  "0150c802834f25c5eb9a235e5f333086": "Gaming",
-  "827b3ec71e6dd2e64687ac4a2bcde003": "Art & Culture",
-  "17907bdb5206dc3d81ffc984f810e58b": "Household",
-  "d9e7f4c91b3e5a8022c3a6497f1d8b55": "Home & Living" 
-};
+// Kategorie-Mapping 
+if (!window.WEBFLOW_API.CATEGORY_MAPPING) {
+  window.WEBFLOW_API.CATEGORY_MAPPING = {
+    "a1c318daa4a4fdc904d0ea6ae57e9eb6": "Travel",
+    "f7375698898acddde00653547c8fa793": "Entertainment",
+    "0e068df04f18438e4a5b68d397782f36": "Food",
+    "2f1f2fe0cd35ddd19ca98f4b85b16258": "Beauty",
+    "d98ec62473786dfe4b680ffaff56df3d": "Fashion",
+    "7a825bdb2886afb7afc15ace93407334": "Fitness",
+    "172297c1eff716fecb37e1086835fb54": "Technology",
+    "0150c802834f25c5eb9a235e5f333086": "Gaming",
+    "827b3ec71e6dd2e64687ac4a2bcde003": "Art & Culture",
+    "17907bdb5206dc3d81ffc984f810e58b": "Household",
+    "d9e7f4c91b3e5a8022c3a6497f1d8b55": "Home & Living" 
+  };
+}
 
 /**
  * Cache für API-Antworten
@@ -61,7 +48,7 @@ class SimpleCache {
     if (!item) return null;
     
     // Prüfen ob abgelaufen
-    if (Date.now() - item.timestamp > window.WEBFLOW_API.CACHE_DURATION) {
+    if (Date.now() - item.timestamp > 5 * 60 * 1000) { // 5 Minuten
       delete this.items[key];
       return null;
     }
@@ -105,8 +92,8 @@ class VideoFeedApp {
     this.videoContainer = null;
     this.uploadCounter = null;
     this.uploadProgress = null;
+    this.limitMessageEl = null;
     this.currentMember = null;
-    this.currentUser = null;
     this.userVideos = [];
     console.log("📋 Video-Feed: Initialisiert");
   }
@@ -151,123 +138,68 @@ class VideoFeedApp {
   }
 
   /**
-   * User-Informationen anhand der Memberstack-ID abrufen
+   * Videos direkt mit der Webflow-Member-ID laden
    */
-  async getUserByMemberstackId(memberstackId) {
-    if (!memberstackId) {
-      throw new Error("Memberstack ID fehlt");
+  async getVideosByWebflowId(webflowId) {
+    if (!webflowId) {
+      throw new Error("Webflow ID fehlt");
     }
     
-    const cacheKey = `user_${memberstackId}`;
-    const cachedUser = this.cache.get(cacheKey);
+    console.log("📋 Video-Feed: Lade Videos für Webflow-ID:", webflowId);
     
-    if (cachedUser) {
-      console.log("📋 Video-Feed: User aus Cache geladen", memberstackId);
-      return cachedUser;
-    }
-    
-    // API-Anfrage
-    const filterQuery = `{"memberstack-id":{"eq":"${memberstackId}"}}`;
-    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBER_COLLECTION_ID}/items?live=true&limit=1&filter=${encodeURIComponent(filterQuery)}`;
-    const workerUrl = this.buildWorkerUrl(apiUrl);
-    
-    try {
-      const data = await this.fetchApi(workerUrl);
-      
-      if (!data.items || data.items.length === 0) {
-        console.warn("📋 Video-Feed: Kein User gefunden mit ID", memberstackId);
-        return null;
-      }
-      
-      const user = data.items[0];
-      console.log("📋 Video-Feed: User gefunden", user.id);
-      
-      this.cache.set(cacheKey, user);
-      return user;
-    } catch (error) {
-      console.error("📋 Video-Feed: Fehler beim Abrufen des Users", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Videos für einen bestimmten User abrufen mit verschiedenen Filter-Optionen
-   */
-  async getVideosByUserId(userId) {
-    if (!userId) {
-      throw new Error("User ID fehlt");
-    }
-    
-    console.log("📋 Video-Feed: Lade Videos für User-ID:", userId);
-    
-    const cacheKey = `videos_${userId}`;
+    const cacheKey = `videos_${webflowId}`;
     const cachedVideos = this.cache.get(cacheKey);
     
     if (cachedVideos) {
-      console.log("📋 Video-Feed: Videos aus Cache geladen", userId);
+      console.log("📋 Video-Feed: Videos aus Cache geladen", webflowId);
       return cachedVideos;
     }
     
-    // Wir testen verschiedene Feldnamen, da der richtige Feldname in Webflow 
-    // möglicherweise nicht "user-id" ist
-    const possibleFieldNames = [
-      "user-id",         // Standard-Versuch
-      "webflow-id",      // Alternative 1
-      "webflow-user-id", // Alternative 2
-      "member-id"        // Alternative 3
-    ];
-    
+    // Verschiedene mögliche Feldnamen für die ID probieren
+    const fieldNames = ["user-id", "webflow-id", "webflow-user-id", "member-id"];
     let videos = [];
     
-    // Verwende den bereits bekannten erfolgreichen Feldnamen, wenn vorhanden
-    if (window.WEBFLOW_API.USER_ID_FIELD_NAME) {
-      console.log(`📋 Video-Feed: Verwende bekannten Feldnamen "${window.WEBFLOW_API.USER_ID_FIELD_NAME}"`);
-      possibleFieldNames.unshift(window.WEBFLOW_API.USER_ID_FIELD_NAME);
-    }
-    
-    // Versuche jeden möglichen Feldnamen
-    for (const fieldName of possibleFieldNames) {
-      if (videos.length > 0) break; // Breche ab, wenn Videos gefunden wurden
-      
-      // API-Anfrage mit dem aktuellen Feldnamen
-      const filterQuery = `{"${fieldName}":{"eq":"${userId}"}}`;
-      const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.VIDEO_COLLECTION_ID}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
-      const workerUrl = this.buildWorkerUrl(apiUrl);
-      
-      console.log(`📋 Video-Feed: Versuche Filter mit Feld "${fieldName}": ${filterQuery}`);
+    for (const fieldName of fieldNames) {
+      // Wenn schon Videos gefunden wurden, weitere Versuche überspringen
+      if (videos.length > 0) break;
       
       try {
+        // API-Anfrage mit dem aktuellen Feldnamen
+        const filterQuery = `{"${fieldName}":{"eq":"${webflowId}"}}`;
+        const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.VIDEO_COLLECTION_ID}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
+        const workerUrl = this.buildWorkerUrl(apiUrl);
+        
+        console.log(`📋 Video-Feed: Versuche Filter mit Feld "${fieldName}": ${filterQuery}`);
+        
         const data = await this.fetchApi(workerUrl);
         
         if (data.items && data.items.length > 0) {
+          // Videos gefunden!
           console.log(`📋 Video-Feed: Videos gefunden mit Feld "${fieldName}"!`);
           
-          // Videos extrahieren - mit ID
+          // Videos extrahieren
           videos = data.items.map(item => ({
-            "id": item.id, // Webflow Item ID hinzufügen
+            "id": item.id,
             "video-link": item.fieldData["video-link"],
             "video-name": item.fieldData["video-name"],
             "video-kategorie": item.fieldData["video-kategorie"]
           })).filter(video => video["video-link"]);
           
-          console.log(`📋 Video-Feed: ${videos.length} Videos geladen für User ${userId} mit Feld "${fieldName}"`);
+          console.log(`📋 Video-Feed: ${videos.length} Videos geladen für User ${webflowId}`);
           
-          // Für künftige Anfragen das erfolgreiche Feld merken
+          // Für zukünftige Anfragen speichern, welches Feld funktioniert hat
           window.WEBFLOW_API.USER_ID_FIELD_NAME = fieldName;
-          
-          break; // Wir haben Videos gefunden, weitere Versuche nicht nötig
         }
       } catch (error) {
         console.warn(`📋 Video-Feed: Fehler beim Abfragen mit Feldname "${fieldName}"`, error);
-        // Weiter zum nächsten Feldnamen
       }
     }
     
-    // Cache die Videos, wenn welche gefunden wurden
-    if (videos.length > 0) {
-      this.cache.set(cacheKey, videos);
-    } else {
-      console.log("📋 Video-Feed: Keine Videos gefunden für User", userId, "mit allen getesteten Feldnamen");
+    // Im Cache speichern, unabhängig davon, ob Videos gefunden wurden
+    this.cache.set(cacheKey, videos);
+    
+    if (videos.length === 0) {
+      console.log("📋 Video-Feed: Keine Videos gefunden für User", webflowId);
     }
     
     return videos;
@@ -275,11 +207,10 @@ class VideoFeedApp {
 
   /**
    * Bestimmt das Video-Limit basierend auf dem Mitgliedsstatus
-   * Berücksichtigt die Memberstack-API-Struktur
    */
   getMembershipLimit(member) {
     if (!member || !member.data) {
-      console.log("📋 Video-Feed: Kein Member-Objekt, verwende FREE_MEMBER_LIMIT:", window.WEBFLOW_API.FREE_MEMBER_LIMIT);
+      console.log("📋 Video-Feed: Kein Member-Objekt, verwende FREE_MEMBER_LIMIT");
       return window.WEBFLOW_API.FREE_MEMBER_LIMIT;
     }
     
@@ -288,9 +219,7 @@ class VideoFeedApp {
     
     // Option 1: Prüfen auf planConnections Array
     if (member.data.planConnections && member.data.planConnections.length > 0) {
-      // Iteriere durch alle Plan-Verbindungen
       for (const connection of member.data.planConnections) {
-        // Prüfe, ob ein aktiver Plan existiert, der nicht FREE ist
         if (connection.status === "ACTIVE" && connection.type !== "FREE") {
           isPaid = true;
           console.log("📋 Video-Feed: Paid-Member erkannt über planConnections");
@@ -344,9 +273,6 @@ class VideoFeedApp {
     // Prüfen, ob das Limit erreicht ist
     const isLimitReached = videoCount >= maxUploads;
     
-    // Upload-Limit-Meldung aktualisieren
-    this.updateLimitMessage(isLimitReached);
-    
     // Den "video-upload-button" finden und je nach Limit-Status ein/ausblenden
     const uploadButton = document.getElementById("video-upload-button");
     if (uploadButton) {
@@ -359,6 +285,9 @@ class VideoFeedApp {
         uploadButton.style.display = "";
       }
     }
+    
+    // Upload-Limit-Meldung aktualisieren
+    this.updateLimitMessage(isLimitReached);
   }
   
   /**
@@ -394,40 +323,17 @@ class VideoFeedApp {
   createUploadButton() {
     if (!this.videoContainer) return;
     
-    // Prüfen ob das Limit bereits erreicht ist
-    const isLimitReached = this.userVideos.length >= this.getMembershipLimit(this.currentMember);
-    
     const buttonContainer = document.createElement("div");
     buttonContainer.classList.add("db-upload-empty-state");
     
-    if (isLimitReached) {
-      // Hinweis anzeigen, dass das Limit erreicht ist
-      const limitMessage = document.createElement("div");
-      limitMessage.classList.add("upload-limit-message");
-      limitMessage.innerHTML = `
-        <h3>Upload-Limit erreicht</h3>
-        <p>Du hast dein maximales Upload-Limit erreicht. Upgrade deinen Plan für mehr Uploads.</p>
-      `;
-      
-      // Optional: Upgrade-Button
-      const upgradeButton = document.createElement("a");
-      upgradeButton.href = "#upgrade"; // Link zur Upgrade-Seite
-      upgradeButton.classList.add("db-button-medium");
-      upgradeButton.textContent = "Plan upgraden";
-      
-      buttonContainer.appendChild(limitMessage);
-      buttonContainer.appendChild(upgradeButton);
-    } else {
-      // Normaler Upload-Button mit den gewünschten Attributen
-      const uploadButton = document.createElement("a");
-      uploadButton.href = "#"; 
-      uploadButton.classList.add("db-upload-more-upload-button");
-      uploadButton.setAttribute("data-modal-toggle", "new-upload");
-      uploadButton.textContent = "Lade dein erstes Video hoch";
-      
-      buttonContainer.appendChild(uploadButton);
-    }
+    // Normaler Upload-Button mit den gewünschten Attributen
+    const uploadButton = document.createElement("a");
+    uploadButton.href = "#"; 
+    uploadButton.classList.add("db-upload-more-upload-button");
+    uploadButton.setAttribute("data-modal-toggle", "new-upload");
+    uploadButton.textContent = "Lade dein erstes Video hoch";
     
+    buttonContainer.appendChild(uploadButton);
     this.videoContainer.appendChild(buttonContainer);
   }
 
@@ -544,7 +450,7 @@ class VideoFeedApp {
       this.videoContainer.appendChild(wrapperDiv);
     });
     
-          // Button für neue Videos hinzufügen, wenn Limit nicht erreicht
+    // Button für neue Videos hinzufügen, wenn Limit nicht erreicht
     if (!isLimitReached && videos && videos.length > 0) {
       const addButtonContainer = document.createElement("div");
       addButtonContainer.classList.add("db-upload-add-new");
@@ -626,58 +532,34 @@ class VideoFeedApp {
         return;
       }
       
-      console.log("📋 Video-Feed: Eingeloggter User mit ID", memberstackId);
+      console.log("📋 Video-Feed: Eingeloggter User mit Memberstack-ID", memberstackId);
       console.log("📋 Video-Feed: Member-Daten:", member.data);
       
-      // Webflow-Member-ID aus dem Custom-Feld extrahieren
+      // Video-Limit basierend auf Membership bestimmen
+      const maxUploads = this.getMembershipLimit(member);
+      console.log("📋 Video-Feed: Maximale Uploads für User:", maxUploads);
+      
+      // Webflow-Member-ID aus den Custom Fields extrahieren
       let webflowMemberId = null;
       
       // Option 1: Aus customFields
       if (member.data.customFields && member.data.customFields["webflow-member-id"]) {
         webflowMemberId = member.data.customFields["webflow-member-id"];
         console.log("📋 Video-Feed: Webflow-Member-ID aus customFields:", webflowMemberId);
-      }
+      } 
       // Option 2: Aus metaData (ältere Memberstack-Version)
       else if (member.data.metaData && member.data.metaData["webflow-member-id"]) {
         webflowMemberId = member.data.metaData["webflow-member-id"];
         console.log("📋 Video-Feed: Webflow-Member-ID aus metaData:", webflowMemberId);
       }
       
-      // Video-Limit basierend auf Membership bestimmen
-      const maxUploads = this.getMembershipLimit(member);
-      console.log("📋 Video-Feed: Maximale Uploads für User:", maxUploads);
-      
-      // Option 1: Wenn eine Webflow-Member-ID verfügbar ist, verwende diese direkt
-      if (webflowMemberId) {
-        console.log("📋 Video-Feed: Verwende Webflow-Member-ID direkt:", webflowMemberId);
-        
-        // Videos direkt mit der Webflow-ID laden
-        const videos = await this.getVideosByUserId(webflowMemberId);
-        this.userVideos = videos;
-        
-        // Upload-Counter aktualisieren
-        this.updateUploadCounter(videos.length, maxUploads);
-        
-        // Videos anzeigen
-        this.renderVideos(videos);
+      if (!webflowMemberId) {
+        this.showError("Keine Webflow-Member-ID gefunden");
         return;
       }
       
-      // Option 2: Fallback zur alten Methode, wenn keine Webflow-ID verfügbar ist
-      console.log("📋 Video-Feed: Keine Webflow-ID im Memberstack-Profil gefunden, suche User in Webflow");
-      
-      // User-Daten laden
-      const user = await this.getUserByMemberstackId(memberstackId);
-      this.currentUser = user;
-      
-      if (!user) {
-        this.showError("User-Daten konnten nicht gefunden werden");
-        return;
-      }
-      
-      // Videos laden
-      const userId = user.id;
-      const videos = await this.getVideosByUserId(userId);
+      // Videos direkt mit der Webflow-ID laden
+      const videos = await this.getVideosByWebflowId(webflowMemberId);
       this.userVideos = videos;
       
       // Upload-Counter aktualisieren
@@ -696,25 +578,8 @@ class VideoFeedApp {
    * App initialisieren
    */
   init() {
-    // Sofortige Initialisierung, um DOM-Ready-Probleme zu vermeiden
+    // Initialisierungsfunktion definieren
     const initApp = () => {
-      // Prüfen, ob alle erforderlichen Konfigurationen vorhanden sind
-      if (!window.WEBFLOW_API.BASE_URL) {
-        console.error("📋 Video-Feed: BASE_URL nicht in der WEBFLOW_API Konfiguration definiert");
-      }
-      
-      if (!window.WEBFLOW_API.WORKER_BASE_URL) {
-        console.error("📋 Video-Feed: WORKER_BASE_URL nicht in der WEBFLOW_API Konfiguration definiert");
-      }
-      
-      if (!window.WEBFLOW_API.MEMBER_COLLECTION_ID) {
-        console.error("📋 Video-Feed: MEMBER_COLLECTION_ID nicht in der WEBFLOW_API Konfiguration definiert");
-      }
-      
-      if (!window.WEBFLOW_API.VIDEO_COLLECTION_ID) {
-        console.error("📋 Video-Feed: VIDEO_COLLECTION_ID nicht in der WEBFLOW_API Konfiguration definiert");
-      }
-      
       // Video-Container finden
       this.videoContainer = document.getElementById(window.WEBFLOW_API.VIDEO_CONTAINER_ID);
       
@@ -738,24 +603,18 @@ class VideoFeedApp {
       this.uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
       if (this.uploadCounter) {
         console.log("📋 Video-Feed: Upload-Counter gefunden");
-      } else {
-        console.log("📋 Video-Feed: Kein Upload-Counter gefunden");
       }
       
       // Upload-Fortschrittsbalken finden
       this.uploadProgress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
       if (this.uploadProgress) {
         console.log("📋 Video-Feed: Upload-Fortschrittsbalken gefunden");
-      } else {
-        console.log("📋 Video-Feed: Kein Fortschrittsbalken gefunden");
       }
       
       // Upload-Limit-Meldungs-Element suchen
       this.limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
       if (this.limitMessageEl) {
         console.log("📋 Video-Feed: Upload-Limit-Meldungs-Element gefunden");
-      } else {
-        console.log("📋 Video-Feed: Kein Upload-Limit-Meldungs-Element gefunden");
       }
       
       // Event-Listener für Video-Feed-Updates
@@ -763,30 +622,13 @@ class VideoFeedApp {
         console.log("📋 Video-Feed: Update-Event empfangen, lade Feed neu");
         
         // Cache löschen und Daten neu laden
-        if (this.currentUser) {
-          const cacheKey = `videos_${this.currentUser.id}`;
-          this.cache.items[cacheKey] = null;
-        }
-        
+        this.cache.clear();
         this.loadUserVideos();
       });
       
       // Videos laden
       this.loadUserVideos();
     };
-    
-    // Event-Listener für Video-Feed-Updates
-    document.addEventListener('videoFeedUpdate', () => {
-      console.log("📋 Video-Feed: Update-Event empfangen, lade Feed neu");
-      
-      // Cache löschen und Daten neu laden
-      if (this.currentUser) {
-        const cacheKey = `videos_${this.currentUser.id}`;
-        this.cache.items[cacheKey] = null;
-      }
-      
-      this.loadUserVideos();
-    });;
     
     // Prüfen, ob das DOM bereits geladen ist
     if (document.readyState === "loading") {
