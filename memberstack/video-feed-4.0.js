@@ -1,4 +1,4 @@
- // 🌐 Webflow API Integration für Video-Feed
+// 🌐 Webflow API Integration für Video-Feed
 // Optimierte Version
 
 /**
@@ -20,6 +20,7 @@ window.WEBFLOW_API = {
   VIDEO_CONTAINER_ID: window.WEBFLOW_API.VIDEO_CONTAINER_ID || "video-feed",
   UPLOAD_COUNTER_ID: window.WEBFLOW_API.UPLOAD_COUNTER_ID || "uploads-counter",
   UPLOAD_PROGRESS_ID: window.WEBFLOW_API.UPLOAD_PROGRESS_ID || "uploads-progress",
+  UPLOAD_LIMIT_MESSAGE_ID: window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID || "upload-limit-message",
   
   // Cache-Konfiguration
   CACHE_DURATION: window.WEBFLOW_API.CACHE_DURATION || 5 * 60 * 1000, // 5 Minuten Cache
@@ -34,7 +35,7 @@ window.WEBFLOW_API = {
 
 // Kategorie-Mapping aus dem zweiten Skript übernehmen
 window.WEBFLOW_API.CATEGORY_MAPPING = {
-  "a6a0530c5c476df59cb16022541a8233": "Travel",
+  "a1c318daa4a4fdc904d0ea6ae57e9eb6": "Travel",
   "f7375698898acddde00653547c8fa793": "Entertainment",
   "0e068df04f18438e4a5b68d397782f36": "Food",
   "2f1f2fe0cd35ddd19ca98f4b85b16258": "Beauty",
@@ -323,6 +324,9 @@ class VideoFeedApp {
     // Prüfen, ob das Limit erreicht ist
     const isLimitReached = videoCount >= maxUploads;
     
+    // Upload-Limit-Meldung aktualisieren
+    this.updateLimitMessage(isLimitReached);
+    
     // Den "video-upload-button" finden und je nach Limit-Status ein/ausblenden
     const uploadButton = document.getElementById("video-upload-button");
     if (uploadButton) {
@@ -334,6 +338,33 @@ class VideoFeedApp {
         // Button anzeigen
         uploadButton.style.display = "";
       }
+    }
+  }
+  
+  /**
+   * Upload-Limit-Meldung anzeigen oder ausblenden
+   */
+  updateLimitMessage(isLimitReached) {
+    // Element mit der konfigurierten ID suchen
+    if (!this.limitMessageEl) {
+      // Versuche, das Element erneut zu finden, falls es zwischenzeitlich erstellt wurde
+      this.limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
+      
+      if (!this.limitMessageEl) {
+        console.log(`📋 Video-Feed: Kein Limit-Meldungs-Element mit ID '${window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID}' gefunden`);
+        return;
+      }
+    }
+    
+    if (isLimitReached) {
+      // Meldung anzeigen
+      this.limitMessageEl.style.display = "block";
+      this.limitMessageEl.textContent = "Upload-Limit erreicht";
+      this.limitMessageEl.classList.add("limit-reached");
+    } else {
+      // Meldung ausblenden
+      this.limitMessageEl.style.display = "none";
+      this.limitMessageEl.classList.remove("limit-reached");
     }
   }
 
@@ -674,11 +705,19 @@ class VideoFeedApp {
       }
       
       // Upload-Fortschrittsbalken finden
-      this.uploadProgress = document.getElementById("uploads-progress");
+      this.uploadProgress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
       if (this.uploadProgress) {
         console.log("📋 Video-Feed: Upload-Fortschrittsbalken gefunden");
       } else {
         console.log("📋 Video-Feed: Kein Fortschrittsbalken gefunden mit ID 'uploads-progress'");
+      }
+      
+      // Upload-Limit-Meldungs-Element suchen
+      this.limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
+      if (this.limitMessageEl) {
+        console.log("📋 Video-Feed: Upload-Limit-Meldungs-Element gefunden");
+      } else {
+        console.log("📋 Video-Feed: Kein Upload-Limit-Meldungs-Element gefunden mit ID 'upload-limit-message'");
       }
       
       // Event-Listener für Video-Feed-Updates
