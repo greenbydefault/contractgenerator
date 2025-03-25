@@ -490,8 +490,8 @@ class VideoFeedApp {
       // Kategorie mit Mapping
       const categoryName = getCategoryName(videoData["video-kategorie"]);
       const categoryP = document.createElement("p");
-      categoryP.classList.add("is-txt-tiny");
-      categoryP.textContent = `Kategorie: ${categoryName}`;
+      categoryP.classList.add("db-upload-tag");
+      categoryP.textContent = `${categoryName}`;
       
       // Edit-Button erstellen
       const editButton = document.createElement("button");
