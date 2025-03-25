@@ -11,25 +11,25 @@ window.WEBFLOW_API = window.WEBFLOW_API || {};
 window.WEBFLOW_API = {
   ...window.WEBFLOW_API,
   // API-Konfiguration
-  BASE_URL: "https://api.webflow.com/v2/collections",
-  WORKER_BASE_URL: "https://bewerbungen.oliver-258.workers.dev/?url=",
-  MEMBER_COLLECTION_ID: "6448faf9c5a8a15f6cc05526", 
-  VIDEO_COLLECTION_ID: "67d806e65cadcadf2f41e659",
+  BASE_URL: window.WEBFLOW_API.BASE_URL || "https://api.webflow.com/v2/collections",
+  WORKER_BASE_URL: window.WEBFLOW_API.WORKER_BASE_URL || "https://bewerbungen.oliver-258.workers.dev/?url=",
+  MEMBER_COLLECTION_ID: window.WEBFLOW_API.MEMBER_COLLECTION_ID || "6448faf9c5a8a15f6cc05526", 
+  VIDEO_COLLECTION_ID: window.WEBFLOW_API.VIDEO_COLLECTION_ID || "67d806e65cadcadf2f41e659",
   
   // UI-Konfiguration
-  VIDEO_CONTAINER_ID: "video-feed",
-  UPLOAD_COUNTER_ID: "uploads-counter",
-  UPLOAD_PROGRESS_ID: "uploads-progress",
+  VIDEO_CONTAINER_ID: window.WEBFLOW_API.VIDEO_CONTAINER_ID || "video-feed",
+  UPLOAD_COUNTER_ID: window.WEBFLOW_API.UPLOAD_COUNTER_ID || "uploads-counter",
+  UPLOAD_PROGRESS_ID: window.WEBFLOW_API.UPLOAD_PROGRESS_ID || "uploads-progress",
   
   // Cache-Konfiguration
-  CACHE_DURATION: 5 * 60 * 1000, // 5 Minuten Cache
+  CACHE_DURATION: window.WEBFLOW_API.CACHE_DURATION || 5 * 60 * 1000, // 5 Minuten Cache
   
   // Memberstack Limits
-  FREE_MEMBER_LIMIT: 1,
-  PAID_MEMBER_LIMIT: 12,
+  FREE_MEMBER_LIMIT: window.WEBFLOW_API.FREE_MEMBER_LIMIT || 1,
+  PAID_MEMBER_LIMIT: window.WEBFLOW_API.PAID_MEMBER_LIMIT || 12,
   
   // Debug-Modus
-  DEBUG_MODE: true
+  DEBUG_MODE: window.WEBFLOW_API.DEBUG_MODE !== undefined ? window.WEBFLOW_API.DEBUG_MODE : true
 };
 
 // Kategorie-Mapping aus dem zweiten Skript übernehmen
@@ -114,7 +114,11 @@ class VideoFeedApp {
    * Worker-URL erstellen für Cross-Origin-Anfragen
    */
   buildWorkerUrl(apiUrl) {
-    return `${window.WEBFLOW_API.WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
+    // Direkte Verwendung des Worker-URL-Basis ohne Konfiguration
+    const workerBaseUrl = window.WEBFLOW_API.WORKER_BASE_URL || "https://bewerbungen.oliver-258.workers.dev/?url=";
+    console.log("📋 Video-Feed: Worker-Basis-URL:", workerBaseUrl);
+    
+    return `${workerBaseUrl}${encodeURIComponent(apiUrl)}`;
   }
 
   /**
@@ -165,9 +169,13 @@ class VideoFeedApp {
       return cachedUser;
     }
     
+    // Collection ID direkt verwenden, um Fehler zu vermeiden
+    const memberCollectionId = window.WEBFLOW_API.MEMBER_COLLECTION_ID || "6448faf9c5a8a15f6cc05526";
+    console.log("📋 Video-Feed: Member Collection ID:", memberCollectionId);
+    
     // API-Anfrage
     const filterQuery = `{"memberstack-id":{"eq":"${memberstackId}"}}`;
-    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBER_COLLECTION_ID}/items?live=true&limit=1&filter=${encodeURIComponent(filterQuery)}`;
+    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${memberCollectionId}/items?live=true&limit=1&filter=${encodeURIComponent(filterQuery)}`;
     const workerUrl = this.buildWorkerUrl(apiUrl);
     
     try {
@@ -205,9 +213,13 @@ class VideoFeedApp {
       return cachedVideos;
     }
     
+    // Collection ID direkt verwenden, um Fehler zu vermeiden
+    const videoCollectionId = window.WEBFLOW_API.VIDEO_COLLECTION_ID || "67d806e65cadcadf2f41e659";
+    console.log("📋 Video-Feed: Video Collection ID:", videoCollectionId);
+    
     // API-Anfrage
     const filterQuery = `{"user-id":{"eq":"${userId}"}}`;
-    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.VIDEO_COLLECTION_ID}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
+    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${videoCollectionId}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
     const workerUrl = this.buildWorkerUrl(apiUrl);
     
     try {
@@ -241,9 +253,13 @@ class VideoFeedApp {
    * Berücksichtigt die Memberstack-API-Struktur
    */
   getMembershipLimit(member) {
+    // Direkte Limits als Fallback definieren
+    const FREE_LIMIT = 1;
+    const PAID_LIMIT = 12;
+    
     if (!member || !member.data) {
-      console.log("📋 Video-Feed: Kein Member-Objekt, verwende FREE_MEMBER_LIMIT");
-      return window.WEBFLOW_API.FREE_MEMBER_LIMIT;
+      console.log("📋 Video-Feed: Kein Member-Objekt, verwende FREE_MEMBER_LIMIT", FREE_LIMIT);
+      return FREE_LIMIT;
     }
     
     // Prüfen ob Paid-Member anhand der planConnections
@@ -268,9 +284,10 @@ class VideoFeedApp {
       console.log("📋 Video-Feed: Paid-Member erkannt über acl/status");
     }
     
-    return isPaid 
-      ? window.WEBFLOW_API.PAID_MEMBER_LIMIT 
-      : window.WEBFLOW_API.FREE_MEMBER_LIMIT;
+    const limit = isPaid ? PAID_LIMIT : FREE_LIMIT;
+    console.log(`📋 Video-Feed: Mitglied (${isPaid ? 'PAID' : 'FREE'}) erhält Limit:`, limit);
+    
+    return limit;
   }
 
   /**
