@@ -398,26 +398,12 @@ class VideoFeedApp {
       buttonContainer.appendChild(limitMessage);
       buttonContainer.appendChild(upgradeButton);
     } else {
-      // Normaler Upload-Button
+      // Normaler Upload-Button mit den gewünschten Attributen
       const uploadButton = document.createElement("a");
-      uploadButton.href = "#"; // Link zur Upload-Seite
+      uploadButton.href = "#"; 
       uploadButton.classList.add("db-upload-more-upload-button");
+      uploadButton.setAttribute("data-modal-toggle", "new-upload");
       uploadButton.textContent = "Lade dein erstes Video hoch";
-      
-      // Event-Listener für Upload-Button (kann an Upload-Modal oder Seite weiterleiten)
-      uploadButton.addEventListener("click", (e) => {
-        e.preventDefault();
-        
-        // Weiterleitung zur Upload-Seite oder Öffnen eines Upload-Modals
-        // Falls ein globaler Event-Handler existiert, diesen auslösen
-        if (typeof window.openUploadModal === "function") {
-          window.openUploadModal();
-        } else {
-          // Custom Event auslösen, das von anderen Skripten abgefangen werden kann
-          const uploadEvent = new CustomEvent('videoUploadRequest');
-          document.dispatchEvent(uploadEvent);
-        }
-      });
       
       buttonContainer.appendChild(uploadButton);
     }
@@ -490,8 +476,8 @@ class VideoFeedApp {
       // Kategorie mit Mapping
       const categoryName = getCategoryName(videoData["video-kategorie"]);
       const categoryP = document.createElement("p");
-      categoryP.classList.add("db-upload-tag");
-      categoryP.textContent = `${categoryName}`;
+      categoryP.classList.add("is-txt-tiny");
+      categoryP.textContent = `Kategorie: ${categoryName}`;
       
       // Edit-Button erstellen
       const editButton = document.createElement("button");
@@ -538,7 +524,7 @@ class VideoFeedApp {
       this.videoContainer.appendChild(wrapperDiv);
     });
     
-    // Button für neue Videos hinzufügen, wenn Limit nicht erreicht
+          // Button für neue Videos hinzufügen, wenn Limit nicht erreicht
     if (!isLimitReached && videos && videos.length > 0) {
       const addButtonContainer = document.createElement("div");
       addButtonContainer.classList.add("db-upload-add-new");
@@ -546,18 +532,8 @@ class VideoFeedApp {
       const addButton = document.createElement("a");
       addButton.href = "#";
       addButton.classList.add("db-upload-more-upload-button");
+      addButton.setAttribute("data-modal-toggle", "new-upload");
       addButton.textContent = "Video hinzufügen";
-      
-      addButton.addEventListener("click", (e) => {
-        e.preventDefault();
-        
-        if (typeof window.openUploadModal === "function") {
-          window.openUploadModal();
-        } else {
-          const uploadEvent = new CustomEvent('videoUploadRequest');
-          document.dispatchEvent(uploadEvent);
-        }
-      });
       
       addButtonContainer.appendChild(addButton);
       this.videoContainer.appendChild(addButtonContainer);
@@ -631,10 +607,44 @@ class VideoFeedApp {
       }
       
       console.log("📋 Video-Feed: Eingeloggter User mit ID", memberstackId);
+      console.log("📋 Video-Feed: Member-Daten:", member.data);
+      
+      // Webflow-Member-ID aus dem Custom-Feld extrahieren
+      let webflowMemberId = null;
+      
+      // Option 1: Aus customFields
+      if (member.data.customFields && member.data.customFields["webflow-member-id"]) {
+        webflowMemberId = member.data.customFields["webflow-member-id"];
+        console.log("📋 Video-Feed: Webflow-Member-ID aus customFields:", webflowMemberId);
+      }
+      // Option 2: Aus metaData (ältere Memberstack-Version)
+      else if (member.data.metaData && member.data.metaData["webflow-member-id"]) {
+        webflowMemberId = member.data.metaData["webflow-member-id"];
+        console.log("📋 Video-Feed: Webflow-Member-ID aus metaData:", webflowMemberId);
+      }
       
       // Video-Limit basierend auf Membership bestimmen
       const maxUploads = this.getMembershipLimit(member);
       console.log("📋 Video-Feed: Maximale Uploads für User:", maxUploads);
+      
+      // Option 1: Wenn eine Webflow-Member-ID verfügbar ist, verwende diese direkt
+      if (webflowMemberId) {
+        console.log("📋 Video-Feed: Verwende Webflow-Member-ID direkt:", webflowMemberId);
+        
+        // Videos direkt mit der Webflow-ID laden
+        const videos = await this.getVideosByUserId(webflowMemberId);
+        this.userVideos = videos;
+        
+        // Upload-Counter aktualisieren
+        this.updateUploadCounter(videos.length, maxUploads);
+        
+        // Videos anzeigen
+        this.renderVideos(videos);
+        return;
+      }
+      
+      // Option 2: Fallback zur alten Methode, wenn keine Webflow-ID verfügbar ist
+      console.log("📋 Video-Feed: Keine Webflow-ID im Memberstack-Profil gefunden, suche User in Webflow");
       
       // User-Daten laden
       const user = await this.getUserByMemberstackId(memberstackId);
