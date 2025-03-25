@@ -115,12 +115,6 @@ class VideoFeedApp {
    * Worker-URL erstellen für Cross-Origin-Anfragen
    */
   buildWorkerUrl(apiUrl) {
-    // Direkte Verwendung des Worker-URL-Basis ohne Fallback
-    if (!window.WEBFLOW_API.WORKER_BASE_URL) {
-      console.error("📋 Video-Feed: Keine WORKER_BASE_URL in der Konfiguration definiert!");
-      return apiUrl; // Direkter Versuch ohne Worker als Notfall-Fallback
-    }
-    
     return `${window.WEBFLOW_API.WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
   }
 
@@ -172,15 +166,6 @@ class VideoFeedApp {
       return cachedUser;
     }
     
-    // Collection ID verwenden ohne Fallback
-    if (!window.WEBFLOW_API.MEMBER_COLLECTION_ID) {
-      throw new Error("MEMBER_COLLECTION_ID nicht in der Konfiguration definiert");
-    }
-    
-    if (!window.WEBFLOW_API.BASE_URL) {
-      throw new Error("BASE_URL nicht in der Konfiguration definiert");
-    }
-    
     // API-Anfrage
     const filterQuery = `{"memberstack-id":{"eq":"${memberstackId}"}}`;
     const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBER_COLLECTION_ID}/items?live=true&limit=1&filter=${encodeURIComponent(filterQuery)}`;
@@ -221,15 +206,6 @@ class VideoFeedApp {
     if (cachedVideos) {
       console.log("📋 Video-Feed: Videos aus Cache geladen", userId);
       return cachedVideos;
-    }
-    
-    // Collection ID verwenden ohne Fallback
-    if (!window.WEBFLOW_API.VIDEO_COLLECTION_ID) {
-      throw new Error("VIDEO_COLLECTION_ID nicht in der Konfiguration definiert");
-    }
-    
-    if (!window.WEBFLOW_API.BASE_URL) {
-      throw new Error("BASE_URL nicht in der Konfiguration definiert");
     }
     
     // Wir testen verschiedene Feldnamen, da der richtige Feldname in Webflow 
@@ -302,26 +278,9 @@ class VideoFeedApp {
    * Berücksichtigt die Memberstack-API-Struktur
    */
   getMembershipLimit(member) {
-    // Harte Limits aus Konfiguration lesen ohne Fallbacks
-    let freeLimit, paidLimit;
-    
-    if (typeof window.WEBFLOW_API.FREE_MEMBER_LIMIT === 'number') {
-      freeLimit = window.WEBFLOW_API.FREE_MEMBER_LIMIT;
-    } else {
-      console.warn("📋 Video-Feed: FREE_MEMBER_LIMIT nicht definiert oder keine Zahl");
-      freeLimit = 1; // Letzter Fallback für den Notfall
-    }
-    
-    if (typeof window.WEBFLOW_API.PAID_MEMBER_LIMIT === 'number') {
-      paidLimit = window.WEBFLOW_API.PAID_MEMBER_LIMIT;
-    } else {
-      console.warn("📋 Video-Feed: PAID_MEMBER_LIMIT nicht definiert oder keine Zahl");
-      paidLimit = 12; // Letzter Fallback für den Notfall
-    }
-    
     if (!member || !member.data) {
-      console.log("📋 Video-Feed: Kein Member-Objekt, verwende FREE_MEMBER_LIMIT:", freeLimit);
-      return freeLimit;
+      console.log("📋 Video-Feed: Kein Member-Objekt, verwende FREE_MEMBER_LIMIT:", window.WEBFLOW_API.FREE_MEMBER_LIMIT);
+      return window.WEBFLOW_API.FREE_MEMBER_LIMIT;
     }
     
     // Prüfen ob Paid-Member anhand der planConnections
@@ -346,7 +305,7 @@ class VideoFeedApp {
       console.log("📋 Video-Feed: Paid-Member erkannt über acl/status");
     }
     
-    const limit = isPaid ? paidLimit : freeLimit;
+    const limit = isPaid ? window.WEBFLOW_API.PAID_MEMBER_LIMIT : window.WEBFLOW_API.FREE_MEMBER_LIMIT;
     console.log(`📋 Video-Feed: Mitglied (${isPaid ? 'PAID' : 'FREE'}) erhält Limit:`, limit);
     
     return limit;
