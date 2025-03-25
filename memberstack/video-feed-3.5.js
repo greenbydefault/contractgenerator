@@ -238,14 +238,35 @@ class VideoFeedApp {
 
   /**
    * Bestimmt das Video-Limit basierend auf dem Mitgliedsstatus
+   * Berücksichtigt die Memberstack-API-Struktur
    */
   getMembershipLimit(member) {
     if (!member || !member.data) {
+      console.log("📋 Video-Feed: Kein Member-Objekt, verwende FREE_MEMBER_LIMIT");
       return window.WEBFLOW_API.FREE_MEMBER_LIMIT;
     }
     
-    // Prüfen ob Paid-Member
-    const isPaid = member.data.acl?.includes("paid") || member.data.status === "paid";
+    // Prüfen ob Paid-Member anhand der planConnections
+    let isPaid = false;
+    
+    // Option 1: Prüfen auf planConnections Array
+    if (member.data.planConnections && member.data.planConnections.length > 0) {
+      // Iteriere durch alle Plan-Verbindungen
+      for (const connection of member.data.planConnections) {
+        // Prüfe, ob ein aktiver Plan existiert, der nicht FREE ist
+        if (connection.status === "ACTIVE" && connection.type !== "FREE") {
+          isPaid = true;
+          console.log("📋 Video-Feed: Paid-Member erkannt über planConnections");
+          break;
+        }
+      }
+    }
+    
+    // Option 2: Fallback auf ältere Memberstack-Version
+    if (!isPaid && (member.data.acl?.includes("paid") || member.data.status === "paid")) {
+      isPaid = true;
+      console.log("📋 Video-Feed: Paid-Member erkannt über acl/status");
+    }
     
     return isPaid 
       ? window.WEBFLOW_API.PAID_MEMBER_LIMIT 
@@ -507,25 +528,45 @@ class VideoFeedApp {
    * App initialisieren
    */
   init() {
-    document.addEventListener("DOMContentLoaded", () => {
+    // Sofortige Initialisierung, um DOM-Ready-Probleme zu vermeiden
+    const initApp = () => {
+      // Container-ID direkt als String verwenden statt über Config, um Fehler zu vermeiden
+      const containerId = "video-feed";
+      console.log("📋 Video-Feed: Suche nach Container mit ID:", containerId);
+      
       // Video-Container finden
-      this.videoContainer = document.getElementById(window.WEBFLOW_API.VIDEO_CONTAINER_ID);
+      this.videoContainer = document.getElementById(containerId);
       
       if (!this.videoContainer) {
-        console.error("📋 Video-Feed: Container-Element nicht gefunden", window.WEBFLOW_API.VIDEO_CONTAINER_ID);
-        return;
+        console.error("📋 Video-Feed: Container-Element nicht gefunden! ID:", containerId);
+        
+        // Fallback: Versuche den Container über Klasse zu finden
+        const containerByClass = document.querySelector(".db-upload-wrapper");
+        if (containerByClass) {
+          console.log("📋 Video-Feed: Container über Klasse gefunden statt über ID");
+          this.videoContainer = containerByClass;
+        } else {
+          console.error("📋 Video-Feed: Container konnte weder über ID noch über Klasse gefunden werden");
+          return;
+        }
       }
       
+      console.log("📋 Video-Feed: Container erfolgreich gefunden");
+      
       // Upload-Counter Element finden
-      this.uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
+      this.uploadCounter = document.getElementById("uploads-counter");
       if (this.uploadCounter) {
         console.log("📋 Video-Feed: Upload-Counter gefunden");
+      } else {
+        console.log("📋 Video-Feed: Kein Upload-Counter gefunden mit ID 'uploads-counter'");
       }
       
       // Upload-Fortschrittsbalken finden
-      this.uploadProgress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
+      this.uploadProgress = document.getElementById("uploads-progress");
       if (this.uploadProgress) {
         console.log("📋 Video-Feed: Upload-Fortschrittsbalken gefunden");
+      } else {
+        console.log("📋 Video-Feed: Kein Fortschrittsbalken gefunden mit ID 'uploads-progress'");
       }
       
       // Event-Listener für Video-Feed-Updates
@@ -543,7 +584,29 @@ class VideoFeedApp {
       
       // Videos laden
       this.loadUserVideos();
-    });
+    };
+    
+    // Event-Listener für Video-Feed-Updates
+    document.addEventListener('videoFeedUpdate', () => {
+      console.log("📋 Video-Feed: Update-Event empfangen, lade Feed neu");
+      
+      // Cache löschen und Daten neu laden
+      if (this.currentUser) {
+        const cacheKey = `videos_${this.currentUser.id}`;
+        this.cache.items[cacheKey] = null;
+      }
+      
+      this.loadUserVideos();
+    });;
+    
+    // Prüfen, ob das DOM bereits geladen ist
+    if (document.readyState === "loading") {
+      // Wenn noch nicht geladen, warten auf DOMContentLoaded
+      document.addEventListener("DOMContentLoaded", initApp);
+    } else {
+      // Wenn DOM bereits geladen ist, sofort initialisieren
+      initApp();
+    }
   }
 }
 
