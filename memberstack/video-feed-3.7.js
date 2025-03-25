@@ -300,8 +300,40 @@ class VideoFeedApp {
     
     // Wenn der Fortschrittsbalken existiert, aktualisieren
     if (this.uploadProgress) {
+      // Prozentsatz berechnen
       const progressPercent = maxUploads > 0 ? (videoCount / maxUploads) * 100 : 0;
+      
+      // Farbklassen basierend auf Fortschritt
+      this.uploadProgress.classList.remove("progress-low", "progress-medium", "progress-high", "progress-full");
+      
+      if (progressPercent >= 100) {
+        this.uploadProgress.classList.add("progress-full");
+      } else if (progressPercent >= 70) {
+        this.uploadProgress.classList.add("progress-high");
+      } else if (progressPercent >= 40) {
+        this.uploadProgress.classList.add("progress-medium");
+      } else {
+        this.uploadProgress.classList.add("progress-low");
+      }
+      
+      // Breite aktualisieren - Animation durch CSS
       this.uploadProgress.style.width = `${progressPercent}%`;
+    }
+    
+    // Prüfen, ob das Limit erreicht ist
+    const isLimitReached = videoCount >= maxUploads;
+    
+    // Den "video-upload-button" finden und je nach Limit-Status ein/ausblenden
+    const uploadButton = document.getElementById("video-upload-button");
+    if (uploadButton) {
+      if (isLimitReached) {
+        // Button ausblenden
+        uploadButton.style.display = "none";
+        console.log("📋 Video-Feed: Upload-Limit erreicht, Button ausgeblendet");
+      } else {
+        // Button anzeigen
+        uploadButton.style.display = "";
+      }
     }
   }
 
@@ -311,30 +343,54 @@ class VideoFeedApp {
   createUploadButton() {
     if (!this.videoContainer) return;
     
+    // Prüfen ob das Limit bereits erreicht ist
+    const isLimitReached = this.userVideos.length >= this.getMembershipLimit(this.currentMember);
+    
     const buttonContainer = document.createElement("div");
     buttonContainer.classList.add("db-upload-empty-state");
     
-    const uploadButton = document.createElement("a");
-    uploadButton.href = "#"; // Link zur Upload-Seite
-    uploadButton.classList.add("db-button-medium-gradient-pink");
-    uploadButton.textContent = "Lade dein erstes Video hoch";
-    
-    // Event-Listener für Upload-Button (kann an Upload-Modal oder Seite weiterleiten)
-    uploadButton.addEventListener("click", (e) => {
-      e.preventDefault();
+    if (isLimitReached) {
+      // Hinweis anzeigen, dass das Limit erreicht ist
+      const limitMessage = document.createElement("div");
+      limitMessage.classList.add("upload-limit-message");
+      limitMessage.innerHTML = `
+        <h3>Upload-Limit erreicht</h3>
+        <p>Du hast dein maximales Upload-Limit erreicht. Upgrade deinen Plan für mehr Uploads.</p>
+      `;
       
-      // Weiterleitung zur Upload-Seite oder Öffnen eines Upload-Modals
-      // Falls ein globaler Event-Handler existiert, diesen auslösen
-      if (typeof window.openUploadModal === "function") {
-        window.openUploadModal();
-      } else {
-        // Custom Event auslösen, das von anderen Skripten abgefangen werden kann
-        const uploadEvent = new CustomEvent('videoUploadRequest');
-        document.dispatchEvent(uploadEvent);
-      }
-    });
+      // Optional: Upgrade-Button
+      const upgradeButton = document.createElement("a");
+      upgradeButton.href = "#upgrade"; // Link zur Upgrade-Seite
+      upgradeButton.classList.add("db-button-medium");
+      upgradeButton.textContent = "Plan upgraden";
+      
+      buttonContainer.appendChild(limitMessage);
+      buttonContainer.appendChild(upgradeButton);
+    } else {
+      // Normaler Upload-Button
+      const uploadButton = document.createElement("a");
+      uploadButton.href = "#"; // Link zur Upload-Seite
+      uploadButton.classList.add("db-button-medium-gradient-pink");
+      uploadButton.textContent = "Lade dein erstes Video hoch";
+      
+      // Event-Listener für Upload-Button (kann an Upload-Modal oder Seite weiterleiten)
+      uploadButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        
+        // Weiterleitung zur Upload-Seite oder Öffnen eines Upload-Modals
+        // Falls ein globaler Event-Handler existiert, diesen auslösen
+        if (typeof window.openUploadModal === "function") {
+          window.openUploadModal();
+        } else {
+          // Custom Event auslösen, das von anderen Skripten abgefangen werden kann
+          const uploadEvent = new CustomEvent('videoUploadRequest');
+          document.dispatchEvent(uploadEvent);
+        }
+      });
+      
+      buttonContainer.appendChild(uploadButton);
+    }
     
-    buttonContainer.appendChild(uploadButton);
     this.videoContainer.appendChild(buttonContainer);
   }
 
@@ -349,6 +405,20 @@ class VideoFeedApp {
     
     // Container leeren
     this.videoContainer.innerHTML = "";
+    
+    // Prüfen, ob das Limit erreicht ist
+    const maxUploads = this.getMembershipLimit(this.currentMember);
+    const isLimitReached = videos && videos.length >= maxUploads;
+    
+    if (isLimitReached) {
+      console.log("📋 Video-Feed: Upload-Limit erreicht", videos.length, "/", maxUploads);
+      
+      // Optional: Limit-Info anzeigen, wenn Limit erreicht aber Videos vorhanden sind
+      const limitInfo = document.createElement("div");
+      limitInfo.classList.add("upload-limit-info");
+      limitInfo.textContent = "Upload-Limit erreicht (" + videos.length + "/" + maxUploads + ")";
+      this.videoContainer.appendChild(limitInfo);
+    }
     
     if (!videos || videos.length === 0) {
       // Statt Fehlermeldung den Upload-Button anzeigen
@@ -441,6 +511,31 @@ class VideoFeedApp {
       
       this.videoContainer.appendChild(wrapperDiv);
     });
+    
+    // Button für neue Videos hinzufügen, wenn Limit nicht erreicht
+    if (!isLimitReached && videos && videos.length > 0) {
+      const addButtonContainer = document.createElement("div");
+      addButtonContainer.classList.add("db-upload-add-new");
+      
+      const addButton = document.createElement("a");
+      addButton.href = "#";
+      addButton.classList.add("db-button-medium-gradient-pink");
+      addButton.textContent = "Video hinzufügen";
+      
+      addButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        
+        if (typeof window.openUploadModal === "function") {
+          window.openUploadModal();
+        } else {
+          const uploadEvent = new CustomEvent('videoUploadRequest');
+          document.dispatchEvent(uploadEvent);
+        }
+      });
+      
+      addButtonContainer.appendChild(addButton);
+      this.videoContainer.appendChild(addButtonContainer);
+    }
   }
 
   /**
