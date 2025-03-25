@@ -437,18 +437,13 @@ class VideoFeedApp {
     // Container leeren
     this.videoContainer.innerHTML = "";
     
-    // Prüfen, ob das Limit erreicht ist
+    // Prüfen, ob das Limit erreicht ist (nur für Logging)
     const maxUploads = this.getMembershipLimit(this.currentMember);
     const isLimitReached = videos && videos.length >= maxUploads;
     
     if (isLimitReached) {
       console.log("📋 Video-Feed: Upload-Limit erreicht", videos.length, "/", maxUploads);
-      
-      // Optional: Limit-Info anzeigen, wenn Limit erreicht aber Videos vorhanden sind
-      const limitInfo = document.createElement("div");
-      limitInfo.classList.add("upload-limit-info");
-      limitInfo.textContent = "Upload-Limit erreicht (" + videos.length + "/" + maxUploads + ")";
-      this.videoContainer.appendChild(limitInfo);
+      // Keine Meldung im Feed anzeigen - nur in der separaten Limit-Message
     }
     
     if (!videos || videos.length === 0) {
