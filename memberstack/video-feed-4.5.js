@@ -199,12 +199,14 @@ class VideoFeedApp {
   }
 
   /**
-   * Videos für einen bestimmten User abrufen
+   * Videos für einen bestimmten User abrufen mit verschiedenen Filter-Optionen
    */
   async getVideosByUserId(userId) {
     if (!userId) {
       throw new Error("User ID fehlt");
     }
+    
+    console.log("📋 Video-Feed: Lade Videos für User-ID:", userId);
     
     const cacheKey = `videos_${userId}`;
     const cachedVideos = this.cache.get(cacheKey);
@@ -218,35 +220,63 @@ class VideoFeedApp {
     const videoCollectionId = window.WEBFLOW_API.VIDEO_COLLECTION_ID || "67d806e65cadcadf2f41e659";
     console.log("📋 Video-Feed: Video Collection ID:", videoCollectionId);
     
-    // API-Anfrage
-    const filterQuery = `{"user-id":{"eq":"${userId}"}}`;
-    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${videoCollectionId}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
-    const workerUrl = this.buildWorkerUrl(apiUrl);
+    // Wir testen verschiedene Feldnamen, da der richtige Feldname in Webflow 
+    // möglicherweise nicht "user-id" ist
+    const possibleFieldNames = [
+      "user-id",         // Standard-Versuch
+      "webflow-id",      // Alternative 1
+      "webflow-user-id", // Alternative 2
+      "member-id"        // Alternative 3
+    ];
     
-    try {
-      const data = await this.fetchApi(workerUrl);
+    let videos = [];
+    
+    // Versuche jeden möglichen Feldnamen
+    for (const fieldName of possibleFieldNames) {
+      if (videos.length > 0) break; // Breche ab, wenn Videos gefunden wurden
       
-      if (!data.items || data.items.length === 0) {
-        console.log("📋 Video-Feed: Keine Videos gefunden für User", userId);
-        return [];
+      // API-Anfrage mit dem aktuellen Feldnamen
+      const filterQuery = `{"${fieldName}":{"eq":"${userId}"}}`;
+      const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${videoCollectionId}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
+      const workerUrl = this.buildWorkerUrl(apiUrl);
+      
+      console.log(`📋 Video-Feed: Versuche Filter mit Feld "${fieldName}": ${filterQuery}`);
+      
+      try {
+        const data = await this.fetchApi(workerUrl);
+        
+        if (data.items && data.items.length > 0) {
+          console.log(`📋 Video-Feed: Videos gefunden mit Feld "${fieldName}"!`);
+          
+          // Videos extrahieren - mit ID
+          videos = data.items.map(item => ({
+            "id": item.id, // Webflow Item ID hinzufügen
+            "video-link": item.fieldData["video-link"],
+            "video-name": item.fieldData["video-name"],
+            "video-kategorie": item.fieldData["video-kategorie"]
+          })).filter(video => video["video-link"]);
+          
+          console.log(`📋 Video-Feed: ${videos.length} Videos geladen für User ${userId} mit Feld "${fieldName}"`);
+          
+          // Für künftige Anfragen das erfolgreiche Feld merken
+          window.WEBFLOW_API.USER_ID_FIELD_NAME = fieldName;
+          
+          break; // Wir haben Videos gefunden, weitere Versuche nicht nötig
+        }
+      } catch (error) {
+        console.warn(`📋 Video-Feed: Fehler beim Abfragen mit Feldname "${fieldName}"`, error);
+        // Weiter zum nächsten Feldnamen
       }
-      
-      // Videos extrahieren - mit ID
-      const videos = data.items.map(item => ({
-        "id": item.id, // Webflow Item ID hinzufügen
-        "video-link": item.fieldData["video-link"],
-        "video-name": item.fieldData["video-name"],
-        "video-kategorie": item.fieldData["video-kategorie"]
-      })).filter(video => video["video-link"]);
-      
-      console.log(`📋 Video-Feed: ${videos.length} Videos geladen`);
-      
-      this.cache.set(cacheKey, videos);
-      return videos;
-    } catch (error) {
-      console.error("📋 Video-Feed: Fehler beim Abrufen der Videos", error);
-      throw error;
     }
+    
+    // Cache die Videos, wenn welche gefunden wurden
+    if (videos.length > 0) {
+      this.cache.set(cacheKey, videos);
+    } else {
+      console.log("📋 Video-Feed: Keine Videos gefunden für User", userId, "mit allen getesteten Feldnamen");
+    }
+    
+    return videos;
   }
 
   /**
