@@ -1,9 +1,8 @@
 // 🌐 Webflow API Integration für Video-Feed
-// Optimierte Version
+// Optimierte Version 2.0
 
 /**
- * Erzwinge Standard-Konfigurationswerte - diese werden im globalen Scope gesetzt,
- * damit sie definitiv vor der Klassendefinition verfügbar sind
+ * Konfigurationswerte mit Defaults
  */
 const DEFAULT_BASE_URL = "https://api.webflow.com/v2/collections";
 const DEFAULT_WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url=";
@@ -51,6 +50,7 @@ if (!window.WEBFLOW_API.CATEGORY_MAPPING) {
 // Debug-Informationen zur Konfiguration ausgeben
 console.log("📋 Video-Feed: WEBFLOW_API Konfiguration:", {
   BASE_URL: window.WEBFLOW_API.BASE_URL,
+  WORKER_BASE_URL: window.WEBFLOW_API.WORKER_BASE_URL,
   MEMBER_COLLECTION_ID: window.WEBFLOW_API.MEMBER_COLLECTION_ID,
   VIDEO_COLLECTION_ID: window.WEBFLOW_API.VIDEO_COLLECTION_ID,
   FREE_MEMBER_LIMIT: window.WEBFLOW_API.FREE_MEMBER_LIMIT,
@@ -63,6 +63,7 @@ console.log("📋 Video-Feed: WEBFLOW_API Konfiguration:", {
 class SimpleCache {
   constructor() {
     this.items = {};
+    this.expiration = 5 * 60 * 1000; // 5 Minuten Standard-Cache-Zeit
   }
 
   get(key) {
@@ -70,7 +71,7 @@ class SimpleCache {
     if (!item) return null;
     
     // Prüfen ob abgelaufen
-    if (Date.now() - item.timestamp > 5 * 60 * 1000) { // 5 Minuten
+    if (Date.now() - item.timestamp > this.expiration) { 
       delete this.items[key];
       return null;
     }
@@ -118,11 +119,11 @@ class VideoFeedApp {
     this.currentMember = null;
     this.userVideos = [];
     
-    // Feste Werte für die Uploads direkt als Klasseneigenschaften definieren
-    this.FREE_MEMBER_LIMIT = 1;
-    this.PAID_MEMBER_LIMIT = 12;
-    
-    console.log("📋 Video-Feed: Initialisiert mit Limits:", this.FREE_MEMBER_LIMIT, this.PAID_MEMBER_LIMIT);
+    // Wir verwenden keine hardcoded Limits mehr, sondern beziehen sie aus der Konfiguration
+    console.log("📋 Video-Feed: Initialisiert mit Limits:", 
+      window.WEBFLOW_API.FREE_MEMBER_LIMIT, 
+      window.WEBFLOW_API.PAID_MEMBER_LIMIT
+    );
   }
 
   /**
@@ -133,34 +134,63 @@ class VideoFeedApp {
   }
 
   /**
-   * API-Anfrage mit Retry-Logik
+   * Einen vollständigen API-Endpunkt erstellen
+   */
+  buildApiUrl(path, params = {}) {
+    const baseUrl = `${window.WEBFLOW_API.BASE_URL}${path}`;
+    
+    // Parameter als Query-String hinzufügen, wenn vorhanden
+    const queryParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (typeof value === 'object') {
+        queryParams.append(key, encodeURIComponent(JSON.stringify(value)));
+      } else {
+        queryParams.append(key, value);
+      }
+    }
+    
+    const queryString = queryParams.toString();
+    return queryString ? `${baseUrl}?${queryString}` : baseUrl;
+  }
+
+  /**
+   * API-Anfrage mit Retry-Logik und besserem Error-Handling
    */
   async fetchApi(url, retries = 2) {
-    try {
-      console.log("📋 Video-Feed: Anfrage an", url);
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("📋 Video-Feed: API-Fehler", response.status, errorText);
+    let attempt = 1;
+    
+    while (true) {
+      try {
+        console.log(`📋 Video-Feed: API-Anfrage (Versuch ${attempt}/${retries + 1}) an`, url);
+        const response = await fetch(url);
         
-        if (retries > 0) {
-          console.log("📋 Video-Feed: Wiederhole Anfrage...");
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return this.fetchApi(url, retries - 1);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`📋 Video-Feed: API-Fehler ${response.status}:`, errorText);
+          
+          if (attempt <= retries) {
+            const delay = Math.min(1000 * attempt, 3000); // Exponential Backoff
+            console.log(`📋 Video-Feed: Wiederhole in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            attempt++;
+            continue;
+          }
+          
+          throw new Error(`API-Fehler: ${response.status} - ${errorText.substring(0, 100)}`);
         }
         
-        throw new Error(`API-Fehler: ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        if (attempt <= retries) {
+          const delay = Math.min(1000 * attempt, 3000);
+          console.log(`📋 Video-Feed: Fehler, wiederhole in ${delay}ms...`, error.message);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          attempt++;
+          continue;
+        }
+        console.error("📋 Video-Feed: Maximale Anzahl an Versuchen erreicht", error);
+        throw error;
       }
-      
-      return await response.json();
-    } catch (error) {
-      if (retries > 0) {
-        console.log("📋 Video-Feed: Wiederhole nach Fehler...");
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return this.fetchApi(url, retries - 1);
-      }
-      throw error;
     }
   }
 
@@ -183,11 +213,11 @@ class VideoFeedApp {
     }
     
     // Stelle sicher, dass wir eine gültige Collection-ID haben
-    const memberCollectionId = window.WEBFLOW_API.MEMBER_COLLECTION_ID || DEFAULT_MEMBER_COLLECTION_ID;
+    const memberCollectionId = window.WEBFLOW_API.MEMBER_COLLECTION_ID;
     console.log("📋 Video-Feed: Verwende Member-Collection-ID:", memberCollectionId);
     
     // Direkter API-Aufruf mit der ID und /live Endpunkt für veröffentlichte Inhalte
-    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${memberCollectionId}/items/${webflowId}/live`;
+    const apiUrl = this.buildApiUrl(`/${memberCollectionId}/items/${webflowId}/live`);
     const workerUrl = this.buildWorkerUrl(apiUrl);
     
     try {
@@ -199,6 +229,20 @@ class VideoFeedApp {
       }
       
       console.log("📋 Video-Feed: User gefunden in Member-Collection:", user.id);
+      
+      // Zusätzliches Logging zur Überprüfung der fieldData und des video-feed Feldes
+      if (user.fieldData && user.fieldData["video-feed"]) {
+        console.log("📋 Video-Feed: User hat video-feed Feld mit", 
+          Array.isArray(user.fieldData["video-feed"]) ? 
+          user.fieldData["video-feed"].length + " Einträgen" : 
+          "Wert " + typeof user.fieldData["video-feed"]
+        );
+      } else {
+        console.warn("📋 Video-Feed: User hat KEIN video-feed Feld in fieldData!");
+        console.log("📋 Video-Feed: Verfügbare Felder:", 
+          user.fieldData ? Object.keys(user.fieldData).join(", ") : "keine fieldData"
+        );
+      }
       
       this.cache.set(cacheKey, user);
       return user;
@@ -212,8 +256,16 @@ class VideoFeedApp {
    * Holt die Videos aus dem Video-Feed des Users
    */
   async getVideosFromUserFeed(user) {
-    if (!user || !user.fieldData || !user.fieldData["video-feed"]) {
+    if (!user || !user.fieldData) {
+      console.log("📋 Video-Feed: Keine fieldData im User-Profil gefunden");
+      return [];
+    }
+    
+    // Vorsichtiger Zugriff auf das video-feed Feld
+    if (!user.fieldData["video-feed"]) {
       console.log("📋 Video-Feed: Keine Video-Referenzen im User-Profil gefunden");
+      // Alle verfügbaren Felder zur Diagnose ausgeben
+      console.log("📋 Video-Feed: Verfügbare Felder:", Object.keys(user.fieldData).join(", "));
       return [];
     }
     
@@ -222,8 +274,10 @@ class VideoFeedApp {
     
     // Detaillierte Debug-Informationen über das video-feed Feld
     console.log("📋 Video-Feed: Video-Feed-Typ:", Array.isArray(videoFeed) ? "Array" : typeof videoFeed);
-    console.log("📋 Video-Feed: Video-Feed-Länge:", videoFeed.length);
-    console.log("📋 Video-Feed: Erster Eintrag Typ:", videoFeed.length > 0 ? typeof videoFeed[0] : "Leer");
+    console.log("📋 Video-Feed: Video-Feed-Länge:", Array.isArray(videoFeed) ? videoFeed.length : "N/A");
+    console.log("📋 Video-Feed: Erster Eintrag Typ:", 
+      Array.isArray(videoFeed) && videoFeed.length > 0 ? typeof videoFeed[0] : "N/A"
+    );
     
     if (!videoFeed || !Array.isArray(videoFeed) || videoFeed.length === 0) {
       console.log("📋 Video-Feed: Leerer Video-Feed im User-Profil");
@@ -244,8 +298,9 @@ class VideoFeedApp {
       return cachedVideos;
     }
     
-    // Stelle sicher, dass wir eine gültige Collection-ID haben
-    const videoCollectionId = DEFAULT_VIDEO_COLLECTION_ID;
+    // Verwende die konfigurierte Video-Collection-ID
+    // FIX: Verwende die konfigurierte ID statt der Default-Konstante direkt
+    const videoCollectionId = window.WEBFLOW_API.VIDEO_COLLECTION_ID;
     console.log("📋 Video-Feed: Verwende Video-Collection-ID:", videoCollectionId);
     
     // Videos aus der Video-Collection laden
@@ -257,10 +312,13 @@ class VideoFeedApp {
       
       // IDs in Anführungszeichen setzen und mit Komma trennen
       const idList = videoFeed.map(id => `"${id}"`).join(",");
-      const filterQuery = `{"id":{"in":[${idList}]}}`;
       
-      // Verwende live=true Parameter für veröffentlichte Inhalte
-      const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${videoCollectionId}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
+      // Verwende die buildApiUrl-Methode für konsistente URL-Erstellung
+      const apiUrl = this.buildApiUrl(`/${videoCollectionId}/items`, {
+        live: true,
+        filter: { id: { in: videoFeed } }
+      });
+      
       const workerUrl = this.buildWorkerUrl(apiUrl);
       
       console.log("📋 Video-Feed: API-URL:", apiUrl);
@@ -268,13 +326,24 @@ class VideoFeedApp {
       const data = await this.fetchApi(workerUrl);
       
       if (data.items && data.items.length > 0) {
-        // Extrahiere die Video-Daten
-        videos = data.items.map(item => ({
-          "id": item.id,
-          "video-link": item.fieldData["video-link"],
-          "video-name": item.fieldData["video-name"] || item.fieldData["name"],
-          "video-kategorie": item.fieldData["video-kategorie"]
-        })).filter(video => video["video-link"]);
+        // Extrahiere die Video-Daten mit Prüfungen auf fehlende Felder
+        videos = data.items
+          .map(item => {
+            // Sicherheitsprüfungen für jedes Feld
+            const videoData = {
+              "id": item.id
+            };
+            
+            // Sicher Felder abfragen
+            if (item.fieldData) {
+              videoData["video-link"] = item.fieldData["video-link"];
+              videoData["video-name"] = item.fieldData["video-name"] || item.fieldData["name"] || "Unbenanntes Video";
+              videoData["video-kategorie"] = item.fieldData["video-kategorie"];
+            }
+            
+            return videoData;
+          })
+          .filter(video => video["video-link"]); // Nur Videos mit gültigem Link behalten
         
         console.log(`📋 Video-Feed: ${videos.length} Videos geladen mit den nötigen Daten`);
       } else {
@@ -315,12 +384,19 @@ class VideoFeedApp {
     }
     
     // Option 2: Fallback auf ältere Memberstack-Version
-    if (!isPaid && (member.data.acl?.includes("paid") || member.data.status === "paid")) {
+    if (!isPaid && member.data.acl && (
+        member.data.acl.includes("paid") || 
+        member.data.status === "paid"
+      )) {
       isPaid = true;
       console.log("📋 Video-Feed: Paid-Member erkannt über acl/status");
     }
     
-    const limit = isPaid ? window.WEBFLOW_API.PAID_MEMBER_LIMIT : window.WEBFLOW_API.FREE_MEMBER_LIMIT;
+    // Verwende die konfigurierten Werte statt hardcoded Werte
+    const limit = isPaid ? 
+      window.WEBFLOW_API.PAID_MEMBER_LIMIT : 
+      window.WEBFLOW_API.FREE_MEMBER_LIMIT;
+      
     console.log(`📋 Video-Feed: Mitglied (${isPaid ? 'PAID' : 'FREE'}) erhält Limit:`, limit);
     
     return limit;
@@ -497,7 +573,6 @@ class VideoFeedApp {
       
       // Videodata-ID als Attribut setzen
       const videoId = videoData.id;
-      console.log("📋 Video-Feed: Video-ID für Edit-Button:", videoId);
       
       editButton.setAttribute("data-video-edit", videoId);
       editButton.innerHTML = `<img src="https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/678a26c04581673826145b8b_settings.svg" alt="Bearbeiten">`;
@@ -621,38 +696,11 @@ class VideoFeedApp {
       console.log("📋 Video-Feed: Eingeloggter User mit Memberstack-ID", memberstackId);
       
       // Video-Limit basierend auf Membership bestimmen
-      // Hier direkt den Rückgabewert in einer lokalen Variable speichern
       const maxUploads = this.getMembershipLimit(member);
-      console.log("📋 Video-Feed: Maximale Uploads für User (nach Berechnung):", maxUploads);
+      console.log("📋 Video-Feed: Maximale Uploads für User:", maxUploads);
       
       // 1. Webflow-ID aus den Custom Fields der Memberstack-Daten extrahieren
-      let webflowMemberId = null;
-      
-      // Mögliche Orte für die Webflow-ID prüfen
-      if (member.data.customFields && member.data.customFields["webflow-member-id"]) {
-        webflowMemberId = member.data.customFields["webflow-member-id"];
-        console.log("📋 Video-Feed: Webflow-Member-ID aus customFields gefunden:", webflowMemberId);
-      } 
-      else if (member.data.metaData && member.data.metaData["webflow-member-id"]) {
-        webflowMemberId = member.data.metaData["webflow-member-id"];
-        console.log("📋 Video-Feed: Webflow-Member-ID aus metaData gefunden:", webflowMemberId);
-      }
-      else {
-        // Weitere mögliche Felder prüfen
-        const possibleFields = ["webflow-id", "webflow_id", "webflowId"];
-        for (const field of possibleFields) {
-          if (member.data.customFields && member.data.customFields[field]) {
-            webflowMemberId = member.data.customFields[field];
-            console.log(`📋 Video-Feed: Webflow-Member-ID aus customFields["${field}"] gefunden:`, webflowMemberId);
-            break;
-          } 
-          else if (member.data.metaData && member.data.metaData[field]) {
-            webflowMemberId = member.data.metaData[field];
-            console.log(`📋 Video-Feed: Webflow-Member-ID aus metaData["${field}"] gefunden:`, webflowMemberId);
-            break;
-          }
-        }
-      }
+      let webflowMemberId = this.extractWebflowId(member);
       
       if (!webflowMemberId) {
         this.showError("Keine Webflow-Member-ID in den Memberstack-Daten gefunden");
@@ -672,7 +720,7 @@ class VideoFeedApp {
       const videos = await this.getVideosFromUserFeed(user);
       this.userVideos = videos;
       
-      // Upload-Counter aktualisieren - verwende hier die lokale Variable
+      // Upload-Counter aktualisieren
       this.updateUploadCounter(videos.length, maxUploads);
       
       // Videos anzeigen
@@ -680,8 +728,55 @@ class VideoFeedApp {
       
     } catch (error) {
       console.error("📋 Video-Feed: Fehler beim Laden der Videos", error);
-      this.showError("Fehler beim Laden des Video-Feeds");
+      this.showError(`Fehler beim Laden des Video-Feeds: ${error.message}`);
     }
+  }
+
+  /**
+   * Helper-Methode zum Extrahieren der Webflow-ID aus Memberstack-Daten
+   */
+  extractWebflowId(member) {
+    if (!member || !member.data) return null;
+    
+    // Mögliche Orte für die Webflow-ID prüfen
+    if (member.data.customFields && member.data.customFields["webflow-member-id"]) {
+      const id = member.data.customFields["webflow-member-id"];
+      console.log("📋 Video-Feed: Webflow-Member-ID aus customFields gefunden:", id);
+      return id;
+    } 
+    
+    if (member.data.metaData && member.data.metaData["webflow-member-id"]) {
+      const id = member.data.metaData["webflow-member-id"];
+      console.log("📋 Video-Feed: Webflow-Member-ID aus metaData gefunden:", id);
+      return id;
+    }
+    
+    // Weitere mögliche Felder prüfen
+    const possibleFields = ["webflow-id", "webflow_id", "webflowId"];
+    
+    // Prüfe customFields
+    if (member.data.customFields) {
+      for (const field of possibleFields) {
+        if (member.data.customFields[field]) {
+          console.log(`📋 Video-Feed: Webflow-Member-ID aus customFields["${field}"] gefunden:`, 
+            member.data.customFields[field]);
+          return member.data.customFields[field];
+        }
+      }
+    }
+    
+    // Prüfe metaData
+    if (member.data.metaData) {
+      for (const field of possibleFields) {
+        if (member.data.metaData[field]) {
+          console.log(`📋 Video-Feed: Webflow-Member-ID aus metaData["${field}"] gefunden:`, 
+            member.data.metaData[field]);
+          return member.data.metaData[field];
+        }
+      }
+    }
+    
+    return null;
   }
 
   /**
@@ -709,6 +804,24 @@ class VideoFeedApp {
       
       console.log("📋 Video-Feed: Container erfolgreich gefunden");
       
+      // UI-Elemente finden
+      this.findUiElements();
+      
+      // Event-Listener für Video-Feed-Updates
+      document.addEventListener('videoFeedUpdate', () => {
+        console.log("📋 Video-Feed: Update-Event empfangen, lade Feed neu");
+        
+        // Cache löschen und Daten neu laden
+        this.cache.clear();
+        this.loadUserVideos();
+      });
+      
+      // Videos laden
+      this.loadUserVideos();
+    };
+    
+    // UI-Elemente finden und speichern
+    this.findUiElements = () => {
       // Upload-Counter Element finden
       this.uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
       if (this.uploadCounter) {
@@ -726,18 +839,6 @@ class VideoFeedApp {
       if (this.limitMessageEl) {
         console.log("📋 Video-Feed: Upload-Limit-Meldungs-Element gefunden");
       }
-      
-      // Event-Listener für Video-Feed-Updates
-      document.addEventListener('videoFeedUpdate', () => {
-        console.log("📋 Video-Feed: Update-Event empfangen, lade Feed neu");
-        
-        // Cache löschen und Daten neu laden
-        this.cache.clear();
-        this.loadUserVideos();
-      });
-      
-      // Videos laden
-      this.loadUserVideos();
     };
     
     // Prüfen, ob das DOM bereits geladen ist
