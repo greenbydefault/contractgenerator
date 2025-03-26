@@ -404,7 +404,8 @@ class VideoFeedApp {
   getMembershipLimit(member) {
     if (!member || !member.data) {
       console.log("📋 Video-Feed: Kein Member-Objekt, verwende FREE_MEMBER_LIMIT");
-      return window.WEBFLOW_API.FREE_MEMBER_LIMIT;
+      // Stelle sicher, dass wir einen gültigen Fallback-Wert haben
+      return window.WEBFLOW_API.FREE_MEMBER_LIMIT || DEFAULT_FREE_MEMBER_LIMIT;
     }
     
     // Prüfen ob Paid-Member anhand der planConnections
@@ -430,11 +431,23 @@ class VideoFeedApp {
       console.log("📋 Video-Feed: Paid-Member erkannt über acl/status");
     }
     
-    // Verwende die konfigurierten Werte statt hardcoded Werte
-    const limit = isPaid ? 
-      window.WEBFLOW_API.PAID_MEMBER_LIMIT : 
-      window.WEBFLOW_API.FREE_MEMBER_LIMIT;
-      
+    // KRITISCHER FIX: Stelle sicher, dass die Limit-Werte definiert sind
+    const freeLimit = window.WEBFLOW_API.FREE_MEMBER_LIMIT || DEFAULT_FREE_MEMBER_LIMIT;
+    const paidLimit = window.WEBFLOW_API.PAID_MEMBER_LIMIT || DEFAULT_PAID_MEMBER_LIMIT;
+    
+    // Setze die globalen Werte
+    if (!window.WEBFLOW_API.FREE_MEMBER_LIMIT) {
+      console.warn("📋 Video-Feed: FREE_MEMBER_LIMIT war undefined, setze auf Default:", DEFAULT_FREE_MEMBER_LIMIT);
+      window.WEBFLOW_API.FREE_MEMBER_LIMIT = DEFAULT_FREE_MEMBER_LIMIT;
+    }
+    
+    if (!window.WEBFLOW_API.PAID_MEMBER_LIMIT) {
+      console.warn("📋 Video-Feed: PAID_MEMBER_LIMIT war undefined, setze auf Default:", DEFAULT_PAID_MEMBER_LIMIT);
+      window.WEBFLOW_API.PAID_MEMBER_LIMIT = DEFAULT_PAID_MEMBER_LIMIT;
+    }
+    
+    // Verwende die Werte mit sicheren Fallbacks
+    const limit = isPaid ? paidLimit : freeLimit;
     console.log(`📋 Video-Feed: Mitglied (${isPaid ? 'PAID' : 'FREE'}) erhält Limit:`, limit);
     
     return limit;
@@ -896,10 +909,12 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log("📋 Video-Feed: Letzte Prüfung der Konfiguration vor dem Start:", {
     BASE_URL: window.WEBFLOW_API.BASE_URL,
     MEMBER_COLLECTION_ID: window.WEBFLOW_API.MEMBER_COLLECTION_ID,
-    VIDEO_COLLECTION_ID: window.WEBFLOW_API.VIDEO_COLLECTION_ID
+    VIDEO_COLLECTION_ID: window.WEBFLOW_API.VIDEO_COLLECTION_ID,
+    FREE_MEMBER_LIMIT: window.WEBFLOW_API.FREE_MEMBER_LIMIT,
+    PAID_MEMBER_LIMIT: window.WEBFLOW_API.PAID_MEMBER_LIMIT
   });
   
-  // Stelle absolut sicher, dass die Collection-IDs gesetzt sind
+  // Stelle absolut sicher, dass alle wichtigen Konfigurationswerte gesetzt sind
   if (!window.WEBFLOW_API.MEMBER_COLLECTION_ID) {
     console.warn("📋 Video-Feed: MEMBER_COLLECTION_ID fehlt immer noch, setze auf Default:", DEFAULT_MEMBER_COLLECTION_ID);
     window.WEBFLOW_API.MEMBER_COLLECTION_ID = DEFAULT_MEMBER_COLLECTION_ID;
@@ -908,6 +923,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!window.WEBFLOW_API.VIDEO_COLLECTION_ID) {
     console.warn("📋 Video-Feed: VIDEO_COLLECTION_ID fehlt immer noch, setze auf Default:", DEFAULT_VIDEO_COLLECTION_ID);
     window.WEBFLOW_API.VIDEO_COLLECTION_ID = DEFAULT_VIDEO_COLLECTION_ID;
+  }
+  
+  // KRITISCHER FIX: Stelle sicher, dass die Membership-Limits gesetzt sind
+  if (!window.WEBFLOW_API.FREE_MEMBER_LIMIT) {
+    console.warn("📋 Video-Feed: FREE_MEMBER_LIMIT fehlt immer noch, setze auf Default:", DEFAULT_FREE_MEMBER_LIMIT);
+    window.WEBFLOW_API.FREE_MEMBER_LIMIT = DEFAULT_FREE_MEMBER_LIMIT;
+  }
+  
+  if (!window.WEBFLOW_API.PAID_MEMBER_LIMIT) {
+    console.warn("📋 Video-Feed: PAID_MEMBER_LIMIT fehlt immer noch, setze auf Default:", DEFAULT_PAID_MEMBER_LIMIT);
+    window.WEBFLOW_API.PAID_MEMBER_LIMIT = DEFAULT_PAID_MEMBER_LIMIT;
   }
   
   try {
