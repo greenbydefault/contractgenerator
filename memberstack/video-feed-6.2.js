@@ -933,6 +933,7 @@ class VideoFeedApp {
     } else {
       console.warn(`📋 Video-Feed: Upload-Limit-Meldungs-Element mit ID '${window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID}' nicht gefunden`);
     }
+    }
   }
     
     // Prüfen, ob das DOM bereits geladen ist
