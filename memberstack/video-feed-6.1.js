@@ -908,9 +908,7 @@ class VideoFeedApp {
       this.loadUserVideos();
     };
     
-  /**
-   * UI-Elemente finden
-   */
+  // UI-Elemente finden
   findUiElements() {
     // Upload-Counter Element finden
     this.uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
