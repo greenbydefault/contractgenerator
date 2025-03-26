@@ -138,44 +138,41 @@ class VideoFeedApp {
   }
 
   /**
-   * User-Informationen anhand der Memberstack-ID abrufen
+   * User direkt anhand der Webflow-ID abrufen
    */
-  async getUserByMemberstackId(memberstackId) {
-    if (!memberstackId) {
-      throw new Error("Memberstack ID fehlt");
+  async getUserByWebflowId(webflowId) {
+    if (!webflowId) {
+      throw new Error("Webflow-ID fehlt");
     }
     
-    console.log("📋 Video-Feed: Suche User mit Memberstack-ID:", memberstackId);
+    console.log("📋 Video-Feed: Rufe User mit Webflow-ID ab:", webflowId);
     
-    const cacheKey = `user_${memberstackId}`;
+    const cacheKey = `webflow_user_${webflowId}`;
     const cachedUser = this.cache.get(cacheKey);
     
     if (cachedUser) {
-      console.log("📋 Video-Feed: User aus Cache geladen", memberstackId);
+      console.log("📋 Video-Feed: User aus Cache geladen", webflowId);
       return cachedUser;
     }
     
-    // API-Anfrage, um den User in der Member-Collection zu finden
-    const filterQuery = `{"memberstack-id":{"eq":"${memberstackId}"}}`;
-    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBER_COLLECTION_ID}/items?live=true&limit=1&filter=${encodeURIComponent(filterQuery)}`;
+    // Direkter API-Aufruf mit der ID ohne Filterung
+    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBER_COLLECTION_ID}/items/${webflowId}`;
     const workerUrl = this.buildWorkerUrl(apiUrl);
     
     try {
-      const data = await this.fetchApi(workerUrl);
+      const user = await this.fetchApi(workerUrl);
       
-      if (!data.items || data.items.length === 0) {
-        console.warn("📋 Video-Feed: Kein User gefunden mit Memberstack-ID", memberstackId);
+      if (!user || !user.id) {
+        console.warn("📋 Video-Feed: Kein User gefunden mit Webflow-ID", webflowId);
         return null;
       }
       
-      const user = data.items[0];
       console.log("📋 Video-Feed: User gefunden in Member-Collection:", user.id);
-      console.log("📋 Video-Feed: User-Daten:", user);
       
       this.cache.set(cacheKey, user);
       return user;
     } catch (error) {
-      console.error("📋 Video-Feed: Fehler beim Abrufen des Users", error);
+      console.error("📋 Video-Feed: Fehler beim Abrufen des Users mit Webflow-ID", error);
       throw error;
     }
   }
@@ -191,37 +188,84 @@ class VideoFeedApp {
     
     // Das video-feed Feld enthält die IDs der verknüpften Videos
     const videoIds = user.fieldData["video-feed"];
-    console.log("📋 Video-Feed: Gefundene Video-IDs im User-Feed:", videoIds);
     
-    if (!videoIds.length) {
+    if (!videoIds || !videoIds.length) {
       console.log("📋 Video-Feed: Keine Videos im Feed des Users");
       return [];
     }
     
-    // Videos aus der Video-Collection laden (einzeln oder als Batch)
+    console.log(`📋 Video-Feed: ${videoIds.length} Video-IDs im User-Feed gefunden:`, videoIds);
+    
+    // Caching für bessere Performance
+    const cacheKey = `videos_${user.id}`;
+    const cachedVideos = this.cache.get(cacheKey);
+    
+    if (cachedVideos) {
+      console.log(`📋 Video-Feed: ${cachedVideos.length} Videos aus Cache geladen`);
+      return cachedVideos;
+    }
+    
+    // Videos aus der Video-Collection laden
     let videos = [];
     
     try {
-      // Option 1: Abrufen der Videos über die IDs via Filter (wenn es wenige sind)
-      const idList = videoIds.join('","');
-      const filterQuery = `{"id":{"in":["${idList}"]}}`;
-      const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.VIDEO_COLLECTION_ID}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
-      const workerUrl = this.buildWorkerUrl(apiUrl);
-      
-      console.log("📋 Video-Feed: Lade Videos aus Collection mit Filter:", filterQuery);
-      
-      const data = await this.fetchApi(workerUrl);
-      
-      if (data.items && data.items.length > 0) {
-        videos = data.items.map(item => ({
-          "id": item.id,
-          "video-link": item.fieldData["video-link"],
-          "video-name": item.fieldData["video-name"] || item.fieldData["name"],
-          "video-kategorie": item.fieldData["video-kategorie"]
-        })).filter(video => video["video-link"]);
+      // Falls weniger als 10 IDs, einzeln laden - ansonsten via Filter mit IN-Operator
+      if (videoIds.length <= 10) {
+        console.log("📋 Video-Feed: Lade Videos einzeln...");
         
-        console.log(`📋 Video-Feed: ${videos.length} Videos geladen`);
+        // Videos parallel laden
+        const videoPromises = videoIds.map(async (videoId) => {
+          try {
+            const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.VIDEO_COLLECTION_ID}/items/${videoId}`;
+            const workerUrl = this.buildWorkerUrl(apiUrl);
+            const videoData = await this.fetchApi(workerUrl);
+            
+            if (videoData && videoData.id) {
+              return {
+                "id": videoData.id,
+                "video-link": videoData.fieldData["video-link"],
+                "video-name": videoData.fieldData["video-name"] || videoData.fieldData["name"],
+                "video-kategorie": videoData.fieldData["video-kategorie"]
+              };
+            }
+            return null;
+          } catch (error) {
+            console.warn(`📋 Video-Feed: Fehler beim Laden von Video ${videoId}:`, error);
+            return null;
+          }
+        });
+        
+        // Alle Ergebnisse sammeln und null-Werte filtern
+        const videoResults = await Promise.all(videoPromises);
+        videos = videoResults.filter(video => video !== null && video["video-link"]);
+      } 
+      else {
+        // Für viele Videos Filter mit IN-Operator verwenden
+        console.log("📋 Video-Feed: Lade Videos via Filter...");
+        
+        // IDs in Anführungszeichen setzen und mit Komma trennen
+        const idList = videoIds.map(id => `"${id}"`).join(",");
+        const filterQuery = `{"id":{"in":[${idList}]}}`;
+        const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.VIDEO_COLLECTION_ID}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
+        const workerUrl = this.buildWorkerUrl(apiUrl);
+        
+        const data = await this.fetchApi(workerUrl);
+        
+        if (data.items && data.items.length > 0) {
+          videos = data.items.map(item => ({
+            "id": item.id,
+            "video-link": item.fieldData["video-link"],
+            "video-name": item.fieldData["video-name"] || item.fieldData["name"],
+            "video-kategorie": item.fieldData["video-kategorie"]
+          })).filter(video => video["video-link"]);
+        }
       }
+      
+      console.log(`📋 Video-Feed: ${videos.length} Videos geladen`);
+      
+      // Im Cache speichern
+      this.cache.set(cacheKey, videos);
+      
     } catch (error) {
       console.error("📋 Video-Feed: Fehler beim Laden der Videos", error);
     }
@@ -562,15 +606,50 @@ class VideoFeedApp {
       const maxUploads = this.getMembershipLimit(member);
       console.log("📋 Video-Feed: Maximale Uploads für User:", maxUploads);
       
-      // 1. User in der Member-Collection finden
-      const user = await this.getUserByMemberstackId(memberstackId);
+      // 1. Webflow-ID aus den Custom Fields der Memberstack-Daten extrahieren
+      let webflowMemberId = null;
       
-      if (!user) {
-        this.showError("User nicht in der Webflow-Datenbank gefunden");
+      // Mögliche Orte für die Webflow-ID prüfen
+      if (member.data.customFields && member.data.customFields["webflow-member-id"]) {
+        webflowMemberId = member.data.customFields["webflow-member-id"];
+        console.log("📋 Video-Feed: Webflow-Member-ID aus customFields gefunden:", webflowMemberId);
+      } 
+      else if (member.data.metaData && member.data.metaData["webflow-member-id"]) {
+        webflowMemberId = member.data.metaData["webflow-member-id"];
+        console.log("📋 Video-Feed: Webflow-Member-ID aus metaData gefunden:", webflowMemberId);
+      }
+      else {
+        // Weitere mögliche Felder prüfen
+        const possibleFields = ["webflow-id", "webflow_id", "webflowId"];
+        for (const field of possibleFields) {
+          if (member.data.customFields && member.data.customFields[field]) {
+            webflowMemberId = member.data.customFields[field];
+            console.log(`📋 Video-Feed: Webflow-Member-ID aus customFields["${field}"] gefunden:`, webflowMemberId);
+            break;
+          } 
+          else if (member.data.metaData && member.data.metaData[field]) {
+            webflowMemberId = member.data.metaData[field];
+            console.log(`📋 Video-Feed: Webflow-Member-ID aus metaData["${field}"] gefunden:`, webflowMemberId);
+            break;
+          }
+        }
+      }
+      
+      if (!webflowMemberId) {
+        this.showError("Keine Webflow-Member-ID in den Memberstack-Daten gefunden");
+        console.error("📋 Video-Feed: Memberstack-Daten ohne Webflow-ID:", member.data);
         return;
       }
       
-      // 2. Videos aus dem Video-Feed des Users holen
+      // 2. User direkt mit der Webflow-ID abrufen
+      const user = await this.getUserByWebflowId(webflowMemberId);
+      
+      if (!user) {
+        this.showError(`User mit Webflow-ID "${webflowMemberId}" nicht gefunden`);
+        return;
+      }
+      
+      // 3. Videos aus dem Video-Feed des Users holen
       const videos = await this.getVideosFromUserFeed(user);
       this.userVideos = videos;
       
