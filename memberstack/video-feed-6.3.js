@@ -892,8 +892,7 @@ class VideoFeedApp {
       
       console.log("📋 Video-Feed: Container erfolgreich gefunden");
       
-      // UI-Elemente finden
-      this.findUiElements();
+    
       
       // Event-Listener für Video-Feed-Updates
       document.addEventListener('videoFeedUpdate', () => {
@@ -908,33 +907,7 @@ class VideoFeedApp {
       this.loadUserVideos();
     };
     
-  // UI-Elemente finden
-  findUiElements() {
-    // Upload-Counter Element finden
-    this.uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
-    if (this.uploadCounter) {
-      console.log("📋 Video-Feed: Upload-Counter gefunden");
-    } else {
-      console.warn(`📋 Video-Feed: Upload-Counter mit ID '${window.WEBFLOW_API.UPLOAD_COUNTER_ID}' nicht gefunden`);
-    }
-    
-    // Upload-Fortschrittsbalken finden
-    this.uploadProgress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
-    if (this.uploadProgress) {
-      console.log("📋 Video-Feed: Upload-Fortschrittsbalken gefunden");
-    } else {
-      console.warn(`📋 Video-Feed: Upload-Fortschrittsbalken mit ID '${window.WEBFLOW_API.UPLOAD_PROGRESS_ID}' nicht gefunden`);
-    }
-    
-    // Upload-Limit-Meldungs-Element suchen
-    this.limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
-    if (this.limitMessageEl) {
-      console.log("📋 Video-Feed: Upload-Limit-Meldungs-Element gefunden");
-    } else {
-      console.warn(`📋 Video-Feed: Upload-Limit-Meldungs-Element mit ID '${window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID}' nicht gefunden`);
-    }
-    }
-  }
+  
     
     // Prüfen, ob das DOM bereits geladen ist
     if (document.readyState === "loading") {
