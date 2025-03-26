@@ -16,13 +16,25 @@ const DEFAULT_PAID_MEMBER_LIMIT = 12;
  */
 window.WEBFLOW_API = window.WEBFLOW_API || {};
 
+// KRITISCHER FIX: Stelle sicher, dass die globale Konfiguration korrekt initialisiert wird 
+// und immer Fallback-Werte hat, selbst wenn window.WEBFLOW_API bereits existiert
+
+// Funktion zur sicheren Initialisierung von Konfigurationswerten
+function ensureConfigValue(key, defaultValue) {
+  // Prüfen, ob der Wert bereits existiert und gültig ist
+  if (!window.WEBFLOW_API[key]) {
+    console.warn(`📋 Video-Feed: Konfiguration ${key} nicht gefunden oder undefined, setze Default:`, defaultValue);
+    window.WEBFLOW_API[key] = defaultValue;
+  }
+}
+
 // Grundkonfiguration mit garantierten Werten
-window.WEBFLOW_API.BASE_URL = window.WEBFLOW_API.BASE_URL || DEFAULT_BASE_URL;
-window.WEBFLOW_API.WORKER_BASE_URL = window.WEBFLOW_API.WORKER_BASE_URL || DEFAULT_WORKER_BASE_URL;
-window.WEBFLOW_API.MEMBER_COLLECTION_ID = window.WEBFLOW_API.MEMBER_COLLECTION_ID || DEFAULT_MEMBER_COLLECTION_ID;
-window.WEBFLOW_API.VIDEO_COLLECTION_ID = window.WEBFLOW_API.VIDEO_COLLECTION_ID || DEFAULT_VIDEO_COLLECTION_ID;
-window.WEBFLOW_API.FREE_MEMBER_LIMIT = window.WEBFLOW_API.FREE_MEMBER_LIMIT || DEFAULT_FREE_MEMBER_LIMIT;
-window.WEBFLOW_API.PAID_MEMBER_LIMIT = window.WEBFLOW_API.PAID_MEMBER_LIMIT || DEFAULT_PAID_MEMBER_LIMIT;
+ensureConfigValue('BASE_URL', DEFAULT_BASE_URL);
+ensureConfigValue('WORKER_BASE_URL', DEFAULT_WORKER_BASE_URL);
+ensureConfigValue('MEMBER_COLLECTION_ID', DEFAULT_MEMBER_COLLECTION_ID);
+ensureConfigValue('VIDEO_COLLECTION_ID', DEFAULT_VIDEO_COLLECTION_ID);
+ensureConfigValue('FREE_MEMBER_LIMIT', DEFAULT_FREE_MEMBER_LIMIT);
+ensureConfigValue('PAID_MEMBER_LIMIT', DEFAULT_PAID_MEMBER_LIMIT);
 
 // UI-Konfiguration
 window.WEBFLOW_API.VIDEO_CONTAINER_ID = window.WEBFLOW_API.VIDEO_CONTAINER_ID || "video-feed";
@@ -137,7 +149,13 @@ class VideoFeedApp {
    * Einen vollständigen API-Endpunkt erstellen
    */
   buildApiUrl(path, params = {}) {
-    const baseUrl = `${window.WEBFLOW_API.BASE_URL}${path}`;
+    // KRITISCHER FIX: Stelle sicher, dass BASE_URL definiert ist
+    const baseUrl = window.WEBFLOW_API.BASE_URL || DEFAULT_BASE_URL;
+    
+    // Vollständige URL mit Pfad
+    const fullUrl = `${baseUrl}${path}`;
+    
+    console.log("📋 Video-Feed: API-URL vor Parametern:", fullUrl);
     
     // Parameter als Query-String hinzufügen, wenn vorhanden
     const queryParams = new URLSearchParams();
@@ -150,7 +168,7 @@ class VideoFeedApp {
     }
     
     const queryString = queryParams.toString();
-    return queryString ? `${baseUrl}?${queryString}` : baseUrl;
+    return queryString ? `${fullUrl}?${queryString}` : fullUrl;
   }
 
   /**
@@ -212,8 +230,18 @@ class VideoFeedApp {
       return cachedUser;
     }
     
-    // Stelle sicher, dass wir eine gültige Collection-ID haben
-    const memberCollectionId = window.WEBFLOW_API.MEMBER_COLLECTION_ID;
+    // KRITISCHER FIX: Stelle absolut sicher, dass wir eine gültige Collection-ID haben
+    let memberCollectionId = window.WEBFLOW_API.MEMBER_COLLECTION_ID;
+    
+    // Wenn die ID undefined ist, setze sie auf den Default-Wert
+    if (!memberCollectionId) {
+      console.warn("📋 Video-Feed: MEMBER_COLLECTION_ID ist undefined, verwende DEFAULT_MEMBER_COLLECTION_ID:", DEFAULT_MEMBER_COLLECTION_ID);
+      memberCollectionId = DEFAULT_MEMBER_COLLECTION_ID;
+      
+      // Stelle sicher, dass die ID auch für zukünftige Aufrufe gesetzt ist
+      window.WEBFLOW_API.MEMBER_COLLECTION_ID = DEFAULT_MEMBER_COLLECTION_ID;
+    }
+    
     console.log("📋 Video-Feed: Verwende Member-Collection-ID:", memberCollectionId);
     
     // Direkter API-Aufruf mit der ID und /live Endpunkt für veröffentlichte Inhalte
@@ -299,8 +327,18 @@ class VideoFeedApp {
     }
     
     // Verwende die konfigurierte Video-Collection-ID
-    // FIX: Verwende die konfigurierte ID statt der Default-Konstante direkt
-    const videoCollectionId = window.WEBFLOW_API.VIDEO_COLLECTION_ID;
+    // FIX: Verwende die konfigurierte ID mit Fallback zur Default-Konstante 
+    let videoCollectionId = window.WEBFLOW_API.VIDEO_COLLECTION_ID;
+    
+    // KRITISCHER FIX: Stelle absolut sicher, dass die Collection-ID definiert ist
+    if (!videoCollectionId) {
+      console.warn("📋 Video-Feed: VIDEO_COLLECTION_ID ist undefined, verwende DEFAULT_VIDEO_COLLECTION_ID:", DEFAULT_VIDEO_COLLECTION_ID);
+      videoCollectionId = DEFAULT_VIDEO_COLLECTION_ID;
+      
+      // Stelle sicher, dass die ID auch für zukünftige Aufrufe gesetzt ist
+      window.WEBFLOW_API.VIDEO_COLLECTION_ID = DEFAULT_VIDEO_COLLECTION_ID;
+    }
+    
     console.log("📋 Video-Feed: Verwende Video-Collection-ID:", videoCollectionId);
     
     // Videos aus der Video-Collection laden
@@ -852,13 +890,34 @@ class VideoFeedApp {
   }
 }
 
-// App starten
-try {
-  const videoFeedApp = new VideoFeedApp();
-  videoFeedApp.init();
+// App starten mit zusätzlicher Verzögerung, um sicherzustellen, dass alle globalen Variablen gesetzt sind
+document.addEventListener('DOMContentLoaded', () => {
+  // Letzte Überprüfung der kritischen Konfigurationswerte vor dem Start
+  console.log("📋 Video-Feed: Letzte Prüfung der Konfiguration vor dem Start:", {
+    BASE_URL: window.WEBFLOW_API.BASE_URL,
+    MEMBER_COLLECTION_ID: window.WEBFLOW_API.MEMBER_COLLECTION_ID,
+    VIDEO_COLLECTION_ID: window.WEBFLOW_API.VIDEO_COLLECTION_ID
+  });
   
-  // Für Debug-Zwecke global zugänglich machen
-  window.videoFeedApp = videoFeedApp;
-} catch (error) {
-  console.error("📋 Video-Feed: Kritischer Fehler beim Start", error);
-}
+  // Stelle absolut sicher, dass die Collection-IDs gesetzt sind
+  if (!window.WEBFLOW_API.MEMBER_COLLECTION_ID) {
+    console.warn("📋 Video-Feed: MEMBER_COLLECTION_ID fehlt immer noch, setze auf Default:", DEFAULT_MEMBER_COLLECTION_ID);
+    window.WEBFLOW_API.MEMBER_COLLECTION_ID = DEFAULT_MEMBER_COLLECTION_ID;
+  }
+  
+  if (!window.WEBFLOW_API.VIDEO_COLLECTION_ID) {
+    console.warn("📋 Video-Feed: VIDEO_COLLECTION_ID fehlt immer noch, setze auf Default:", DEFAULT_VIDEO_COLLECTION_ID);
+    window.WEBFLOW_API.VIDEO_COLLECTION_ID = DEFAULT_VIDEO_COLLECTION_ID;
+  }
+  
+  try {
+    console.log("📋 Video-Feed: Starte App...");
+    const videoFeedApp = new VideoFeedApp();
+    videoFeedApp.init();
+    
+    // Für Debug-Zwecke global zugänglich machen
+    window.videoFeedApp = videoFeedApp;
+  } catch (error) {
+    console.error("📋 Video-Feed: Kritischer Fehler beim Start", error);
+  }
+});
