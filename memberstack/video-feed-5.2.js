@@ -2,21 +2,34 @@
 // Optimierte Version
 
 /**
+ * Erzwinge Standard-Konfigurationswerte - diese werden im globalen Scope gesetzt,
+ * damit sie definitiv vor der Klassendefinition verfügbar sind
+ */
+const DEFAULT_BASE_URL = "https://api.webflow.com/v2/collections";
+const DEFAULT_WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url=";
+const DEFAULT_MEMBER_COLLECTION_ID = "6448faf9c5a8a15f6cc05526";
+const DEFAULT_VIDEO_COLLECTION_ID = "67d806e65cadcadf2f41e659";
+const DEFAULT_FREE_MEMBER_LIMIT = 1;
+const DEFAULT_PAID_MEMBER_LIMIT = 12;
+
+/**
  * Globale Konfiguration für das Video-Feed-Skript
  */
 window.WEBFLOW_API = window.WEBFLOW_API || {};
 
-// Grundkonfiguration mit Fallbacks
-window.WEBFLOW_API.BASE_URL = window.WEBFLOW_API.BASE_URL || "https://api.webflow.com/v2/collections";
-window.WEBFLOW_API.WORKER_BASE_URL = window.WEBFLOW_API.WORKER_BASE_URL || "https://bewerbungen.oliver-258.workers.dev/?url=";
-window.WEBFLOW_API.MEMBER_COLLECTION_ID = window.WEBFLOW_API.MEMBER_COLLECTION_ID || "6448faf9c5a8a15f6cc05526";
-window.WEBFLOW_API.VIDEO_COLLECTION_ID = window.WEBFLOW_API.VIDEO_COLLECTION_ID || "67d806e65cadcadf2f41e659";
+// Grundkonfiguration mit garantierten Werten
+window.WEBFLOW_API.BASE_URL = window.WEBFLOW_API.BASE_URL || DEFAULT_BASE_URL;
+window.WEBFLOW_API.WORKER_BASE_URL = window.WEBFLOW_API.WORKER_BASE_URL || DEFAULT_WORKER_BASE_URL;
+window.WEBFLOW_API.MEMBER_COLLECTION_ID = window.WEBFLOW_API.MEMBER_COLLECTION_ID || DEFAULT_MEMBER_COLLECTION_ID;
+window.WEBFLOW_API.VIDEO_COLLECTION_ID = window.WEBFLOW_API.VIDEO_COLLECTION_ID || DEFAULT_VIDEO_COLLECTION_ID;
+window.WEBFLOW_API.FREE_MEMBER_LIMIT = window.WEBFLOW_API.FREE_MEMBER_LIMIT || DEFAULT_FREE_MEMBER_LIMIT;
+window.WEBFLOW_API.PAID_MEMBER_LIMIT = window.WEBFLOW_API.PAID_MEMBER_LIMIT || DEFAULT_PAID_MEMBER_LIMIT;
+
+// UI-Konfiguration
 window.WEBFLOW_API.VIDEO_CONTAINER_ID = window.WEBFLOW_API.VIDEO_CONTAINER_ID || "video-feed";
 window.WEBFLOW_API.UPLOAD_COUNTER_ID = window.WEBFLOW_API.UPLOAD_COUNTER_ID || "uploads-counter";
 window.WEBFLOW_API.UPLOAD_PROGRESS_ID = window.WEBFLOW_API.UPLOAD_PROGRESS_ID || "uploads-progress";
 window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID = window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID || "upload-limit-message";
-window.WEBFLOW_API.FREE_MEMBER_LIMIT = window.WEBFLOW_API.FREE_MEMBER_LIMIT || 1;
-window.WEBFLOW_API.PAID_MEMBER_LIMIT = window.WEBFLOW_API.PAID_MEMBER_LIMIT || 12;
 
 // Kategorie-Mapping 
 if (!window.WEBFLOW_API.CATEGORY_MAPPING) {
@@ -34,6 +47,15 @@ if (!window.WEBFLOW_API.CATEGORY_MAPPING) {
     "d9e7f4c91b3e5a8022c3a6497f1d8b55": "Home & Living" 
   };
 }
+
+// Debug-Informationen zur Konfiguration ausgeben
+console.log("📋 Video-Feed: WEBFLOW_API Konfiguration:", {
+  BASE_URL: window.WEBFLOW_API.BASE_URL,
+  MEMBER_COLLECTION_ID: window.WEBFLOW_API.MEMBER_COLLECTION_ID,
+  VIDEO_COLLECTION_ID: window.WEBFLOW_API.VIDEO_COLLECTION_ID,
+  FREE_MEMBER_LIMIT: window.WEBFLOW_API.FREE_MEMBER_LIMIT,
+  PAID_MEMBER_LIMIT: window.WEBFLOW_API.PAID_MEMBER_LIMIT
+});
 
 /**
  * Cache für API-Antworten
@@ -155,8 +177,12 @@ class VideoFeedApp {
       return cachedUser;
     }
     
-    // Direkter API-Aufruf mit der ID ohne Filterung
-    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.MEMBER_COLLECTION_ID}/items/${webflowId}`;
+    // Stelle sicher, dass wir eine gültige Collection-ID haben
+    const memberCollectionId = window.WEBFLOW_API.MEMBER_COLLECTION_ID || DEFAULT_MEMBER_COLLECTION_ID;
+    console.log("📋 Video-Feed: Verwende Member-Collection-ID:", memberCollectionId);
+    
+    // Direkter API-Aufruf mit der ID und /live Endpunkt für veröffentlichte Inhalte
+    const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${memberCollectionId}/items/${webflowId}/live`;
     const workerUrl = this.buildWorkerUrl(apiUrl);
     
     try {
@@ -205,6 +231,10 @@ class VideoFeedApp {
       return cachedVideos;
     }
     
+    // Stelle sicher, dass wir eine gültige Collection-ID haben
+    const videoCollectionId = window.WEBFLOW_API.VIDEO_COLLECTION_ID || DEFAULT_VIDEO_COLLECTION_ID;
+    console.log("📋 Video-Feed: Verwende Video-Collection-ID:", videoCollectionId);
+    
     // Videos aus der Video-Collection laden
     let videos = [];
     
@@ -216,7 +246,8 @@ class VideoFeedApp {
         // Videos parallel laden
         const videoPromises = videoIds.map(async (videoId) => {
           try {
-            const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.VIDEO_COLLECTION_ID}/items/${videoId}`;
+            // Live-Endpunkt für veröffentlichte Inhalte verwenden
+            const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${videoCollectionId}/items/${videoId}/live`;
             const workerUrl = this.buildWorkerUrl(apiUrl);
             const videoData = await this.fetchApi(workerUrl);
             
@@ -246,7 +277,8 @@ class VideoFeedApp {
         // IDs in Anführungszeichen setzen und mit Komma trennen
         const idList = videoIds.map(id => `"${id}"`).join(",");
         const filterQuery = `{"id":{"in":[${idList}]}}`;
-        const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${window.WEBFLOW_API.VIDEO_COLLECTION_ID}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
+        // Verwende live=true Parameter für veröffentlichte Inhalte
+        const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${videoCollectionId}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
         const workerUrl = this.buildWorkerUrl(apiUrl);
         
         const data = await this.fetchApi(workerUrl);
