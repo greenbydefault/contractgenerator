@@ -212,116 +212,38 @@ class VideoFeedApp {
       return [];
     }
     
-    // Das video-feed Feld enthält bereits die vollständigen Videos
-    // Es handelt sich um ein Multi-Referenzfeld, das direkt verwendet werden kann
+    // Das video-feed Feld enthält die IDs der Videos im User-Profil
     const videoFeed = user.fieldData["video-feed"];
-    console.log("📋 Video-Feed: Video-Feed aus User-Profil:", videoFeed);
+    
+    // Detaillierte Debug-Informationen über das video-feed Feld
+    console.log("📋 Video-Feed: Video-Feed-Typ:", Array.isArray(videoFeed) ? "Array" : typeof videoFeed);
+    console.log("📋 Video-Feed: Video-Feed-Länge:", videoFeed.length);
+    console.log("📋 Video-Feed: Erster Eintrag Typ:", videoFeed.length > 0 ? typeof videoFeed[0] : "Leer");
     
     if (!videoFeed || !Array.isArray(videoFeed) || videoFeed.length === 0) {
       console.log("📋 Video-Feed: Leerer Video-Feed im User-Profil");
       return [];
     }
     
-    // Prüfen, ob es sich um vollständige Objekte oder nur IDs handelt
-    if (typeof videoFeed[0] === 'object' && videoFeed[0] !== null) {
-      // Es sind bereits vollständige Video-Objekte
-      console.log(`📋 Video-Feed: ${videoFeed.length} Video-Objekte direkt aus Feed geladen`);
-      
-      // Extrahiere die relevanten Felder
-      const videos = videoFeed.map(video => ({
-        "id": video.id,
-        "video-link": video.fieldData && video.fieldData["video-link"],
-        "video-name": video.fieldData && (video.fieldData["video-name"] || video.fieldData["name"]),
-        "video-kategorie": video.fieldData && video.fieldData["video-kategorie"]
-      })).filter(video => video["video-link"]);
-      
-      console.log(`📋 Video-Feed: ${videos.length} Videos verarbeitet`);
-      return videos;
-    } else {
-      // Es handelt sich um Video-IDs, die wir noch laden müssen
-      console.log(`📋 Video-Feed: ${videoFeed.length} Video-IDs im Feed gefunden`);
-      
-      // Caching für bessere Performance
-      const cacheKey = `videos_${user.id}`;
-      const cachedVideos = this.cache.get(cacheKey);
-      
-      if (cachedVideos) {
-        console.log(`📋 Video-Feed: ${cachedVideos.length} Videos aus Cache geladen`);
-        return cachedVideos;
-      }
-      
-      // Stelle sicher, dass wir eine gültige Collection-ID haben
-      const videoCollectionId = DEFAULT_VIDEO_COLLECTION_ID;
-      console.log("📋 Video-Feed: Verwende Video-Collection-ID:", videoCollectionId);
-      
-      // Videos aus der Video-Collection laden
-      let videos = [];
-      
-      try {
-        if (videoFeed.length <= 10) {
-          console.log("📋 Video-Feed: Lade Videos einzeln...");
-          
-          // Videos parallel laden
-          const videoPromises = videoFeed.map(async (videoId) => {
-            try {
-              // Live-Endpunkt für veröffentlichte Inhalte verwenden
-              const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${videoCollectionId}/items/${videoId}/live`;
-              const workerUrl = this.buildWorkerUrl(apiUrl);
-              const videoData = await this.fetchApi(workerUrl);
-              
-              if (videoData && videoData.id) {
-                return {
-                  "id": videoData.id,
-                  "video-link": videoData.fieldData["video-link"],
-                  "video-name": videoData.fieldData["video-name"] || videoData.fieldData["name"],
-                  "video-kategorie": videoData.fieldData["video-kategorie"]
-                };
-              }
-              return null;
-            } catch (error) {
-              console.warn(`📋 Video-Feed: Fehler beim Laden von Video ${videoId}:`, error);
-              return null;
-            }
-          });
-          
-          // Alle Ergebnisse sammeln und null-Werte filtern
-          const videoResults = await Promise.all(videoPromises);
-          videos = videoResults.filter(video => video !== null && video["video-link"]);
-        } 
-        else {
-          // Für viele Videos Filter mit IN-Operator verwenden
-          console.log("📋 Video-Feed: Lade Videos via Filter...");
-          
-          // IDs in Anführungszeichen setzen und mit Komma trennen
-          const idList = videoFeed.map(id => `"${id}"`).join(",");
-          const filterQuery = `{"id":{"in":[${idList}]}}`;
-          // Verwende live=true Parameter für veröffentlichte Inhalte
-          const apiUrl = `${window.WEBFLOW_API.BASE_URL}/${videoCollectionId}/items?live=true&filter=${encodeURIComponent(filterQuery)}`;
-          const workerUrl = this.buildWorkerUrl(apiUrl);
-          
-          const data = await this.fetchApi(workerUrl);
-          
-          if (data.items && data.items.length > 0) {
-            videos = data.items.map(item => ({
-              "id": item.id,
-              "video-link": item.fieldData["video-link"],
-              "video-name": item.fieldData["video-name"] || item.fieldData["name"],
-              "video-kategorie": item.fieldData["video-kategorie"]
-            })).filter(video => video["video-link"]);
-          }
-        }
-        
-        console.log(`📋 Video-Feed: ${videos.length} Videos geladen`);
-        
-        // Im Cache speichern
-        this.cache.set(cacheKey, videos);
-        
-        return videos;
-      } catch (error) {
-        console.error("📋 Video-Feed: Fehler beim Laden der Videos", error);
-        return [];
-      }
-    }
+    // Im Multi-Referenzfeld sind nur die IDs enthalten, nicht die vollständigen Video-Objekte
+    // Wir müssen diese IDs verwenden, um die Videos direkt zu erstellen, ohne die Video-Collection abzufragen
+    
+    console.log(`📋 Video-Feed: ${videoFeed.length} Video-IDs im User-Feed gefunden`);
+    
+    // Wir erstellen direkt die Video-Objekte ohne weitere API-Abfragen
+    // Das setzt voraus, dass die nötigen Daten bereits im Webflow-Editor eingetragen wurden
+    const videos = videoFeed.map(videoId => ({
+      "id": videoId,
+      // Diese Felder können wir ohne zusätzliche API-Anfragen nicht füllen,
+      // aber wir können sie leer lassen und die Daten werden später im UI nachgeladen
+      "video-link": "",  // Wird vom Video-Element nachgeladen
+      "video-name": "",  // Kann im UI angezeigt werden, sobald verfügbar
+      "video-kategorie": ""  // Kann im UI angezeigt werden, sobald verfügbar
+    }));
+    
+    console.log(`📋 Video-Feed: ${videos.length} Video-Objekte erstellt`);
+    
+    return videos;
   }
 
   /**
@@ -654,8 +576,9 @@ class VideoFeedApp {
       console.log("📋 Video-Feed: Eingeloggter User mit Memberstack-ID", memberstackId);
       
       // Video-Limit basierend auf Membership bestimmen
+      // Hier direkt den Rückgabewert in einer lokalen Variable speichern
       const maxUploads = this.getMembershipLimit(member);
-      console.log("📋 Video-Feed: Maximale Uploads für User:", maxUploads);
+      console.log("📋 Video-Feed: Maximale Uploads für User (nach Berechnung):", maxUploads);
       
       // 1. Webflow-ID aus den Custom Fields der Memberstack-Daten extrahieren
       let webflowMemberId = null;
@@ -704,7 +627,7 @@ class VideoFeedApp {
       const videos = await this.getVideosFromUserFeed(user);
       this.userVideos = videos;
       
-      // Upload-Counter aktualisieren
+      // Upload-Counter aktualisieren - verwende hier die lokale Variable
       this.updateUploadCounter(videos.length, maxUploads);
       
       // Videos anzeigen
