@@ -348,6 +348,10 @@ class VideoFeedApp {
       // Für viele Videos ist der Filter mit IN-Operator am effizientesten
       console.log("📋 Video-Feed: Lade Videos via Filter...");
       
+      // KRITISCHER FIX: Erstelle Set aus den IDs für schnellen Lookup
+      const videoIdSet = new Set(videoFeed);
+      console.log("📋 Video-Feed: Erstelle ID-Set mit", videoIdSet.size, "IDs");
+      
       // IDs in Anführungszeichen setzen und mit Komma trennen
       const idList = videoFeed.map(id => `"${id}"`).join(",");
       
@@ -364,8 +368,19 @@ class VideoFeedApp {
       const data = await this.fetchApi(workerUrl);
       
       if (data.items && data.items.length > 0) {
+        // KRITISCHER FIX: Explizite Filterung, um nur Videos zu behalten, die tatsächlich zum User gehören
+        const unfilteredCount = data.items.length;
+        
         // Extrahiere die Video-Daten mit Prüfungen auf fehlende Felder
         videos = data.items
+          .filter(item => {
+            // Prüfe, ob die ID tatsächlich im Set des Users ist
+            const belongs = videoIdSet.has(item.id);
+            if (!belongs) {
+              console.warn("📋 Video-Feed: Video mit ID", item.id, "gehört nicht zum User, wird gefiltert");
+            }
+            return belongs;
+          })
           .map(item => {
             // Sicherheitsprüfungen für jedes Feld
             const videoData = {
@@ -382,6 +397,11 @@ class VideoFeedApp {
             return videoData;
           })
           .filter(video => video["video-link"]); // Nur Videos mit gültigem Link behalten
+        
+        // KRITISCHER FIX: Überprüfe, ob Videos gefiltert wurden
+        if (unfilteredCount !== videos.length) {
+          console.warn(`📋 Video-Feed: Ursprünglich ${unfilteredCount} Videos geladen, aber nur ${videos.length} gehören zum User`);
+        }
         
         console.log(`📋 Video-Feed: ${videos.length} Videos geladen mit den nötigen Daten`);
       } else {
@@ -459,12 +479,16 @@ class VideoFeedApp {
   updateUploadCounter(videoCount, maxUploads) {
     if (!this.uploadCounter) return;
     
-    this.uploadCounter.textContent = `${videoCount}/${maxUploads}`;
+    // KRITISCHER FIX: Stelle sicher, dass die Zahlen für die Anzeige gültig sind
+    const validVideoCount = isNaN(videoCount) ? 0 : videoCount;
+    const validMaxUploads = isNaN(maxUploads) ? DEFAULT_PAID_MEMBER_LIMIT : maxUploads;
+    
+    this.uploadCounter.textContent = `${validVideoCount}/${validMaxUploads}`;
     
     // Wenn der Fortschrittsbalken existiert, aktualisieren
     if (this.uploadProgress) {
       // Prozentsatz berechnen
-      const progressPercent = maxUploads > 0 ? (videoCount / maxUploads) * 100 : 0;
+      const progressPercent = validMaxUploads > 0 ? (validVideoCount / validMaxUploads) * 100 : 0;
       
       // Farbklassen basierend auf Fortschritt
       this.uploadProgress.classList.remove("progress-low", "progress-medium", "progress-high", "progress-full");
@@ -484,7 +508,10 @@ class VideoFeedApp {
     }
     
     // Prüfen, ob das Limit erreicht ist
-    const isLimitReached = videoCount >= maxUploads;
+    const isLimitReached = validVideoCount >= validMaxUploads;
+    
+    // Logging, um den Zustand besser zu verstehen
+    console.log(`📋 Video-Feed: Upload-Status: ${validVideoCount}/${validMaxUploads}, Limit erreicht: ${isLimitReached}`);
     
     // Den "video-upload-button" finden und je nach Limit-Status ein/ausblenden
     const uploadButton = document.getElementById("video-upload-button");
