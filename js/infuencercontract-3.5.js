@@ -369,8 +369,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Vorschau im letzten Schritt aktualisieren
     function updatePreview() {
-        // Unternehmensdaten
         try {
+            // Unternehmensdaten
             document.getElementById('preview-company-name').textContent = document.getElementById('company-name').value || '[Name des Unternehmens]';
             document.getElementById('preview-company-contact').textContent = document.getElementById('company-contact').value || '[Ansprechpartner]';
             document.getElementById('preview-company-street').textContent = document.getElementById('company-street').value || '[Straße]';
@@ -393,9 +393,13 @@ document.addEventListener('DOMContentLoaded', function() {
             previewClientSection.classList.toggle('hidden', !isClientContract);
             
             if (isClientContract) {
-                const clientName = document.getElementById('client-name').value || '[Name des Kunden]';
-                const clientAddress = document.getElementById('client-address').value || '[Adresse des Kunden]';
-                document.getElementById('preview-client-info').textContent = `${clientName}, ${clientAddress}`;
+                // Ausführliche Kundendaten darstellen
+                document.getElementById('preview-client-name').textContent = document.getElementById('client-name').value || '[Name des Kunden]';
+                document.getElementById('preview-client-street').textContent = document.getElementById('client-street').value || '[Straße]';
+                document.getElementById('preview-client-number').textContent = document.getElementById('client-number').value || '[Hausnummer]';
+                document.getElementById('preview-client-zip').textContent = document.getElementById('client-zip').value || '[PLZ]';
+                document.getElementById('preview-client-city').textContent = document.getElementById('client-city').value || '[Stadt]';
+                document.getElementById('preview-client-country').textContent = document.getElementById('client-country').value || '[Land]';
             }
             
             // Plattformen anzeigen
@@ -432,8 +436,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             document.getElementById('preview-content-types').innerHTML = contentTypesHtml || '<li>Keine Inhalte spezifiziert</li>';
             
-            // Weitere Vorschau-Aktualisierungen...
-            
             // Aktualisiere die Fortschrittsanzeige mit dem tatsächlichen Fortschritt
             const realProgress = calculateRealProgress();
             if (progressFill) {
@@ -454,7 +456,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const date = new Date(dateString);
         return date.toLocaleDateString('de-DE');
     }
-    
+
+    // *** PDF-GENERIERUNG FUNKTIONEN ***
+
     // Funktion zum Hinzufügen eines Wasserzeichens
     function addWatermark(doc) {
         const totalPages = doc.internal.getNumberOfPages();
@@ -477,11 +481,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Verbesserte und einheitliche Darstellung der Paragraphen-Überschriften
     function addParagraphTitle(doc, title, y) {
         doc.setFont("helvetica", "bold");
         doc.text(title, 30, y);
         doc.setFont("helvetica", "normal");
-        return y + 8; 
+        return y + 8; // Einheitlicher Abstand nach jeder Überschrift
     }
     
     // Funktion zum Erstellen des Inhaltsverzeichnisses - optimiert für bessere Lesbarkeit
@@ -538,13 +543,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Name mit fetter Schrift für die Variable
         doc.text('Name: ', 30, 160);
         doc.setFont("helvetica", "bold");
-        doc.text(companyName, 30 + doc.getTextWidth('Name: '), 140);
+        doc.text(companyName, 30 + doc.getTextWidth('Name: '), 160);
         
         // Vertreten durch mit fetter Schrift für die Variable
         doc.setFont("helvetica", "normal");
         doc.text('Vertreten durch: ', 30, 170);
         doc.setFont("helvetica", "bold");
-        doc.text(companyContact, 30 + doc.getTextWidth('Vertreten durch: '), 140);
+        doc.text(companyContact, 30 + doc.getTextWidth('Vertreten durch: '), 170);
         
         // Straße und Nummer mit fetter Schrift für die Variablen
         doc.setFont("helvetica", "normal");
@@ -554,7 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
         doc.setFont("helvetica", "normal");
         doc.text(', Nr.: ', 30 + doc.getTextWidth('Straße: ') + doc.getTextWidth(companyStreet), 180);
         doc.setFont("helvetica", "bold");
-        doc.text(companyNumber, 30 + doc.getTextWidth('Straße: ') + doc.getTextWidth(companyStreet) + doc.getTextWidth(', Nr.: '), 240);
+        doc.text(companyNumber, 30 + doc.getTextWidth('Straße: ') + doc.getTextWidth(companyStreet) + doc.getTextWidth(', Nr.: '), 180);
         
         // PLZ, Stadt und Land mit fetter Schrift für die Variablen
         doc.setFont("helvetica", "normal");
@@ -610,34 +615,54 @@ document.addEventListener('DOMContentLoaded', function() {
         addTableOfContents(doc);
     }
 
-    // Erweiterte Funktion zum Hinzufügen von Unterschriftsfeldern mit Ort und Datum
-    function addSignatureFields(doc) {
+    // Verbesserte Funktion zum Anzeigen von Unterschriftsfeldern mit Ort und Datum
+    function addSignatureFields(doc, city) {
         // Stellen Sie sicher, dass wir am Ende des Dokuments arbeiten
-        let y = doc.internal.pageSize.height - 70; // Mehr Platz für zusätzliche Felder
+        let y = doc.internal.pageSize.height - 70;
 
+        // Aktuelles Datum im deutschen Format (TT.MM.JJJJ)
+        const today = new Date();
+        const formattedDate = today.getDate() + "." + (today.getMonth() + 1) + "." + today.getFullYear();
+        
         // Linke Spalte (Unternehmen)
         const leftColumnX = 30;
         const rightColumnX = 120;
         
-        // Ort
+        // Ort mit vorausgefülltem Wert
         doc.text("Ort:", leftColumnX, y);
+        doc.setFont("helvetica", "bold");
+        doc.text(city, leftColumnX + 20, y - 3); // Leicht über der Linie
+        doc.setFont("helvetica", "normal");
         doc.line(leftColumnX + 20, y, leftColumnX + 80, y); // Linie für Ort
+        
         doc.text("Ort:", rightColumnX, y);
+        doc.setFont("helvetica", "bold");
+        doc.text(city, rightColumnX + 20, y - 3); // Leicht über der Linie
+        doc.setFont("helvetica", "normal");
         doc.line(rightColumnX + 20, y, rightColumnX + 80, y); // Linie für Ort
         
         y += 15;
         
-        // Datum
+        // Datum mit vorausgefülltem Wert
         doc.text("Datum:", leftColumnX, y);
+        doc.setFont("helvetica", "bold");
+        doc.text(formattedDate, leftColumnX + 30, y - 3); // Leicht über der Linie
+        doc.setFont("helvetica", "normal");
         doc.line(leftColumnX + 30, y, leftColumnX + 80, y); // Linie für Datum
+        
         doc.text("Datum:", rightColumnX, y);
+        doc.setFont("helvetica", "bold");
+        doc.text(formattedDate, rightColumnX + 30, y - 3); // Leicht über der Linie
+        doc.setFont("helvetica", "normal");
         doc.line(rightColumnX + 30, y, rightColumnX + 80, y); // Linie für Datum
         
         y += 15;
         
-        // Unterschriftslinien
+        // Unterschriftslinien - dickere Linien
+        doc.setLineWidth(0.5); // Erhöhe die Liniendicke
         doc.line(leftColumnX, y, leftColumnX + 80, y); // Linie für Unternehmen
         doc.line(rightColumnX, y, rightColumnX + 80, y); // Linie für Influencer
+        doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
         
         y += 10;
         
@@ -664,21 +689,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Setze Text daneben mit weniger Abstand
         doc.text(text, x + boxSize + 3, y); // Reduzierter Abstand (von 8 auf 6)
         return y;
-    }
-    
-    // Funktion zum Hervorheben von Variablen im Text
-    function renderLabeledValue(doc, label, value, x, y) {
-        doc.setFont("helvetica", "normal");
-        doc.text(label, x, y);
-        
-        // Variable in Fettschrift
-        doc.setFont("helvetica", "bold");
-        doc.text(value, x + doc.getTextWidth(label), y);
-        
-        // Reset Font für weitere Operationen
-        doc.setFont("helvetica", "normal");
-        
-        return doc.getTextWidth(label) + doc.getTextWidth(value);
     }
 
     // Hauptfunktion zum Generieren des PDFs
@@ -731,20 +741,36 @@ document.addEventListener('DOMContentLoaded', function() {
             const influencerCountryEl = document.getElementById('influencer-country');
             const influencerCountry = influencerCountryEl ? influencerCountryEl.value : '[Land Creator]';
             
-            // Kunde/Marke
-            let clientName, clientAddress;
+            // Kunde/Marke - ERWEITERTE FELDER
+            let clientName, clientStreet, clientNumber, clientZip, clientCity, clientCountry;
             
             if (isClientContract) {
-                // Hole Kundendaten aus separaten Feldern für Client-Verträge
+                // Hole detaillierte Kundendaten aus separaten Feldern für Client-Verträge
                 const clientNameEl = document.getElementById('client-name');
                 clientName = clientNameEl ? clientNameEl.value : '[Name des Kunden]';
                 
-                const clientAddressEl = document.getElementById('client-address');
-                clientAddress = clientAddressEl ? clientAddressEl.value : '[Adresse des Kunden]';
+                const clientStreetEl = document.getElementById('client-street');
+                clientStreet = clientStreetEl ? clientStreetEl.value : '[Straße Kunde]';
+                
+                const clientNumberEl = document.getElementById('client-number');
+                clientNumber = clientNumberEl ? clientNumberEl.value : '[Hausnummer Kunde]';
+                
+                const clientZipEl = document.getElementById('client-zip');
+                clientZip = clientZipEl ? clientZipEl.value : '[PLZ Kunde]';
+                
+                const clientCityEl = document.getElementById('client-city');
+                clientCity = clientCityEl ? clientCityEl.value : '[Stadt Kunde]';
+                
+                const clientCountryEl = document.getElementById('client-country');
+                clientCountry = clientCountryEl ? clientCountryEl.value : '[Land Kunde]';
             } else {
                 // Bei direktem Vertrag ist der Kunde das Unternehmen selbst
                 clientName = companyName;
-                clientAddress = `${companyStreet} ${companyNumber}, ${companyZip} ${companyCity}`;
+                clientStreet = companyStreet;
+                clientNumber = companyNumber;
+                clientZip = companyZip;
+                clientCity = companyCity;
+                clientCountry = companyCountry;
             }
             
             // Plattformen
@@ -902,12 +928,45 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.text("zugunsten des Unternehmens bzw. einer vom Unternehmen vertretenen Marke.", 30, y);
             y += 8;
             
-            // Client info falls vorhanden - unterschiedliche Darstellung je nach Vertragstyp
+            // Client info mit detaillierten Angaben
             if (isClientContract) {
-                // Bei Client-Vertrag: Formulierung als Agentur
-                const clientInfo = clientAddress ? clientName + ", " + clientAddress : clientName;
-                doc.text("Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden " + clientInfo + ".", 30, y);
+                // Bei Client-Vertrag: Formulierung als Agentur mit detaillierten Kundenangaben
+                doc.text("Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden:", 30, y);
+                y += 8;
+                
+                // Name mit fetter Schrift für die Variable
+                doc.text("Name: ", 30, y);
+                doc.setFont("helvetica", "bold");
+                doc.text(clientName, 30 + doc.getTextWidth("Name: "), y);
+                doc.setFont("helvetica", "normal");
                 y += 5;
+                
+                // Straße und Nummer mit fetter Schrift für die Variablen
+                doc.text("Straße: ", 30, y);
+                doc.setFont("helvetica", "bold");
+                doc.text(clientStreet, 30 + doc.getTextWidth("Straße: "), y);
+                doc.setFont("helvetica", "normal");
+                doc.text(", Nr.: ", 30 + doc.getTextWidth("Straße: ") + doc.getTextWidth(clientStreet), y);
+                doc.setFont("helvetica", "bold");
+                doc.text(clientNumber, 30 + doc.getTextWidth("Straße: ") + doc.getTextWidth(clientStreet) + doc.getTextWidth(", Nr.: "), y);
+                doc.setFont("helvetica", "normal");
+                y += 5;
+                
+                // PLZ, Stadt und Land mit fetter Schrift für die Variablen
+                doc.text("PLZ: ", 30, y);
+                doc.setFont("helvetica", "bold");
+                doc.text(clientZip, 30 + doc.getTextWidth("PLZ: "), y);
+                doc.setFont("helvetica", "normal");
+                doc.text(", Stadt: ", 30 + doc.getTextWidth("PLZ: ") + doc.getTextWidth(clientZip), y);
+                doc.setFont("helvetica", "bold");
+                doc.text(clientCity, 30 + doc.getTextWidth("PLZ: ") + doc.getTextWidth(clientZip) + doc.getTextWidth(", Stadt: "), y);
+                doc.setFont("helvetica", "normal");
+                doc.text(", Land: ", 30 + doc.getTextWidth("PLZ: ") + doc.getTextWidth(clientZip) + doc.getTextWidth(", Stadt: ") + doc.getTextWidth(clientCity), y);
+                doc.setFont("helvetica", "bold");
+                doc.text(clientCountry, 30 + doc.getTextWidth("PLZ: ") + doc.getTextWidth(clientZip) + doc.getTextWidth(", Stadt: ") + doc.getTextWidth(clientCity) + doc.getTextWidth(", Land: "), y);
+                doc.setFont("helvetica", "normal");
+                y += 8;
+                
                 doc.text("Alle Leistungen erfolgen im Namen und auf Rechnung des Unternehmens.", 30, y);
             } else {
                 // Bei direktem Vertrag: Keine Agentur-Beziehung
@@ -925,26 +984,26 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont("helvetica", "bold");
             doc.text(instagramUsername, 30 + doc.getTextWidth("Instagram (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("Instagram (Profil: ") + 1 + doc.getTextWidth(instagramUsername), y);
+            doc.text(")", 30 + doc.getTextWidth("Instagram (Profil: ") + 7 + doc.getTextWidth(instagramUsername), y);
             y += 6;
             
             y = renderCheckbox(doc, tiktokSelected, "TikTok (Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(tiktokUsername, 30 + doc.getTextWidth("TikTok (Profil: ") + 1, y);
+            doc.text(tiktokUsername, 30 + doc.getTextWidth("TikTok (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("TikTok (Profil: ") + 1 + doc.getTextWidth(tiktokUsername), y);
+            doc.text(")", 30 + doc.getTextWidth("TikTok (Profil: ") + 7 + doc.getTextWidth(tiktokUsername), y);
             y += 6;
             
             y = renderCheckbox(doc, youtubeSelected, "YouTube (Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(youtubeUrl, 30 + doc.getTextWidth("YouTube (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("YouTube (Profil: ") + 1 + doc.getTextWidth(youtubeUrl), y);
+            doc.text(")", 30 + doc.getTextWidth("YouTube (Profil: ") + 7 + doc.getTextWidth(youtubeUrl), y);
             y += 6;
             
             y = renderCheckbox(doc, otherSelected, "Sonstiges: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(otherPlatform, 30 + doc.getTextWidth("Sonstiges: ") + 1, y);
+            doc.text(otherPlatform, 30 + doc.getTextWidth("Sonstiges: ") + 7, y);
             doc.setFont("helvetica", "normal");
             y += 10;
             
@@ -1091,13 +1150,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (scriptDate && scriptDate !== '[Datum/Uhrzeit]') {
                 doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur", 30, y);
                 y += 5;
-                doc.text("Freigabe bis", 30, y);
+                doc.text("Freigabe bis ", 30, y);
                 doc.setFont("helvetica", "bold");
                 doc.text(scriptDate, 30 + doc.getTextWidth("Freigabe bis "), y);
                 doc.setFont("helvetica", "normal");
                 doc.text("/", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + 2, y);
                 doc.setFont("helvetica", "bold");
-                doc.text(scriptTime, 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + 1, y);
+                doc.text(scriptTime, 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + 4, y);
                 doc.setFont("helvetica", "normal");
                 doc.text(".", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + doc.getTextWidth(scriptTime) + 6, y);
             } else {
@@ -1108,17 +1167,17 @@ document.addEventListener('DOMContentLoaded', function() {
             y += 8;
             
             // Produktion mit hervorgehobenen Variablen - verbesserte Ausrichtung
-            doc.text("Produktion: Die Produktion erfolgt im Zeitraum", 30, y);
+            doc.text("Produktion: Die Produktion erfolgt im Zeitraum ", 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(productionStart, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum "), y);
             doc.setFont("helvetica", "normal");
-            doc.text("–", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + 3, y);
+            doc.text(" – ", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart), y);
             doc.setFont("helvetica", "bold");
-            doc.text(productionEnd, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth("–") + 6, y);
+            doc.text(productionEnd, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – "), y);
             
             if (productionLocation && productionLocation !== '[Adresse]') {
                 doc.setFont("helvetica", "normal");
-                doc.text(", ggf. am Produktionsort", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – ") + doc.getTextWidth(productionEnd), y);
+                doc.text(", ggf. am Produktionsort ", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – ") + doc.getTextWidth(productionEnd), y);
                 y += 5;
                 doc.setFont("helvetica", "bold");
                 doc.text(productionLocation, 30, y);
@@ -1140,11 +1199,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // §6 Vergütung
             y = addParagraphTitle(doc, "§6 Vergütung", y);
             
-            // Nettovergütung mit hervorgehobener Variable und Euro-Zeichen
+            // Nettovergütung mit hervorgehobener Variable und Euro-Zeichen - VERBESSERT
             doc.text("Die Nettovergütung beträgt", 30, y);
             doc.setFont("helvetica", "bold");
+            // Reduziere den Abstand um 10 Punkte
             doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") - 10, y);
             doc.setFont("helvetica", "normal");
+            // Passe auch den Punkt entsprechend an
             doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €") - 10, y);
             y += 8;
             
@@ -1304,12 +1365,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // §12 Schlussbestimmungen - Korrigierte und optimierte Version
             y = addParagraphTitle(doc, "§12 Schlussbestimmungen", y);
             
-            // Text in einem Stück mit korrekter Ausrichtung ohne Abstände
+            // Text in einem Stück mit korrekter Ausrichtung ohne Abstände - VERBESSERT
             let schlussText = "Änderungen bedürfen der Schriftform. Gerichtsstand ist ";
             doc.text(schlussText, 30, y);
             doc.setFont("helvetica", "bold");
+            // Reduziere den Abstand um 15 Punkte
             doc.text(companyCity, 30 + doc.getTextWidth(schlussText) - 15, y);
             doc.setFont("helvetica", "normal");
+            // Passe auch den nachfolgenden Text entsprechend an
             doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth(schlussText) + doc.getTextWidth(companyCity) - 15, y);
             
             y += 8; // Abstand nach der ersten Zeile
@@ -1319,8 +1382,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             doc.text("Vertrag im Übrigen wirksam.", 30, y);
             
-            // Verbesserte Unterschriftsfelder mit Ort und Datum
-            addSignatureFields(doc);
+            // Verbesserte Unterschriftsfelder mit vorausgefülltem Ort und Datum
+            addSignatureFields(doc, companyCity);
             
             // Wasserzeichen hinzufügen
             addWatermark(doc);
@@ -1373,7 +1436,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (allStepsValid) {
                 console.log('Vertrag wird generiert...');
                 
-                // Direkter Aufruf der jetzt definierten generatePDF-Funktion
+                // Direkter Aufruf der generatePDF-Funktion
                 try {
                     generatePDF();
                     showSuccessAnimation();
