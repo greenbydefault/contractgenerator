@@ -984,26 +984,26 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont("helvetica", "bold");
             doc.text(instagramUsername, 30 + doc.getTextWidth("Instagram (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("Instagram (Profil: ") + 7 + doc.getTextWidth(instagramUsername), y);
+            doc.text(")", 30 + doc.getTextWidth("Instagram Profil: " + 7 + doc.getTextWidth(instagramUsername), y);
             y += 6;
             
             y = renderCheckbox(doc, tiktokSelected, "TikTok (Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(tiktokUsername, 30 + doc.getTextWidth("TikTok (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("TikTok (Profil: ") + 7 + doc.getTextWidth(tiktokUsername), y);
+            doc.text(")", 30 + doc.getTextWidth("TikTok Profil: " + 7 + doc.getTextWidth(tiktokUsername), y);
             y += 6;
             
             y = renderCheckbox(doc, youtubeSelected, "YouTube (Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(youtubeUrl, 30 + doc.getTextWidth("YouTube (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("YouTube (Profil: ") + 7 + doc.getTextWidth(youtubeUrl), y);
+            doc.text(")", 30 + doc.getTextWidth("YouTube Profil: " + 7 + doc.getTextWidth(youtubeUrl), y);
             y += 6;
             
             y = renderCheckbox(doc, otherSelected, "Sonstiges: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(otherPlatform, 30 + doc.getTextWidth("Sonstiges: ") + 7, y);
+            doc.text(otherPlatform, 30 + doc.getTextWidth("Sonstiges: " + 7, y);
             doc.setFont("helvetica", "normal");
             y += 10;
             
@@ -1044,17 +1044,17 @@ document.addEventListener('DOMContentLoaded', function() {
             y += 8;
             
             // Verbesserte Checkbox-Rendering für Co-Autoren-Post
-            renderCheckbox(doc, collabPost, "Co-Autoren-Post (Instagram Collab): Ja", 30, y);
+            renderCheckbox(doc, collabPost, "Co-Autoren-Post (Instagram Collab)", 30, y);
             y += 6;
             
             // Checkbox für Veröffentlichung durch Unternehmen
             renderCheckbox(doc, companyPublication, "Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen", 30, y);
             y += 5;
-            doc.text("eigenem Kanal: Ja", 30 + 7, y);
+            doc.text("eigenem Kanal", 30 + 7, y);
             y += 6;
             
             // Checkbox für keine Veröffentlichung
-            renderCheckbox(doc, noCompanyPublication, "Keine zusätzliche Veröffentlichung durch das Unternehmen: Ja", 30, y);
+            renderCheckbox(doc, noCompanyPublication, "Keine zusätzliche Veröffentlichung durch das Unternehmen", 30, y);
             
             // Neue Seite für §3
             doc.addPage();
@@ -1105,9 +1105,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 y += 6;
                 
                 // Fester Text ohne Leerzeichen für problematische Passage
-                doc.text("→ Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung", 30, y);
+                doc.text("Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung", 30, y);
                 y += 5;
-                doc.text("   genutzt werden.", 30, y);
+                doc.text("genutzt werden.", 30, y);
             }
             y += 12;
             
@@ -1143,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont("helvetica", "bold");
             doc.text(briefingDate, 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis "), y);
             doc.setFont("helvetica", "normal");
-            doc.text(" bereitgestellt.", 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis ") + doc.getTextWidth(briefingDate), y);
+            doc.text(" bereitgestellt.", 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis") + doc.getTextWidth(briefingDate), y);
             y += 8;
             
             // Skript mit hervorgehobenen Variablen - verbesserte Ausrichtung
@@ -1167,13 +1167,13 @@ document.addEventListener('DOMContentLoaded', function() {
             y += 8;
             
             // Produktion mit hervorgehobenen Variablen - verbesserte Ausrichtung
-            doc.text("Produktion: Die Produktion erfolgt im Zeitraum ", 30, y);
+            doc.text("Produktion: Die Produktion erfolgt im Zeitraum", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(productionStart, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum "), y);
+            doc.text(productionStart, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum"), y);
             doc.setFont("helvetica", "normal");
-            doc.text(" – ", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart), y);
+            doc.text(" – ", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum") + doc.getTextWidth(productionStart), y);
             doc.setFont("helvetica", "bold");
-            doc.text(productionEnd, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – "), y);
+            doc.text(productionEnd, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – "), y);
             
             if (productionLocation && productionLocation !== '[Adresse]') {
                 doc.setFont("helvetica", "normal");
