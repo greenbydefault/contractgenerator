@@ -454,9 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const date = new Date(dateString);
         return date.toLocaleDateString('de-DE');
     }
-
-    // *** PDF-Generierungsfunktionen aus dem zweiten Script ***
-
+    
     // Funktion zum Hinzufügen eines Wasserzeichens
     function addWatermark(doc) {
         const totalPages = doc.internal.getNumberOfPages();
@@ -479,12 +477,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Verbesserte und einheitliche Darstellung der Paragraphen-Überschriften
     function addParagraphTitle(doc, title, y) {
         doc.setFont("helvetica", "bold");
         doc.text(title, 30, y);
         doc.setFont("helvetica", "normal");
-        return y + 8; // Einheitlicher Abstand nach jeder Überschrift
+        return y + 8; 
     }
     
     // Funktion zum Erstellen des Inhaltsverzeichnisses - optimiert für bessere Lesbarkeit
@@ -541,13 +538,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Name mit fetter Schrift für die Variable
         doc.text('Name: ', 30, 160);
         doc.setFont("helvetica", "bold");
-        doc.text(companyName, 30 + doc.getTextWidth('Name: '), 160);
+        doc.text(companyName, 30 + doc.getTextWidth('Name: '), 140);
         
         // Vertreten durch mit fetter Schrift für die Variable
         doc.setFont("helvetica", "normal");
         doc.text('Vertreten durch: ', 30, 170);
         doc.setFont("helvetica", "bold");
-        doc.text(companyContact, 30 + doc.getTextWidth('Vertreten durch: '), 170);
+        doc.text(companyContact, 30 + doc.getTextWidth('Vertreten durch: '), 140);
         
         // Straße und Nummer mit fetter Schrift für die Variablen
         doc.setFont("helvetica", "normal");
@@ -557,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
         doc.setFont("helvetica", "normal");
         doc.text(', Nr.: ', 30 + doc.getTextWidth('Straße: ') + doc.getTextWidth(companyStreet), 180);
         doc.setFont("helvetica", "bold");
-        doc.text(companyNumber, 30 + doc.getTextWidth('Straße: ') + doc.getTextWidth(companyStreet) + doc.getTextWidth(', Nr.: '), 180);
+        doc.text(companyNumber, 30 + doc.getTextWidth('Straße: ') + doc.getTextWidth(companyStreet) + doc.getTextWidth(', Nr.: '), 240);
         
         // PLZ, Stadt und Land mit fetter Schrift für die Variablen
         doc.setFont("helvetica", "normal");
