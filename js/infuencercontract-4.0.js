@@ -1129,51 +1129,60 @@ document.addEventListener('DOMContentLoaded', function() {
             y += 12;
             
             // §5 Produktion & Freigabe - Neu strukturierte Version mit besseren Abständen
+            // §5 Produktion & Freigabe - Als sauberer Fließtext
             y = addParagraphTitle(doc, "§5 Produktion & Freigabe", y);
             
-            // Briefing - vereinfachte Version mit festen Abständen
-            doc.text("Briefing: Das Briefing wird vom Unternehmen bis", 30, y);
+            // Briefing als Fließtext mit korrektem Abstand
+            doc.text("Briefing: Das Briefing wird vom Unternehmen bis ", 30, y);
+            let xPos = 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis ");
             doc.setFont("helvetica", "bold");
-            doc.text(briefingDate, 195, y, null, null, "right"); // Rechtsbündig
+            doc.text(briefingDate, xPos, y);
             doc.setFont("helvetica", "normal");
-            doc.text("bereitgestellt.", 30, y + 5);
-            y += 10;
+            xPos += doc.getTextWidth(briefingDate);
+            doc.text(" bereitgestellt.", xPos, y);
+            y += 8;
             
-            // Skript - vereinfachte Version mit besserer Formatierung
-            doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur", 30, y);
-            y += 5;
-            doc.text("Freigabe bis", 30, y);
+            // Skript als Fließtext
+            doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur Freigabe bis ", 30, y);
+            xPos = 30 + doc.getTextWidth("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur Freigabe bis ");
             doc.setFont("helvetica", "bold");
-            doc.text(scriptDate, 80, y);
+            doc.text(scriptDate, xPos, y);
             doc.setFont("helvetica", "normal");
-            doc.text("/", 105, y);
+            xPos += doc.getTextWidth(scriptDate);
+            doc.text(" / ", xPos, y);
+            xPos += doc.getTextWidth(" / ");
             doc.setFont("helvetica", "bold");
-            doc.text(scriptTime, 110, y);
+            doc.text(scriptTime, xPos, y);
             doc.setFont("helvetica", "normal");
-            doc.text(".", 130, y);
-            y += 10;
+            xPos += doc.getTextWidth(scriptTime);
+            doc.text(".", xPos, y);
+            y += 8;
             
-            // Produktion - vereinfachte Version mit besserer Formatierung
-            doc.text("Produktion: Die Produktion erfolgt im Zeitraum", 30, y);
-            y += 5;
+            // Produktion als Fließtext
+            doc.text("Produktion: Die Produktion erfolgt im Zeitraum ", 30, y);
+            xPos = 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ");
             doc.setFont("helvetica", "bold");
-            doc.text(productionStart, 50, y);
+            doc.text(productionStart, xPos, y);
             doc.setFont("helvetica", "normal");
-            doc.text("–", 90, y);
+            xPos += doc.getTextWidth(productionStart);
+            doc.text(" – ", xPos, y);
+            xPos += doc.getTextWidth(" – ");
             doc.setFont("helvetica", "bold");
-            doc.text(productionEnd, 100, y);
+            doc.text(productionEnd, xPos, y);
             doc.setFont("helvetica", "normal");
             
-            // Produktionsort auf neuer Zeile, falls vorhanden
+            // Produktionsort als Teil des Fließtexts, falls vorhanden
             if (productionLocation && productionLocation !== '[Adresse]') {
-                y += 5;
-                doc.text("Produktionsort:", 30, y);
+                xPos += doc.getTextWidth(productionEnd);
+                doc.text(", Produktionsort: ", xPos, y);
+                xPos += doc.getTextWidth(", Produktionsort: ");
                 doc.setFont("helvetica", "bold");
-                doc.text(productionLocation, 85, y);
+                doc.text(productionLocation, xPos, y);
                 doc.setFont("helvetica", "normal");
             }
+            doc.text(".", xPos + doc.getTextWidth(productionLocation || ""), y);
             
-            y += 8;
+            y += 12;
             // §5 Produktion & Freigabe - Ende
             y += 8;
             
