@@ -1,37 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Integration mit dem vorhandenen PDF-Generator
-    function setupPDFGenerator() {
-        // Wir stellen sicher, dass unsere Version der Funktion mit der externen Funktion verbunden wird
-        window.generatePDFContract = function() {
-            console.log("Rufe externe PDF-Generierung auf");
-            try {
-                // Prüfen, welche PDF-Funktion verfügbar ist und diese aufrufen
-                if (typeof window.generatePDF === 'function') {
-                    window.generatePDF();
-                    return true;
-                } else if (window.jsPDF && typeof window.jsPDF === 'function') {
-                    // Wenn jsPDF als Funktion verfügbar ist
-                    if (typeof generatePDF === 'function') {
-                        generatePDF();
-                        return true;
-                    }
-                }
-                
-                // Wenn keine bekannte Funktion gefunden wurde, geben wir eine Fehlermeldung aus
-                console.error("Keine PDF-Generierungsfunktion gefunden");
-                alert("Die PDF-Generierungsfunktion konnte nicht gefunden werden. Bitte kontaktieren Sie den Support.");
-                return false;
-            } catch (error) {
-                console.error("Fehler bei der PDF-Generierung:", error);
-                alert("Bei der Generierung des Vertrags ist ein Fehler aufgetreten: " + error.message);
-                return false;
-            }
-        };
-    }
+    // Globale Variable für den aktuellen Schritt
+    let currentStep = 1;
     
-    // PDF-Generator Setup ausführen
-    setupPDFGenerator();
-
+    // Globale Variable, um zu verhindern, dass mehrere Navigationen gleichzeitig stattfinden
+    let navigationInProgress = false;
+    
     // Event-Listener für die Vertragstyp-Auswahl
     const contractTypeSelect = document.getElementById('contract-type');
     const clientInfoSection = document.getElementById('client-info-section');
@@ -44,7 +17,6 @@ document.addEventListener('DOMContentLoaded', function() {
         contractTypeSelect.addEventListener('change', function() {
             clientInfoSection.style.display = this.value === 'client' ? 'block' : 'none';
             updateProgress(); // Fortschrittsanzeige aktualisieren
-            validateCurrentStep(currentStep); // Validierung aktualisieren
         });
     }
 
@@ -147,12 +119,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressText = document.getElementById('progress-text');
     const progressMessage = document.getElementById('progress-message');
 
-    // Globale Variable für den aktuellen Schritt
-    let currentStep = 1;
-    
-    // Globale Variable, um zu verhindern, dass mehrere Navigationen gleichzeitig stattfinden
-    let navigationInProgress = false;
-
     // Event-Listener für Klicks auf die Fortschrittsschritte hinzufügen (direkte Navigation)
     progressSteps.forEach(step => {
         step.addEventListener('click', function() {
@@ -169,17 +135,21 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Zu früheren Schritten kann man immer navigieren
             if (stepNum < currentStep) {
+                // Alle Fehlermarkierungen im aktuellen Schritt zurücksetzen
+                resetErrorsInCurrentStep();
                 goToStep(stepNum);
                 navigationInProgress = false;
                 return;
             }
             
-            // Für vorwärts: prüfe alle vorherigen Schritte
-            if (validateStepsRange(1, currentStep)) {
+            // Für vorwärts: nur den aktuellen Schritt validieren
+            if (validateCurrentStep()) {
+                // Alle Fehlermarkierungen im aktuellen Schritt zurücksetzen
+                resetErrorsInCurrentStep();
                 goToStep(stepNum);
             } else {
                 // Fehlende Felder visuell markieren
-                markInvalidFields(currentStep);
+                markInvalidFieldsInCurrentStep();
                 showValidationError();
             }
             navigationInProgress = false;
@@ -195,25 +165,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const nextStep = parseInt(this.getAttribute('data-next'));
             
             // Der Button sollte deaktiviert sein, wenn der aktuelle Schritt nicht gültig ist
-            if (!validateCurrentStep(currentStep)) {
-                markInvalidFields(currentStep);
+            if (!validateCurrentStep()) {
+                markInvalidFieldsInCurrentStep();
                 showValidationError();
                 navigationInProgress = false;
                 return;
             }
             
+            // Alle Fehlermarkierungen im aktuellen Schritt zurücksetzen
+            resetErrorsInCurrentStep();
             goToStep(nextStep);
             navigationInProgress = false;
         });
     });
-
-    // Initial alle "Weiter"-Buttons validieren
-    function checkAllNextButtons() {
-        nextButtons.forEach(button => {
-            const stepNum = parseInt(button.getAttribute('data-next')) - 1;
-            updateButtonState(button, validateCurrentStep(stepNum));
-        });
-    }
 
     // Event-Listener für "Zurück"-Buttons
     prevButtons.forEach(button => {
@@ -222,10 +186,25 @@ document.addEventListener('DOMContentLoaded', function() {
             navigationInProgress = true;
             
             const prevStep = parseInt(this.getAttribute('data-prev'));
+            // Alle Fehlermarkierungen im aktuellen Schritt zurücksetzen
+            resetErrorsInCurrentStep();
             goToStep(prevStep);
             navigationInProgress = false;
         });
     });
+
+    // Funktion zum Zurücksetzen aller Fehlermarkierungen im aktuellen Schritt
+    function resetErrorsInCurrentStep() {
+        const currentSection = document.getElementById(`step-${currentStep}`);
+        if (!currentSection) return;
+        
+        const fields = currentSection.querySelectorAll('.form-input-field');
+        fields.forEach(field => {
+            field.classList.remove('error');
+            field.style.borderColor = '';
+            field.classList.remove('shake');
+        });
+    }
 
     // Funktion, um Fehler von nicht ausgefüllten Pflichtfeldern anzuzeigen
     function showValidationError() {
@@ -233,8 +212,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Funktion zum Markieren ungültiger Felder im aktuellen Schritt
-    function markInvalidFields(stepNumber) {
-        const currentSection = document.getElementById(`step-${stepNumber}`);
+    function markInvalidFieldsInCurrentStep() {
+        const currentSection = document.getElementById(`step-${currentStep}`);
         if (!currentSection) return;
         
         const requiredFields = currentSection.querySelectorAll('[required]');
@@ -268,12 +247,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Funktion zur Validierung des aktuellen Schritts
-    function validateCurrentStep(stepNumber) {
-        const currentSection = document.getElementById(`step-${stepNumber}`);
+    function validateCurrentStep() {
+        const currentSection = document.getElementById(`step-${currentStep}`);
         if (!currentSection) return true; // Wenn Abschnitt nicht gefunden, als gültig betrachten
         
         // Finde alle Next-Buttons für diesen Schritt
-        const nextButton = document.querySelector(`.next-step[data-next="${stepNumber + 1}"]`);
+        const nextButton = document.querySelector(`.next-step[data-next="${currentStep + 1}"]`);
         
         const requiredFields = currentSection.querySelectorAll('[required]');
         let allValid = true;
@@ -282,11 +261,6 @@ document.addEventListener('DOMContentLoaded', function() {
         requiredFields.forEach(field => {
             if (!field.value.trim()) {
                 allValid = false;
-                field.classList.add('error');
-                field.style.borderColor = 'red';
-            } else {
-                field.classList.remove('error');
-                field.style.borderColor = '';
             }
         });
         
@@ -296,16 +270,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         return allValid;
-    }
-
-    // Funktion zur Validierung eines Bereichs von Schritten
-    function validateStepsRange(startStep, endStep) {
-        for (let i = startStep; i <= endStep; i++) {
-            if (!validateCurrentStep(i)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     // Funktion zum Wechseln der Schritte
@@ -334,13 +298,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Fortschrittsanzeige aktualisieren
         updateProgress();
         
-        // Status aller Weiter-Buttons aktualisieren
-        nextButtons.forEach(button => {
-            const buttonStepNum = parseInt(button.getAttribute('data-next')) - 1;
-            if (buttonStepNum === currentStep) {
-                validateCurrentStep(currentStep);
-            }
-        });
+        // Status des Weiter-Buttons für den aktuellen Schritt aktualisieren
+        validateCurrentStep();
         
         // Zum Anfang des Formulars scrollen
         window.scrollTo({
@@ -407,8 +366,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (requiredFields.length === 0) return 100;
         return Math.floor((filledRequiredFields / requiredFields.length) * 100);
     }
-
-    // Die Vorschau-Funktion wird unverändert beibehalten
 
     // Vorschau im letzten Schritt aktualisieren
     function updatePreview() {
@@ -503,23 +460,42 @@ document.addEventListener('DOMContentLoaded', function() {
     if (generateButton) {
         generateButton.addEventListener('click', function() {
             // Validierung aller Schritte vor der PDF-Generierung
-            if (validateStepsRange(1, 9)) {
+            let allStepsValid = true;
+            
+            for (let i = 1; i <= 9; i++) {
+                const stepSection = document.getElementById(`step-${i}`);
+                if (stepSection) {
+                    const requiredFields = stepSection.querySelectorAll('[required]');
+                    requiredFields.forEach(field => {
+                        if (!field.value.trim()) {
+                            allStepsValid = false;
+                            // Navigiere zum ersten Schritt mit fehlenden Pflichtfeldern
+                            if (i < currentStep) {
+                                goToStep(i);
+                                markInvalidFieldsInCurrentStep();
+                                return;
+                            }
+                        }
+                    });
+                }
+                
+                if (!allStepsValid) break;
+            }
+            
+            if (allStepsValid) {
                 console.log('Vertrag wird generiert...');
                 
-                // Aufrufen der PDF-Generierungsfunktion
-                if (window.generatePDFContract()) {
+                // Direkter Aufruf der bekannten generatePDF-Funktion
+                try {
+                    // Nutze die Funktion aus dem bereitgestellten Script
+                    generatePDF();
                     showSuccessAnimation();
+                } catch (error) {
+                    console.error("Fehler bei der PDF-Generierung:", error);
+                    alert('Bei der Generierung des Vertrags ist ein Fehler aufgetreten: ' + error.message);
                 }
             } else {
-                // Validierung fehlgeschlagen - Zum ersten ungültigen Schritt navigieren
-                for (let i = 1; i <= 9; i++) {
-                    if (!validateCurrentStep(i)) {
-                        goToStep(i);
-                        markInvalidFields(i);
-                        showValidationError();
-                        break;
-                    }
-                }
+                showValidationError();
             }
         });
     }
@@ -550,12 +526,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.value.trim()) {
                 this.classList.remove('error');
                 this.style.borderColor = '';
-            } else {
-                this.classList.add('error');
-                this.style.borderColor = 'red';
             }
             // Überprüfe den Button-Status für den aktuellen Schritt
-            validateCurrentStep(currentStep);
+            validateCurrentStep();
             updateProgress();
         });
     });
@@ -759,10 +732,9 @@ document.addEventListener('DOMContentLoaded', function() {
         mainContent.appendChild(form);
     }
 
-    // Initial alle Schritte validieren und Button-Status aktualisieren
-    window.setTimeout(function() {
-        for (let i = 1; i <= 9; i++) {
-            validateCurrentStep(i);
-        }
-    }, 500);
+    // Initial den Weiter-Button des aktuellen Schritts validieren
+    validateCurrentStep();
+    
+    // Initialisierung der Fortschrittsanzeige
+    updateProgress();
 });
