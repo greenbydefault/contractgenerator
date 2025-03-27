@@ -979,26 +979,23 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.text("Die Veröffentlichung der Inhalte erfolgt auf folgenden Plattformen:", 30, y);
             y += 8;
             
-            // Plattformen auflisten - verbesserter Ansatz ohne Unicode-Spacing-Probleme
-            y = renderCheckbox(doc, instagramSelected, "Instagram (Profil: ", 30, y);
+            // Plattformen auflisten - Format: "Plattform - Profil: Name" ohne Klammern
+            y = renderCheckbox(doc, instagramSelected, "Instagram - Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(instagramUsername, 30 + doc.getTextWidth("Instagram (Profil: ") + 7, y);
+            doc.text(instagramUsername, 30 + doc.getTextWidth("Instagram - Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("Instagram (Profil: ") + 7 + doc.getTextWidth(instagramUsername), y);
             y += 6;
             
-            y = renderCheckbox(doc, tiktokSelected, "TikTok (Profil: ", 30, y);
+            y = renderCheckbox(doc, tiktokSelected, "TikTok - Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(tiktokUsername, 30 + doc.getTextWidth("TikTok (Profil: ") + 7, y);
+            doc.text(tiktokUsername, 30 + doc.getTextWidth("TikTok - Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("TikTok (Profil: ") + 7 + doc.getTextWidth(tiktokUsername), y);
             y += 6;
             
-            y = renderCheckbox(doc, youtubeSelected, "YouTube (Profil: ", 30, y);
+            y = renderCheckbox(doc, youtubeSelected, "YouTube - Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(youtubeUrl, 30 + doc.getTextWidth("YouTube (Profil: ") + 7, y);
+            doc.text(youtubeUrl, 30 + doc.getTextWidth("YouTube - Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("YouTube (Profil: ") + 7 + doc.getTextWidth(youtubeUrl), y);
             y += 6;
             
             y = renderCheckbox(doc, otherSelected, "Sonstiges: ", 30, y);
@@ -1044,17 +1041,17 @@ document.addEventListener('DOMContentLoaded', function() {
             y += 8;
             
             // Verbesserte Checkbox-Rendering für Co-Autoren-Post
-            renderCheckbox(doc, collabPost, "Co-Autoren-Post (Instagram Collab): Ja", 30, y);
+            renderCheckbox(doc, collabPost, "Co-Autoren-Post (Instagram Collab)", 30, y);
             y += 6;
             
             // Checkbox für Veröffentlichung durch Unternehmen
             renderCheckbox(doc, companyPublication, "Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen", 30, y);
             y += 5;
-            doc.text("eigenem Kanal: Ja", 30 + 7, y);
+            doc.text("eigenem Kanal", 30 + 7, y);
             y += 6;
             
             // Checkbox für keine Veröffentlichung
-            renderCheckbox(doc, noCompanyPublication, "Keine zusätzliche Veröffentlichung durch das Unternehmen: Ja", 30, y);
+            renderCheckbox(doc, noCompanyPublication, "Keine zusätzliche Veröffentlichung durch das Unternehmen", 30, y);
             
             // Neue Seite für §3
             doc.addPage();
@@ -1105,9 +1102,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 y += 6;
                 
                 // Fester Text ohne Leerzeichen für problematische Passage
-                doc.text("→ Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung", 30, y);
+                doc.text("Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung", 30, y);
                 y += 5;
-                doc.text("   genutzt werden.", 30, y);
+                doc.text("genutzt werden.", 30, y);
             }
             y += 12;
             
