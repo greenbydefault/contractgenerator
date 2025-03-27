@@ -120,7 +120,13 @@ document.addEventListener('DOMContentLoaded', function() {
     progressSteps.forEach(step => {
         step.addEventListener('click', function() {
             const stepNum = parseInt(this.getAttribute('data-step'));
-            goToStep(stepNum);
+            // Validiere alle vorherigen Schritte, bevor zu diesem Schritt gewechselt wird
+            if (validatePreviousSteps(stepNum)) {
+                goToStep(stepNum);
+            } else {
+                // Zeige Hinweis, dass vorherige Schritte Pflichtfelder enthalten
+                alert('Bitte fülle alle Pflichtfelder in den vorherigen Schritten aus, bevor du zu diesem Schritt wechselst.');
+            }
         });
     });
 
@@ -128,7 +134,13 @@ document.addEventListener('DOMContentLoaded', function() {
     nextButtons.forEach(button => {
         button.addEventListener('click', function() {
             const nextStep = parseInt(this.getAttribute('data-next'));
-            goToStep(nextStep);
+            // Prüfe nur den aktuellen Schritt vor dem Weitergehen
+            if (validateCurrentStep(currentStep)) {
+                goToStep(nextStep);
+            } else {
+                // Zeige Hinweis für fehlende Pflichtfelder im aktuellen Schritt
+                alert('Bitte fülle alle Pflichtfelder in diesem Schritt aus, bevor du fortfährst.');
+            }
         });
     });
 
@@ -136,9 +148,46 @@ document.addEventListener('DOMContentLoaded', function() {
     prevButtons.forEach(button => {
         button.addEventListener('click', function() {
             const prevStep = parseInt(this.getAttribute('data-prev'));
+            // Zurück-Buttons erlauben immer Navigation ohne Validierung
             goToStep(prevStep);
         });
     });
+
+    // Funktion zur Validierung des aktuellen Schritts
+    function validateCurrentStep(stepNumber) {
+        const currentSection = document.getElementById(`step-${stepNumber}`);
+        if (!currentSection) return true; // Wenn Abschnitt nicht gefunden, als gültig betrachten
+        
+        const requiredFields = currentSection.querySelectorAll('[required]');
+        let allValid = true;
+        
+        // Überprüfe alle Pflichtfelder im aktuellen Schritt
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                allValid = false;
+                field.classList.add('error');
+                // Visuelles Feedback, dass das Feld ausgefüllt werden muss
+                field.style.borderColor = 'red';
+            } else {
+                field.classList.remove('error');
+                field.style.borderColor = '';
+            }
+        });
+        
+        return allValid;
+    }
+
+    // Funktion zur Validierung aller Schritte bis zum gewünschten Schritt
+    function validatePreviousSteps(targetStep) {
+        for (let i = 1; i < targetStep; i++) {
+            if (!validateCurrentStep(i)) {
+                // Bei erstem ungültigen Schritt zurück zu diesem Schritt
+                goToStep(i);
+                return false;
+            }
+        }
+        return true;
+    }
 
     // Funktion zum Wechseln der Schritte
     function goToStep(stepNumber) {
@@ -223,7 +272,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Berechne den Prozentsatz
+        // Berechne den Prozentsatz (Vermeiden von Division durch Null)
+        if (requiredFields.length === 0) return 100;
         return Math.floor((filledRequiredFields / requiredFields.length) * 100);
     }
 
@@ -415,36 +465,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const generateButton = document.getElementById('generate-contract');
     if (generateButton) {
         generateButton.addEventListener('click', function() {
-            // Hier würde der Aufruf der PDF-Generierungsfunktion stehen
-            console.log('Vertrag wird generiert...');
-            
-            // Validierung der Pflichtfelder
-            const requiredFields = document.querySelectorAll('[required]');
-            let allFieldsValid = true;
-            
-            requiredFields.forEach(field => {
-                if (!field.value) {
-                    allFieldsValid = false;
-                    field.classList.add('error');
-                } else {
-                    field.classList.remove('error');
+            // Validierung aller Schritte vor der Generierung
+            if (validateAllSteps()) {
+                console.log('Vertrag wird generiert...');
+                
+                // Generiere PDF mit dem ursprünglichen generatePDF-Aufruf
+                try {
+                    generatePDF();
+                    
+                    // Erfolgsanimation anzeigen
+                    const successAnimation = document.getElementById('success-animation');
+                    if (successAnimation) {
+                        successAnimation.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Fehler bei der PDF-Generierung:', error);
+                    alert('Bei der Generierung des Vertrags ist ein Fehler aufgetreten: ' + error.message);
                 }
-            });
-            
-            if (!allFieldsValid) {
-                alert('Bitte fülle alle Pflichtfelder aus.');
-                return;
+            } else {
+                // Zeige Hinweis, dass nicht alle Pflichtfelder ausgefüllt sind
+                alert('Bitte fülle alle Pflichtfelder aus, bevor du den Vertrag generierst.');
             }
-            
-            // Erfolgsanimation anzeigen
-            const successAnimation = document.getElementById('success-animation');
-            if (successAnimation) {
-                successAnimation.classList.remove('hidden');
-            }
-            
-            // Hier würde dann die tatsächliche PDF-Generierung erfolgen
-            // Beispiel: generatePDF(); // Funktion aus deinem PDF-Generator-Skript
         });
+    }
+
+    // Funktion zur Validierung aller Schritte
+    function validateAllSteps() {
+        for (let i = 1; i <= 9; i++) {
+            if (!validateCurrentStep(i)) {
+                // Bei erstem ungültigen Schritt zu diesem Schritt navigieren
+                goToStep(i);
+                return false;
+            }
+        }
+        return true;
     }
 
     // Download-Button in der Erfolgsanimation
@@ -456,16 +510,27 @@ document.addEventListener('DOMContentLoaded', function() {
             if (successAnimation) {
                 successAnimation.classList.add('hidden');
             }
-            
-            // Hier könnte ein tatsächlicher Download ausgelöst werden
-            console.log('Download startet...');
         });
     }
+
+    // Event-Listener für Input-Felder - um die Error-Klasse zu entfernen, sobald Wert eingegeben wird
+    document.querySelectorAll('[required]').forEach(field => {
+        field.addEventListener('input', function() {
+            if (this.value.trim()) {
+                this.classList.remove('error');
+                this.style.borderColor = '';
+            } else {
+                this.classList.add('error');
+                this.style.borderColor = 'red';
+            }
+            updateProgress();
+        });
+    });
 
     // Initialisierung der Fortschrittsanzeige
     updateProgress();
 
-    // CSS für klickbare Schritte hinzufügen
+    // CSS für klickbare Schritte und Fehlerzustände hinzufügen
     const style = document.createElement('style');
     style.textContent = `
         .progress-step {
@@ -474,6 +539,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         .progress-step:hover {
             transform: scale(1.05);
+        }
+        .error {
+            border-color: red !important;
+            box-shadow: 0 0 3px rgba(255, 0, 0, 0.3) !important;
+        }
+        .error:focus {
+            border-color: red !important;
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.5) !important;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake {
+            animation: shake 0.5s;
         }
     `;
     document.head.appendChild(style);
