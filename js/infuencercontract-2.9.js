@@ -1148,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont("helvetica", "bold");
             doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt "), y);
             doc.setFont("helvetica", "normal");
-            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €"), y);
+            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt") + doc.getTextWidth(compensation + " €"), y);
             y += 8;
             
             doc.text("Die Rechnungsstellung erfolgt nach Veröffentlichung.", 30, y);
