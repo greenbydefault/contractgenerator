@@ -1147,11 +1147,11 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont("helvetica", "bold");
             doc.text(scriptDate, 30 + doc.getTextWidth("Freigabe bis "), y);
             doc.setFont("helvetica", "normal");
-            doc.text(" / ", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate), y);
+            doc.text(" / ", 30 + doc.getTextWidth("Freigabe bis") + doc.getTextWidth(scriptDate), y);
             doc.setFont("helvetica", "bold");
-            doc.text(scriptTime, 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth(" / "), y);
+            doc.text(scriptTime, 30 + doc.getTextWidth("Freigabe bis") + doc.getTextWidth(scriptDate) + doc.getTextWidth(" / "), y);
             doc.setFont("helvetica", "normal");
-            doc.text(".", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth(" / ") + doc.getTextWidth(scriptTime), y);
+            doc.text(".", 30 + doc.getTextWidth("Freigabe bis") + doc.getTextWidth(scriptDate) + doc.getTextWidth(" / ") + doc.getTextWidth(scriptTime), y);
             y += 8;
             
             // Produktion - als eigene Zeile
@@ -1171,9 +1171,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 doc.setFont("helvetica", "bold");
                 doc.text(productionLocation, 30 + doc.getTextWidth("Produktionsort: "), y);
                 doc.setFont("helvetica", "normal");
-                doc.text(".", 30 + doc.getTextWidth("Produktionsort: ") + doc.getTextWidth(productionLocation), y);
+                doc.text(".", 30 + doc.getTextWidth("Produktionsort:") + doc.getTextWidth(productionLocation), y);
             } else {
-                doc.text(".", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – ") + doc.getTextWidth(productionEnd), y);
+                doc.text(".", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – ") + doc.getTextWidth(productionEnd), y);
             }
             
             y += 12;
@@ -1191,10 +1191,10 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.text("Die Nettovergütung beträgt", 30, y);
             doc.setFont("helvetica", "bold");
             // Reduziere den Abstand um 10 Punkte
-            doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + 20, y);
+            doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt") + 10, y);
             doc.setFont("helvetica", "normal");
             // Passe auch den Punkt entsprechend an
-            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €") + 1, y);
+            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt") + doc.getTextWidth(compensation + " €") + 1, y);
             y += 8;
             
             doc.text("Die Rechnungsstellung erfolgt nach Veröffentlichung.", 30, y);
