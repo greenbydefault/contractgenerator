@@ -115,32 +115,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Globale Variable für den aktuellen Schritt
     let currentStep = 1;
+    
+    // Flag um zu verhindern, dass mehrere Validierungsnachrichten erscheinen
+    let validationInProgress = false;
 
     // Event-Listener für Klicks auf die Fortschrittsschritte hinzufügen (direkte Navigation)
     progressSteps.forEach(step => {
         step.addEventListener('click', function() {
+            if (validationInProgress) return; // Verhindere mehrfache Validierungen
+            validationInProgress = true;
+            
             const stepNum = parseInt(this.getAttribute('data-step'));
+            
+            // Nur aktuelle und vergangene Schritte erlauben direkte Navigation
+            if (stepNum <= currentStep) {
+                goToStep(stepNum);
+                validationInProgress = false;
+                return;
+            }
+            
             // Validiere alle vorherigen Schritte, bevor zu diesem Schritt gewechselt wird
             if (validatePreviousSteps(stepNum)) {
                 goToStep(stepNum);
             } else {
                 // Zeige Hinweis, dass vorherige Schritte Pflichtfelder enthalten
+                shakeInvalidFields();
                 alert('Bitte fülle alle Pflichtfelder in den vorherigen Schritten aus, bevor du zu diesem Schritt wechselst.');
             }
+            validationInProgress = false;
         });
     });
 
     // Event-Listener für "Weiter"-Buttons
     nextButtons.forEach(button => {
         button.addEventListener('click', function() {
+            if (validationInProgress) return;
+            validationInProgress = true;
+            
             const nextStep = parseInt(this.getAttribute('data-next'));
             // Prüfe nur den aktuellen Schritt vor dem Weitergehen
             if (validateCurrentStep(currentStep)) {
                 goToStep(nextStep);
             } else {
                 // Zeige Hinweis für fehlende Pflichtfelder im aktuellen Schritt
+                shakeInvalidFields();
                 alert('Bitte fülle alle Pflichtfelder in diesem Schritt aus, bevor du fortfährst.');
             }
+            validationInProgress = false;
         });
     });
 
@@ -152,6 +173,27 @@ document.addEventListener('DOMContentLoaded', function() {
             goToStep(prevStep);
         });
     });
+
+    // Funktion zum Hervorheben fehlender Pflichtfelder mit Animation
+    function shakeInvalidFields() {
+        const currentSection = document.getElementById(`step-${currentStep}`);
+        if (!currentSection) return;
+        
+        const requiredFields = currentSection.querySelectorAll('[required]');
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('error');
+                field.classList.add('shake');
+                field.style.borderColor = 'red';
+                
+                // Animation nach Abschluss entfernen
+                setTimeout(() => {
+                    field.classList.remove('shake');
+                }, 500);
+            }
+        });
+    }
 
     // Funktion zur Validierung des aktuellen Schritts
     function validateCurrentStep(stepNumber) {
@@ -231,8 +273,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const percentage = Math.min(Math.floor((currentStep / 9) * 100), 100);
         
         // Fortschrittsbalken aktualisieren
-        progressFill.style.width = `${percentage}%`;
-        progressText.textContent = `${percentage}% ausgefüllt`;
+        if (progressFill) {
+            progressFill.style.width = `${percentage}%`;
+        }
+        
+        if (progressText) {
+            progressText.textContent = `${percentage}% ausgefüllt`;
+        }
         
         // Fortschrittsnachricht aktualisieren
         updateProgressMessage(currentStep);
@@ -245,6 +292,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fortschrittsnachricht je nach Schritt aktualisieren
     function updateProgressMessage(stepNumber) {
+        if (!progressMessage) return;
+        
         const messages = [
             "Lass uns anfangen!",
             "Gut gemacht! Weiter geht's mit den Influencer-Daten.",
@@ -450,8 +499,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Aktualisiere die Fortschrittsanzeige mit dem tatsächlichen Fortschritt
         const realProgress = calculateRealProgress();
-        progressFill.style.width = `${realProgress}%`;
-        progressText.textContent = `${realProgress}% ausgefüllt`;
+        if (progressFill) {
+            progressFill.style.width = `${realProgress}%`;
+        }
+        if (progressText) {
+            progressText.textContent = `${realProgress}% ausgefüllt`;
+        }
     }
 
     // Hilfsfunktion zum Formatieren von Datumsangaben
@@ -469,24 +522,33 @@ document.addEventListener('DOMContentLoaded', function() {
             if (validateAllSteps()) {
                 console.log('Vertrag wird generiert...');
                 
-                // Generiere PDF mit dem ursprünglichen generatePDF-Aufruf
-                try {
+                // Prüfen, ob die generatePDF-Funktion existiert, bevor sie aufgerufen wird
+                if (typeof window.generatePDF === 'function') {
+                    // Direkt die globale generatePDF-Funktion aufrufen
+                    window.generatePDF();
+                    showSuccessAnimation();
+                } else if (typeof generatePDF === 'function') {
+                    // Oder die lokale generatePDF-Funktion aufrufen, falls verfügbar
                     generatePDF();
-                    
-                    // Erfolgsanimation anzeigen
-                    const successAnimation = document.getElementById('success-animation');
-                    if (successAnimation) {
-                        successAnimation.classList.remove('hidden');
-                    }
-                } catch (error) {
-                    console.error('Fehler bei der PDF-Generierung:', error);
-                    alert('Bei der Generierung des Vertrags ist ein Fehler aufgetreten: ' + error.message);
+                    showSuccessAnimation();
+                } else {
+                    // Fallback für den Fall, dass die Funktion nicht existiert
+                    console.error('Die generatePDF-Funktion wurde nicht gefunden.');
+                    alert('Der Vertrag kann nicht generiert werden. Die PDF-Generierungsfunktion ist nicht verfügbar.');
                 }
             } else {
                 // Zeige Hinweis, dass nicht alle Pflichtfelder ausgefüllt sind
                 alert('Bitte fülle alle Pflichtfelder aus, bevor du den Vertrag generierst.');
             }
         });
+    }
+
+    // Erfolgsanimation anzeigen
+    function showSuccessAnimation() {
+        const successAnimation = document.getElementById('success-animation');
+        if (successAnimation) {
+            successAnimation.classList.remove('hidden');
+        }
     }
 
     // Funktion zur Validierung aller Schritte
@@ -533,29 +595,175 @@ document.addEventListener('DOMContentLoaded', function() {
     // CSS für klickbare Schritte und Fehlerzustände hinzufügen
     const style = document.createElement('style');
     style.textContent = `
+        .container {
+            display: flex;
+            width: 100%;
+        }
+        
+        .sidebar {
+            width: 240px;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-right: 1px solid #e5e7eb;
+            min-height: 100vh;
+            position: sticky;
+            top: 0;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 20px;
+        }
+        
         .progress-step {
             cursor: pointer;
             transition: transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            margin-bottom: 10px;
+            position: relative;
         }
+        
+        .progress-step.active .step-indicator {
+            background-color: var(--color-primary);
+            color: white;
+        }
+        
+        .progress-step .step-indicator {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background-color: #e5e7eb;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .progress-step .step-title {
+            font-size: 14px;
+            color: #6b7280;
+            transition: all 0.3s ease;
+        }
+        
+        .progress-step.active .step-title {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+        
+        .progress-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 14px;
+            top: 38px;
+            height: 20px;
+            width: 2px;
+            background-color: #e5e7eb;
+            z-index: 1;
+        }
+        
+        .progress-step.active:not(:last-child)::after,
+        .progress-step.completed:not(:last-child)::after {
+            background-color: var(--color-primary);
+        }
+        
         .progress-step:hover {
-            transform: scale(1.05);
+            transform: translateX(5px);
         }
+        
         .error {
             border-color: red !important;
             box-shadow: 0 0 3px rgba(255, 0, 0, 0.3) !important;
         }
+        
         .error:focus {
             border-color: red !important;
             box-shadow: 0 0 5px rgba(255, 0, 0, 0.5) !important;
         }
+        
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
             20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
+        
         .shake {
             animation: shake 0.5s;
         }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                min-height: auto;
+                position: relative;
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+                padding: 15px;
+            }
+            
+            .progress-step {
+                padding: 5px 0;
+                margin-bottom: 5px;
+            }
+            
+            .progress-step .step-indicator {
+                width: 24px;
+                height: 24px;
+                font-size: 12px;
+            }
+            
+            .progress-step .step-title {
+                font-size: 12px;
+            }
+            
+            .progress-step:not(:last-child)::after {
+                top: 29px;
+                height: 15px;
+            }
+            
+            .main-content {
+                padding: 15px;
+            }
+        }
     `;
     document.head.appendChild(style);
+
+    // Layout anpassen - Container erstellen, falls nicht vorhanden
+    const form = document.querySelector('.db-contact-generator-wrapper');
+    if (form && !document.querySelector('.container')) {
+        // Die ursprüngliche Umgebung des Formulars referenzieren
+        const parentElement = form.parentElement;
+
+        // Container erstellen und einfügen
+        const container = document.createElement('div');
+        container.className = 'container';
+        parentElement.appendChild(container);
+
+        // Sidebar erstellen
+        const sidebar = document.createElement('div');
+        sidebar.className = 'sidebar';
+        container.appendChild(sidebar);
+
+        // Alle Fortschrittsschritte in die Sidebar verschieben
+        const progressBar = document.querySelector('.progress-bar');
+        if (progressBar) {
+            sidebar.appendChild(progressBar);
+        }
+
+        // Main-Content erstellen
+        const mainContent = document.createElement('div');
+        mainContent.className = 'main-content';
+        container.appendChild(mainContent);
+
+        // Das Formular in den Main-Content verschieben
+        mainContent.appendChild(form);
+    }
 });
