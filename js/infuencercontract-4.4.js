@@ -1185,20 +1185,17 @@ document.addEventListener('DOMContentLoaded', function() {
             y = 30; // Zurück zur Startposition
             
             // §6 Vergütung
-            // §6 Vergütung - Korrigierte Version ohne unerwünschte Abstände
             y = addParagraphTitle(doc, "§6 Vergütung", y);
-            
-            // Nettovergütung mit korrektem Abstand und ohne Punkt vor dem Betrag
-            doc.text("Die Nettovergütung beträgt ", 30, y); // Leerzeichen nach "beträgt" hinzugefügt
-            let xPos = 30 + doc.getTextWidth("Die Nettovergütung beträgt ");
+
+            // Nettovergütung mit hervorgehobener Variable und Euro-Zeichen - VERBESSERT
+            doc.text("Die Nettovergütung beträgt", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(compensation + " €", xPos, y); // Direkt nach dem Text, ohne zusätzlichen Abstand
+            // Reduziere den Abstand um 10 Punkte
+            doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt") + 5, y);
             doc.setFont("helvetica", "normal");
-            doc.text(".", xPos + doc.getTextWidth(compensation + " €"), y); // Punkt am Ende
-            y += 8;
-            
-            doc.text("Die Rechnungsstellung erfolgt nach Veröffentlichung.", 30, y);
-            y += 8;
+            // Passe auch den Punkt entsprechend an
+            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt") + doc.getTextWidth(compensation + " €") + 2, y);
+            y += 8; 
             
             // Zahlungsziel mit verbesserten Checkboxen
             doc.text("Das Zahlungsziel beträgt", 30, y);
