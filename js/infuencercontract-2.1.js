@@ -16,6 +16,20 @@ document.addEventListener('DOMContentLoaded', (event) => {
         });
     }
 
+    // Event-Listener für die Vertragstyp-Auswahl einrichten (falls vorhanden)
+    const contractTypeSelect = document.getElementById('contract-type');
+    const clientInfoSection = document.getElementById('client-info-section');
+    
+    if (contractTypeSelect && clientInfoSection) {
+        // Initial Zustand setzen
+        clientInfoSection.style.display = contractTypeSelect.value === 'client' ? 'block' : 'none';
+        
+        // Event-Listener für Änderungen
+        contractTypeSelect.addEventListener('change', function() {
+            clientInfoSection.style.display = this.value === 'client' ? 'block' : 'none';
+        });
+    }
+
     // Funktion zum Hinzufügen eines Wasserzeichens
     function addWatermark(doc) {
         const totalPages = doc.internal.getNumberOfPages();
@@ -172,22 +186,39 @@ document.addEventListener('DOMContentLoaded', (event) => {
         addTableOfContents(doc);
     }
 
-    // Funktion zum Hinzufügen von Unterschriftsfeldern
+    // Erweiterte Funktion zum Hinzufügen von Unterschriftsfeldern mit Ort und Datum
     function addSignatureFields(doc) {
         // Stellen Sie sicher, dass wir am Ende des Dokuments arbeiten
-        let y = doc.internal.pageSize.height - 50; // 50 Einheiten vom unteren Rand
+        let y = doc.internal.pageSize.height - 70; // Mehr Platz für zusätzliche Felder
 
-        doc.text("Ort, Datum", 30, y);
-        doc.text("Ort, Datum", 120, y);
-        y += 20;
+        // Linke Spalte (Unternehmen)
+        const leftColumnX = 30;
+        const rightColumnX = 120;
+        
+        // Ort
+        doc.text("Ort:", leftColumnX, y);
+        doc.line(leftColumnX + 20, y, leftColumnX + 80, y); // Linie für Ort
+        doc.text("Ort:", rightColumnX, y);
+        doc.line(rightColumnX + 20, y, rightColumnX + 80, y); // Linie für Ort
+        
+        y += 15;
+        
+        // Datum
+        doc.text("Datum:", leftColumnX, y);
+        doc.line(leftColumnX + 30, y, leftColumnX + 80, y); // Linie für Datum
+        doc.text("Datum:", rightColumnX, y);
+        doc.line(rightColumnX + 30, y, rightColumnX + 80, y); // Linie für Datum
+        
+        y += 15;
         
         // Unterschriftslinien
-        doc.line(30, y, 90, y); // Linie für Unternehmen
-        doc.line(120, y, 180, y); // Linie für Influencer
+        doc.line(leftColumnX, y, leftColumnX + 80, y); // Linie für Unternehmen
+        doc.line(rightColumnX, y, rightColumnX + 80, y); // Linie für Influencer
+        
         y += 10;
         
-        doc.text("[Unterschrift Unternehmen]", 30, y);
-        doc.text("[Unterschrift Influencer]", 120, y);
+        doc.text("[Unterschrift Unternehmen]", leftColumnX, y);
+        doc.text("[Unterschrift Influencer]", rightColumnX, y);
     }
 
     // Verbesserte Funktion zum Anzeigen von Checkbox-Optionen mit kleineren Boxen
@@ -231,6 +262,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
         console.log('Starting PDF generation');
         try {
             // Daten aus dem Formular extrahieren
+            // Vertragstyp
+            const contractTypeEl = document.getElementById('contract-type');
+            const isClientContract = contractTypeEl ? contractTypeEl.value === 'client' : false;
+            
             // Unternehmen (Auftraggeber)
             const companyNameEl = document.getElementById('company-name');
             const companyName = companyNameEl ? companyNameEl.value : '[Name des Unternehmens]';
@@ -272,12 +307,21 @@ document.addEventListener('DOMContentLoaded', (event) => {
             const influencerCountryEl = document.getElementById('influencer-country');
             const influencerCountry = influencerCountryEl ? influencerCountryEl.value : '[Land Creator]';
             
-            // Kunde/Marke (falls vorhanden)
-            const clientNameEl = document.getElementById('client-name');
-            const clientName = clientNameEl ? clientNameEl.value : '[Name / Marke, Adresse]';
+            // Kunde/Marke
+            let clientName, clientAddress;
             
-            const clientAddressEl = document.getElementById('client-address');
-            const clientAddress = clientAddressEl ? clientAddressEl.value : '';
+            if (isClientContract) {
+                // Hole Kundendaten aus separaten Feldern für Client-Verträge
+                const clientNameEl = document.getElementById('client-name');
+                clientName = clientNameEl ? clientNameEl.value : '[Name des Kunden]';
+                
+                const clientAddressEl = document.getElementById('client-address');
+                clientAddress = clientAddressEl ? clientAddressEl.value : '[Adresse des Kunden]';
+            } else {
+                // Bei direktem Vertrag ist der Kunde das Unternehmen selbst
+                clientName = companyName;
+                clientAddress = `${companyStreet} ${companyNumber}, ${companyZip} ${companyCity}`;
+            }
             
             // Plattformen
             const instagramSelectedEl = document.getElementById('platform-instagram');
@@ -434,11 +478,17 @@ document.addEventListener('DOMContentLoaded', (event) => {
             doc.text("zugunsten des Unternehmens bzw. einer vom Unternehmen vertretenen Marke.", 30, y);
             y += 8;
             
-            // Client info falls vorhanden
-            const clientInfo = clientAddress ? clientName + ", " + clientAddress : clientName;
-            doc.text("Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden " + clientInfo + ".", 30, y);
-            y += 5;
-            doc.text("Alle Leistungen erfolgen im Namen und auf Rechnung des Unternehmens.", 30, y);
+            // Client info falls vorhanden - unterschiedliche Darstellung je nach Vertragstyp
+            if (isClientContract) {
+                // Bei Client-Vertrag: Formulierung als Agentur
+                const clientInfo = clientAddress ? clientName + ", " + clientAddress : clientName;
+                doc.text("Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden " + clientInfo + ".", 30, y);
+                y += 5;
+                doc.text("Alle Leistungen erfolgen im Namen und auf Rechnung des Unternehmens.", 30, y);
+            } else {
+                // Bei direktem Vertrag: Keine Agentur-Beziehung
+                doc.text("Das Unternehmen handelt im eigenen Namen und auf eigene Rechnung.", 30, y);
+            }
             y += 12;
             
             // §2 Plattformen & Veröffentlichung
@@ -586,8 +636,15 @@ document.addEventListener('DOMContentLoaded', (event) => {
             y += 5;
             doc.text("erstellten Inhalten zur Verwendung in den vereinbarten Kanälen. Das Unternehmen ist", 30, y);
             y += 5;
-            doc.text("berechtigt, die Inhalte dem benannten Kunden zur Nutzung zu überlassen.", 30, y);
+            
+            // Unterschiedliche Formulierung je nach Vertragstyp
+            if (isClientContract) {
+                doc.text("berechtigt, die Inhalte dem benannten Kunden zur Nutzung zu überlassen.", 30, y);
+            } else {
+                doc.text("alleiniger Berechtigter dieser Nutzungsrechte.", 30, y);
+            }
             y += 8;
+            
             doc.text("Die Inhalte dürfen technisch angepasst und bearbeitet werden. Die Weitergabe an", 30, y);
             y += 5;
             doc.text("sonstige Dritte ist nicht gestattet. Nach Ablauf der Nutzungsdauer erlischt das", 30, y);
@@ -838,20 +895,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
             
             doc.text("Vertrag im Übrigen wirksam.", 30, y);
             
-            y += 30; // Großzügiger Abstand vor den Unterschriftsfeldern (aber nicht zu groß)
-            
-            // Nur ein Satz von Unterschriftsfeldern, optimiert und mit mehr Platz
-            doc.text("Ort, Datum", 50, y);
-            doc.text("Ort, Datum", 140, y);
-            y += 15; // Sinnvoller Abstand für die Datumsangabe
-            
-            // Unterschriftslinien
-            doc.line(30, y, 90, y); // Linie für Unternehmen
-            doc.line(120, y, 180, y); // Linie für Influencer
-            y += 8; // Abstand nach den Linien
-            
-            doc.text("[Unterschrift Unternehmen]", 35, y);
-            doc.text("[Unterschrift Influencer]", 125, y);
+            // Verbesserte Unterschriftsfelder mit Ort und Datum
+            addSignatureFields(doc);
             
             // Wasserzeichen hinzufügen
             addWatermark(doc);
