@@ -1320,7 +1320,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.text("Vertrag im Übrigen wirksam.", 30, y);
             
             // Verbesserte Unterschriftsfelder mit Ort und Datum
-            fixedSignatureFields(doc, companyCity);
+            addSignatureFields(doc);
             
             // Wasserzeichen hinzufügen
             addWatermark(doc);
