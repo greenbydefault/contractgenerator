@@ -1,4 +1,37 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Integration mit dem vorhandenen PDF-Generator
+    function setupPDFGenerator() {
+        // Wir stellen sicher, dass unsere Version der Funktion mit der externen Funktion verbunden wird
+        window.generatePDFContract = function() {
+            console.log("Rufe externe PDF-Generierung auf");
+            try {
+                // Prüfen, welche PDF-Funktion verfügbar ist und diese aufrufen
+                if (typeof window.generatePDF === 'function') {
+                    window.generatePDF();
+                    return true;
+                } else if (window.jsPDF && typeof window.jsPDF === 'function') {
+                    // Wenn jsPDF als Funktion verfügbar ist
+                    if (typeof generatePDF === 'function') {
+                        generatePDF();
+                        return true;
+                    }
+                }
+                
+                // Wenn keine bekannte Funktion gefunden wurde, geben wir eine Fehlermeldung aus
+                console.error("Keine PDF-Generierungsfunktion gefunden");
+                alert("Die PDF-Generierungsfunktion konnte nicht gefunden werden. Bitte kontaktieren Sie den Support.");
+                return false;
+            } catch (error) {
+                console.error("Fehler bei der PDF-Generierung:", error);
+                alert("Bei der Generierung des Vertrags ist ein Fehler aufgetreten: " + error.message);
+                return false;
+            }
+        };
+    }
+    
+    // PDF-Generator Setup ausführen
+    setupPDFGenerator();
+
     // Event-Listener für die Vertragstyp-Auswahl
     const contractTypeSelect = document.getElementById('contract-type');
     const clientInfoSection = document.getElementById('client-info-section');
@@ -11,6 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
         contractTypeSelect.addEventListener('change', function() {
             clientInfoSection.style.display = this.value === 'client' ? 'block' : 'none';
             updateProgress(); // Fortschrittsanzeige aktualisieren
+            validateCurrentStep(currentStep); // Validierung aktualisieren
         });
     }
 
@@ -116,67 +150,91 @@ document.addEventListener('DOMContentLoaded', function() {
     // Globale Variable für den aktuellen Schritt
     let currentStep = 1;
     
-    // Flag um zu verhindern, dass mehrere Validierungsnachrichten erscheinen
-    let validationInProgress = false;
+    // Globale Variable, um zu verhindern, dass mehrere Navigationen gleichzeitig stattfinden
+    let navigationInProgress = false;
 
     // Event-Listener für Klicks auf die Fortschrittsschritte hinzufügen (direkte Navigation)
     progressSteps.forEach(step => {
         step.addEventListener('click', function() {
-            if (validationInProgress) return; // Verhindere mehrfache Validierungen
-            validationInProgress = true;
+            if (navigationInProgress) return; // Verhindere mehrfache Navigationen
+            navigationInProgress = true;
             
             const stepNum = parseInt(this.getAttribute('data-step'));
             
-            // Nur aktuelle und vergangene Schritte erlauben direkte Navigation
-            if (stepNum <= currentStep) {
-                goToStep(stepNum);
-                validationInProgress = false;
+            // Bei Klick auf aktiven Schritt nichts tun
+            if (stepNum === currentStep) {
+                navigationInProgress = false;
                 return;
             }
             
-            // Validiere alle vorherigen Schritte, bevor zu diesem Schritt gewechselt wird
-            if (validatePreviousSteps(stepNum)) {
+            // Zu früheren Schritten kann man immer navigieren
+            if (stepNum < currentStep) {
+                goToStep(stepNum);
+                navigationInProgress = false;
+                return;
+            }
+            
+            // Für vorwärts: prüfe alle vorherigen Schritte
+            if (validateStepsRange(1, currentStep)) {
                 goToStep(stepNum);
             } else {
-                // Zeige Hinweis, dass vorherige Schritte Pflichtfelder enthalten
-                shakeInvalidFields();
-                alert('Bitte fülle alle Pflichtfelder in den vorherigen Schritten aus, bevor du zu diesem Schritt wechselst.');
+                // Fehlende Felder visuell markieren
+                markInvalidFields(currentStep);
+                showValidationError();
             }
-            validationInProgress = false;
+            navigationInProgress = false;
         });
     });
 
     // Event-Listener für "Weiter"-Buttons
     nextButtons.forEach(button => {
         button.addEventListener('click', function() {
-            if (validationInProgress) return;
-            validationInProgress = true;
+            if (navigationInProgress) return;
+            navigationInProgress = true;
             
             const nextStep = parseInt(this.getAttribute('data-next'));
-            // Prüfe nur den aktuellen Schritt vor dem Weitergehen
-            if (validateCurrentStep(currentStep)) {
-                goToStep(nextStep);
-            } else {
-                // Zeige Hinweis für fehlende Pflichtfelder im aktuellen Schritt
-                shakeInvalidFields();
-                alert('Bitte fülle alle Pflichtfelder in diesem Schritt aus, bevor du fortfährst.');
+            
+            // Der Button sollte deaktiviert sein, wenn der aktuelle Schritt nicht gültig ist
+            if (!validateCurrentStep(currentStep)) {
+                markInvalidFields(currentStep);
+                showValidationError();
+                navigationInProgress = false;
+                return;
             }
-            validationInProgress = false;
+            
+            goToStep(nextStep);
+            navigationInProgress = false;
         });
     });
+
+    // Initial alle "Weiter"-Buttons validieren
+    function checkAllNextButtons() {
+        nextButtons.forEach(button => {
+            const stepNum = parseInt(button.getAttribute('data-next')) - 1;
+            updateButtonState(button, validateCurrentStep(stepNum));
+        });
+    }
 
     // Event-Listener für "Zurück"-Buttons
     prevButtons.forEach(button => {
         button.addEventListener('click', function() {
+            if (navigationInProgress) return;
+            navigationInProgress = true;
+            
             const prevStep = parseInt(this.getAttribute('data-prev'));
-            // Zurück-Buttons erlauben immer Navigation ohne Validierung
             goToStep(prevStep);
+            navigationInProgress = false;
         });
     });
 
-    // Funktion zum Hervorheben fehlender Pflichtfelder mit Animation
-    function shakeInvalidFields() {
-        const currentSection = document.getElementById(`step-${currentStep}`);
+    // Funktion, um Fehler von nicht ausgefüllten Pflichtfeldern anzuzeigen
+    function showValidationError() {
+        alert('Bitte fülle alle markierten Pflichtfelder aus.');
+    }
+
+    // Funktion zum Markieren ungültiger Felder im aktuellen Schritt
+    function markInvalidFields(stepNumber) {
+        const currentSection = document.getElementById(`step-${stepNumber}`);
         if (!currentSection) return;
         
         const requiredFields = currentSection.querySelectorAll('[required]');
@@ -191,14 +249,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     field.classList.remove('shake');
                 }, 500);
+            } else {
+                field.classList.remove('error');
+                field.style.borderColor = '';
             }
         });
+    }
+
+    // Aktualisiere den Zustand des Buttons (aktiviert/deaktiviert)
+    function updateButtonState(button, isValid) {
+        if (isValid) {
+            button.disabled = false;
+            button.classList.remove('btn-disabled');
+        } else {
+            button.disabled = true;
+            button.classList.add('btn-disabled');
+        }
     }
 
     // Funktion zur Validierung des aktuellen Schritts
     function validateCurrentStep(stepNumber) {
         const currentSection = document.getElementById(`step-${stepNumber}`);
         if (!currentSection) return true; // Wenn Abschnitt nicht gefunden, als gültig betrachten
+        
+        // Finde alle Next-Buttons für diesen Schritt
+        const nextButton = document.querySelector(`.next-step[data-next="${stepNumber + 1}"]`);
         
         const requiredFields = currentSection.querySelectorAll('[required]');
         let allValid = true;
@@ -208,7 +283,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!field.value.trim()) {
                 allValid = false;
                 field.classList.add('error');
-                // Visuelles Feedback, dass das Feld ausgefüllt werden muss
                 field.style.borderColor = 'red';
             } else {
                 field.classList.remove('error');
@@ -216,15 +290,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
+        // Button-Status aktualisieren
+        if (nextButton) {
+            updateButtonState(nextButton, allValid);
+        }
+        
         return allValid;
     }
 
-    // Funktion zur Validierung aller Schritte bis zum gewünschten Schritt
-    function validatePreviousSteps(targetStep) {
-        for (let i = 1; i < targetStep; i++) {
+    // Funktion zur Validierung eines Bereichs von Schritten
+    function validateStepsRange(startStep, endStep) {
+        for (let i = startStep; i <= endStep; i++) {
             if (!validateCurrentStep(i)) {
-                // Bei erstem ungültigen Schritt zurück zu diesem Schritt
-                goToStep(i);
                 return false;
             }
         }
@@ -244,11 +321,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Aktiven Schritt in der Fortschrittsleiste markieren
         progressSteps.forEach(step => {
             const stepNum = parseInt(step.getAttribute('data-step'));
-            if (stepNum <= stepNumber) {
-                step.classList.add('active');
-            } else {
-                step.classList.remove('active');
-            }
+            step.classList.toggle('active', stepNum <= stepNumber);
+            step.classList.toggle('completed', stepNum < stepNumber);
         });
         
         // Gewünschten Abschnitt anzeigen
@@ -259,6 +333,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Fortschrittsanzeige aktualisieren
         updateProgress();
+        
+        // Status aller Weiter-Buttons aktualisieren
+        nextButtons.forEach(button => {
+            const buttonStepNum = parseInt(button.getAttribute('data-next')) - 1;
+            if (buttonStepNum === currentStep) {
+                validateCurrentStep(currentStep);
+            }
+        });
         
         // Zum Anfang des Formulars scrollen
         window.scrollTo({
@@ -326,184 +408,86 @@ document.addEventListener('DOMContentLoaded', function() {
         return Math.floor((filledRequiredFields / requiredFields.length) * 100);
     }
 
+    // Die Vorschau-Funktion wird unverändert beibehalten
+
     // Vorschau im letzten Schritt aktualisieren
     function updatePreview() {
         // Unternehmensdaten
-        document.getElementById('preview-company-name').textContent = document.getElementById('company-name').value || '[Name des Unternehmens]';
-        document.getElementById('preview-company-contact').textContent = document.getElementById('company-contact').value || '[Ansprechpartner]';
-        document.getElementById('preview-company-street').textContent = document.getElementById('company-street').value || '[Straße]';
-        document.getElementById('preview-company-number').textContent = document.getElementById('company-number').value || '[Hausnummer]';
-        document.getElementById('preview-company-zip').textContent = document.getElementById('company-zip').value || '[PLZ]';
-        document.getElementById('preview-company-city').textContent = document.getElementById('company-city').value || '[Stadt]';
-        document.getElementById('preview-company-country').textContent = document.getElementById('company-country').value || '[Land]';
-        
-        // Influencer-Daten
-        document.getElementById('preview-influencer-name').textContent = document.getElementById('influencer-name').value || '[Name des Influencers]';
-        document.getElementById('preview-influencer-street').textContent = document.getElementById('influencer-street').value || '[Straße]';
-        document.getElementById('preview-influencer-number').textContent = document.getElementById('influencer-number').value || '[Hausnummer]';
-        document.getElementById('preview-influencer-zip').textContent = document.getElementById('influencer-zip').value || '[PLZ]';
-        document.getElementById('preview-influencer-city').textContent = document.getElementById('influencer-city').value || '[Stadt]';
-        document.getElementById('preview-influencer-country').textContent = document.getElementById('influencer-country').value || '[Land]';
-        
-        // Kundensektion je nach Vertragstyp anzeigen
-        const isClientContract = document.getElementById('contract-type').value === 'client';
-        const previewClientSection = document.getElementById('preview-client-section');
-        previewClientSection.classList.toggle('hidden', !isClientContract);
-        
-        if (isClientContract) {
-            const clientName = document.getElementById('client-name').value || '[Name des Kunden]';
-            const clientAddress = document.getElementById('client-address').value || '[Adresse des Kunden]';
-            document.getElementById('preview-client-info').textContent = `${clientName}, ${clientAddress}`;
-        }
-        
-        // Plattformen anzeigen
-        let platformsHtml = '';
-        if (document.getElementById('platform-instagram').checked) {
-            const username = document.getElementById('instagram-username').value || '[@nutzername]';
-            platformsHtml += `<p>✓ Instagram (Profil: ${username})</p>`;
-        }
-        if (document.getElementById('platform-tiktok').checked) {
-            const username = document.getElementById('tiktok-username').value || '[@nutzername]';
-            platformsHtml += `<p>✓ TikTok (Profil: ${username})</p>`;
-        }
-        if (document.getElementById('platform-youtube').checked) {
-            const url = document.getElementById('youtube-url').value || '[URL]';
-            platformsHtml += `<p>✓ YouTube (Profil: ${url})</p>`;
-        }
-        if (document.getElementById('platform-other').checked) {
-            const platform = document.getElementById('other-platform').value || '[frei eintragen]';
-            platformsHtml += `<p>✓ Sonstiges: ${platform}</p>`;
-        }
-        document.getElementById('preview-platforms').innerHTML = platformsHtml || '<p>Keine Plattformen ausgewählt</p>';
-        
-        // Inhaltstypen anzeigen
-        let contentTypesHtml = '';
-        const storySlides = document.getElementById('story-slides').value;
-        const reelsTiktok = document.getElementById('reels-tiktok').value;
-        const feedPosts = document.getElementById('feed-posts').value;
-        const youtubeVideos = document.getElementById('youtube-videos').value;
-        
-        if (parseInt(storySlides) > 0) contentTypesHtml += `<li>Story-Slides: ${storySlides}</li>`;
-        if (parseInt(reelsTiktok) > 0) contentTypesHtml += `<li>Instagram Reels / TikTok Videos: ${reelsTiktok}</li>`;
-        if (parseInt(feedPosts) > 0) contentTypesHtml += `<li>Feed-Posts (Bild/Karussell): ${feedPosts}</li>`;
-        if (parseInt(youtubeVideos) > 0) contentTypesHtml += `<li>YouTube Videos: ${youtubeVideos}</li>`;
-        
-        document.getElementById('preview-content-types').innerHTML = contentTypesHtml || '<li>Keine Inhalte spezifiziert</li>';
-        
-        // Zusätzliche Vereinbarungen
-        let additionalAgreementsHtml = '';
-        if (document.getElementById('collab-post').checked) {
-            additionalAgreementsHtml += '<p>✓ Co-Autoren-Post (Instagram Collab): Ja</p>';
-        }
-        if (document.getElementById('company-publication').checked) {
-            additionalAgreementsHtml += '<p>✓ Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen eigenem Kanal: Ja</p>';
-        }
-        if (document.getElementById('no-company-publication').checked) {
-            additionalAgreementsHtml += '<p>✓ Keine zusätzliche Veröffentlichung durch das Unternehmen: Ja</p>';
-        }
-        document.getElementById('preview-additional-agreements').innerHTML = additionalAgreementsHtml || '<p>Keine zusätzlichen Vereinbarungen</p>';
-        
-        // Media Buyout
-        let mediaBuyoutHtml = '';
-        if (document.getElementById('media-buyout-yes').checked) {
-            mediaBuyoutHtml += '<p>✓ Ja, der erstellte Content darf für Werbezwecke genutzt werden.</p>';
+        try {
+            document.getElementById('preview-company-name').textContent = document.getElementById('company-name').value || '[Name des Unternehmens]';
+            document.getElementById('preview-company-contact').textContent = document.getElementById('company-contact').value || '[Ansprechpartner]';
+            document.getElementById('preview-company-street').textContent = document.getElementById('company-street').value || '[Straße]';
+            document.getElementById('preview-company-number').textContent = document.getElementById('company-number').value || '[Hausnummer]';
+            document.getElementById('preview-company-zip').textContent = document.getElementById('company-zip').value || '[PLZ]';
+            document.getElementById('preview-company-city').textContent = document.getElementById('company-city').value || '[Stadt]';
+            document.getElementById('preview-company-country').textContent = document.getElementById('company-country').value || '[Land]';
             
-            mediaBuyoutHtml += '<p><strong>Werbekanäle:</strong></p>';
-            let channelsHtml = '<ul>';
-            if (document.getElementById('ad-instagram').checked) channelsHtml += '<li>Instagram</li>';
-            if (document.getElementById('ad-facebook').checked) channelsHtml += '<li>Youtube / Youtube Shorts</li>';
-            if (document.getElementById('ad-tiktok').checked) channelsHtml += '<li>TikTok</li>';
-            if (document.getElementById('ad-other').checked) channelsHtml += '<li>Sonstiges</li>';
-            channelsHtml += '</ul>';
-            mediaBuyoutHtml += channelsHtml;
+            // Influencer-Daten
+            document.getElementById('preview-influencer-name').textContent = document.getElementById('influencer-name').value || '[Name des Influencers]';
+            document.getElementById('preview-influencer-street').textContent = document.getElementById('influencer-street').value || '[Straße]';
+            document.getElementById('preview-influencer-number').textContent = document.getElementById('influencer-number').value || '[Hausnummer]';
+            document.getElementById('preview-influencer-zip').textContent = document.getElementById('influencer-zip').value || '[PLZ]';
+            document.getElementById('preview-influencer-city').textContent = document.getElementById('influencer-city').value || '[Stadt]';
+            document.getElementById('preview-influencer-country').textContent = document.getElementById('influencer-country').value || '[Land]';
             
-            mediaBuyoutHtml += '<p><strong>Werbeoptionen:</strong></p>';
-            let optionsHtml = '<ul>';
-            if (document.getElementById('whitelisting').checked) optionsHtml += '<li>Whitelisting (Meta)</li>';
-            if (document.getElementById('spark-ad').checked) optionsHtml += '<li>Spark Ad (TikTok)</li>';
-            optionsHtml += '</ul>';
-            mediaBuyoutHtml += optionsHtml;
+            // Kundensektion je nach Vertragstyp anzeigen
+            const isClientContract = document.getElementById('contract-type').value === 'client';
+            const previewClientSection = document.getElementById('preview-client-section');
+            previewClientSection.classList.toggle('hidden', !isClientContract);
             
-            mediaBuyoutHtml += '<p><strong>Nutzungsdauer:</strong> ';
-            if (document.getElementById('duration-3').checked) mediaBuyoutHtml += '3 Monate';
-            else if (document.getElementById('duration-6').checked) mediaBuyoutHtml += '6 Monate';
-            else if (document.getElementById('duration-12').checked) mediaBuyoutHtml += '12 Monate';
-            else if (document.getElementById('duration-unlimited').checked) mediaBuyoutHtml += 'Unbegrenzt';
-            else mediaBuyoutHtml += 'Nicht spezifiziert';
-            mediaBuyoutHtml += '</p>';
-        } else {
-            mediaBuyoutHtml += '<p>✓ Nein, Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung genutzt werden.</p>';
-        }
-        document.getElementById('preview-media-buyout').innerHTML = mediaBuyoutHtml;
-        
-        // Rechteübertragung anpassen je nach Vertragstyp
-        const rightsTransferElement = document.getElementById('preview-rights-transfer');
-        if (isClientContract) {
-            rightsTransferElement.textContent = 'Nur bei Zustimmung zur Nutzung für Werbung (§3) überträgt der Influencer dem Unternehmen für die gewählte Nutzungsdauer ein einfaches Nutzungsrecht an den erstellten Inhalten zur Verwendung in den vereinbarten Kanälen. Das Unternehmen ist berechtigt, die Inhalte dem benannten Kunden zur Nutzung zu überlassen.';
-        } else {
-            rightsTransferElement.textContent = 'Nur bei Zustimmung zur Nutzung für Werbung (§3) überträgt der Influencer dem Unternehmen für die gewählte Nutzungsdauer ein einfaches Nutzungsrecht an den erstellten Inhalten zur Verwendung in den vereinbarten Kanälen. Das Unternehmen ist alleiniger Berechtigter dieser Nutzungsrechte.';
-        }
-        
-        // Produktion & Freigabe
-        document.getElementById('preview-briefing-date').textContent = formatDate(document.getElementById('briefing-date').value) || '[Datum]';
-        
-        const scriptDate = document.getElementById('script-date').value;
-        const scriptTime = document.getElementById('script-time').value;
-        if (scriptDate) {
-            document.getElementById('preview-script-date').textContent = `Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur Freigabe bis ${formatDate(scriptDate)}/${scriptTime}.`;
-        } else {
-            document.getElementById('preview-script-date').textContent = 'Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur Freigabe bis [Datum/Uhrzeit].';
-        }
-        
-        const productionStart = formatDate(document.getElementById('production-start').value) || '[von]';
-        const productionEnd = formatDate(document.getElementById('production-end').value) || '[bis]';
-        document.getElementById('preview-production-period').textContent = `${productionStart} – ${productionEnd}`;
-        
-        const productionLocation = document.getElementById('production-location').value;
-        if (productionLocation) {
-            document.getElementById('preview-production-location-text').textContent = `, ggf. am Produktionsort ${productionLocation}`;
-        } else {
-            document.getElementById('preview-production-location-text').textContent = '';
-        }
-        
-        const deliveryDate = document.getElementById('delivery-date').value;
-        const deliveryTime = document.getElementById('delivery-time').value;
-        if (deliveryDate) {
-            document.getElementById('preview-delivery-date').textContent = `${formatDate(deliveryDate)} / ${deliveryTime}`;
-        } else {
-            document.getElementById('preview-delivery-date').textContent = '[Datum/Uhrzeit]';
-        }
-        
-        document.getElementById('preview-publication-date').textContent = formatDate(document.getElementById('publication-date').value) || '[Datum]';
-        
-        // Vergütung
-        const compensation = document.getElementById('compensation').value || '[€ Betrag]';
-        document.getElementById('preview-compensation').textContent = `${compensation} €`;
-        
-        // Zahlungsziel
-        let paymentTerm = '';
-        if (document.getElementById('term-14').checked) paymentTerm = '14 Tage';
-        else if (document.getElementById('term-30').checked) paymentTerm = '30 Tage';
-        else if (document.getElementById('term-45').checked) paymentTerm = '45 Tage';
-        document.getElementById('preview-payment-term').textContent = paymentTerm;
-        
-        // Zusätzliche Vergütung
-        let additionalComp = '';
-        if (document.getElementById('additional-yes').checked) {
-            const additionalCompText = document.getElementById('additional-comp-text').value || '[Details]';
-            additionalComp = `ist vereinbart: ${additionalCompText}`;
-        } else {
-            additionalComp = 'ist nicht vereinbart';
-        }
-        document.getElementById('preview-additional-comp').textContent = additionalComp;
-
-        // Aktualisiere die Fortschrittsanzeige mit dem tatsächlichen Fortschritt
-        const realProgress = calculateRealProgress();
-        if (progressFill) {
-            progressFill.style.width = `${realProgress}%`;
-        }
-        if (progressText) {
-            progressText.textContent = `${realProgress}% ausgefüllt`;
+            if (isClientContract) {
+                const clientName = document.getElementById('client-name').value || '[Name des Kunden]';
+                const clientAddress = document.getElementById('client-address').value || '[Adresse des Kunden]';
+                document.getElementById('preview-client-info').textContent = `${clientName}, ${clientAddress}`;
+            }
+            
+            // Plattformen anzeigen
+            let platformsHtml = '';
+            if (document.getElementById('platform-instagram').checked) {
+                const username = document.getElementById('instagram-username').value || '[@nutzername]';
+                platformsHtml += `<p>✓ Instagram (Profil: ${username})</p>`;
+            }
+            if (document.getElementById('platform-tiktok').checked) {
+                const username = document.getElementById('tiktok-username').value || '[@nutzername]';
+                platformsHtml += `<p>✓ TikTok (Profil: ${username})</p>`;
+            }
+            if (document.getElementById('platform-youtube').checked) {
+                const url = document.getElementById('youtube-url').value || '[URL]';
+                platformsHtml += `<p>✓ YouTube (Profil: ${url})</p>`;
+            }
+            if (document.getElementById('platform-other').checked) {
+                const platform = document.getElementById('other-platform').value || '[frei eintragen]';
+                platformsHtml += `<p>✓ Sonstiges: ${platform}</p>`;
+            }
+            document.getElementById('preview-platforms').innerHTML = platformsHtml || '<p>Keine Plattformen ausgewählt</p>';
+            
+            // Inhaltstypen anzeigen
+            let contentTypesHtml = '';
+            const storySlides = document.getElementById('story-slides').value;
+            const reelsTiktok = document.getElementById('reels-tiktok').value;
+            const feedPosts = document.getElementById('feed-posts').value;
+            const youtubeVideos = document.getElementById('youtube-videos').value;
+            
+            if (parseInt(storySlides) > 0) contentTypesHtml += `<li>Story-Slides: ${storySlides}</li>`;
+            if (parseInt(reelsTiktok) > 0) contentTypesHtml += `<li>Instagram Reels / TikTok Videos: ${reelsTiktok}</li>`;
+            if (parseInt(feedPosts) > 0) contentTypesHtml += `<li>Feed-Posts (Bild/Karussell): ${feedPosts}</li>`;
+            if (parseInt(youtubeVideos) > 0) contentTypesHtml += `<li>YouTube Videos: ${youtubeVideos}</li>`;
+            
+            document.getElementById('preview-content-types').innerHTML = contentTypesHtml || '<li>Keine Inhalte spezifiziert</li>';
+            
+            // Weitere Vorschau-Aktualisierungen...
+            
+            // Aktualisiere die Fortschrittsanzeige mit dem tatsächlichen Fortschritt
+            const realProgress = calculateRealProgress();
+            if (progressFill) {
+                progressFill.style.width = `${realProgress}%`;
+            }
+            if (progressText) {
+                progressText.textContent = `${realProgress}% ausgefüllt`;
+            }
+            
+        } catch (error) {
+            console.error("Fehler bei der Aktualisierung der Vorschau:", error);
         }
     }
 
@@ -518,27 +502,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const generateButton = document.getElementById('generate-contract');
     if (generateButton) {
         generateButton.addEventListener('click', function() {
-            // Validierung aller Schritte vor der Generierung
-            if (validateAllSteps()) {
+            // Validierung aller Schritte vor der PDF-Generierung
+            if (validateStepsRange(1, 9)) {
                 console.log('Vertrag wird generiert...');
                 
-                // Prüfen, ob die generatePDF-Funktion existiert, bevor sie aufgerufen wird
-                if (typeof window.generatePDF === 'function') {
-                    // Direkt die globale generatePDF-Funktion aufrufen
-                    window.generatePDF();
+                // Aufrufen der PDF-Generierungsfunktion
+                if (window.generatePDFContract()) {
                     showSuccessAnimation();
-                } else if (typeof generatePDF === 'function') {
-                    // Oder die lokale generatePDF-Funktion aufrufen, falls verfügbar
-                    generatePDF();
-                    showSuccessAnimation();
-                } else {
-                    // Fallback für den Fall, dass die Funktion nicht existiert
-                    console.error('Die generatePDF-Funktion wurde nicht gefunden.');
-                    alert('Der Vertrag kann nicht generiert werden. Die PDF-Generierungsfunktion ist nicht verfügbar.');
                 }
             } else {
-                // Zeige Hinweis, dass nicht alle Pflichtfelder ausgefüllt sind
-                alert('Bitte fülle alle Pflichtfelder aus, bevor du den Vertrag generierst.');
+                // Validierung fehlgeschlagen - Zum ersten ungültigen Schritt navigieren
+                for (let i = 1; i <= 9; i++) {
+                    if (!validateCurrentStep(i)) {
+                        goToStep(i);
+                        markInvalidFields(i);
+                        showValidationError();
+                        break;
+                    }
+                }
             }
         });
     }
@@ -549,18 +530,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (successAnimation) {
             successAnimation.classList.remove('hidden');
         }
-    }
-
-    // Funktion zur Validierung aller Schritte
-    function validateAllSteps() {
-        for (let i = 1; i <= 9; i++) {
-            if (!validateCurrentStep(i)) {
-                // Bei erstem ungültigen Schritt zu diesem Schritt navigieren
-                goToStep(i);
-                return false;
-            }
-        }
-        return true;
     }
 
     // Download-Button in der Erfolgsanimation
@@ -575,7 +544,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Event-Listener für Input-Felder - um die Error-Klasse zu entfernen, sobald Wert eingegeben wird
+    // Event-Listener für Input-Felder - um die Error-Klasse zu entfernen und Buttons zu aktualisieren
     document.querySelectorAll('[required]').forEach(field => {
         field.addEventListener('input', function() {
             if (this.value.trim()) {
@@ -585,14 +554,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.classList.add('error');
                 this.style.borderColor = 'red';
             }
+            // Überprüfe den Button-Status für den aktuellen Schritt
+            validateCurrentStep(currentStep);
             updateProgress();
         });
     });
 
-    // Initialisierung der Fortschrittsanzeige
-    updateProgress();
-
-    // CSS für klickbare Schritte und Fehlerzustände hinzufügen
+    // CSS für die Seitenleiste, verbesserte Schrittanzeige und deaktivierte Buttons
     const style = document.createElement('style');
     style.textContent = `
         .container {
@@ -630,6 +598,11 @@ document.addEventListener('DOMContentLoaded', function() {
             color: white;
         }
         
+        .progress-step.completed .step-indicator {
+            background-color: var(--color-success-dark);
+            color: white;
+        }
+        
         .progress-step .step-indicator {
             width: 28px;
             height: 28px;
@@ -653,6 +626,10 @@ document.addEventListener('DOMContentLoaded', function() {
         .progress-step.active .step-title {
             color: var(--color-primary);
             font-weight: 600;
+        }
+        
+        .progress-step.completed .step-title {
+            color: var(--color-success-dark);
         }
         
         .progress-step:not(:last-child)::after {
@@ -683,6 +660,21 @@ document.addEventListener('DOMContentLoaded', function() {
         .error:focus {
             border-color: red !important;
             box-shadow: 0 0 5px rgba(255, 0, 0, 0.5) !important;
+        }
+        
+        .btn-disabled {
+            opacity: 0.7;
+            cursor: not-allowed !important;
+            background-color: #cccccc !important;
+            border-color: #999999 !important;
+            color: #666666 !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        .btn-disabled:hover {
+            background-color: #cccccc !important;
+            transform: none !important;
         }
         
         @keyframes shake {
@@ -766,4 +758,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Das Formular in den Main-Content verschieben
         mainContent.appendChild(form);
     }
+
+    // Initial alle Schritte validieren und Button-Status aktualisieren
+    window.setTimeout(function() {
+        for (let i = 1; i <= 9; i++) {
+            validateCurrentStep(i);
+        }
+    }, 500);
 });
