@@ -1148,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont("helvetica", "bold");
             doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt "), y);
             doc.setFont("helvetica", "normal");
-            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt") + doc.getTextWidth(compensation + " €"), y);
+           doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €") - 2, y);
             y += 8;
             
             doc.text("Die Rechnungsstellung erfolgt nach Veröffentlichung.", 30, y);
@@ -1308,12 +1308,12 @@ document.addEventListener('DOMContentLoaded', function() {
             y = addParagraphTitle(doc, "§12 Schlussbestimmungen", y);
             
             // Text in einem Stück mit korrekter Ausrichtung ohne Abstände
-            let schlussText = "Änderungen bedürfen der Schriftform. Gerichtsstand ist ";
+            let schlussText = "Änderungen bedürfen der Schriftform. Gerichtsstand ist";
             doc.text(schlussText, 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(companyCity, 30 + doc.getTextWidth(schlussText), y);
             doc.setFont("helvetica", "normal");
-            doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth(schlussText) + doc.getTextWidth(companyCity), y);
+            doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth(schlussText) + doc.getTextWidth(companyCity), -2, y);
             
             y += 8; // Abstand nach der ersten Zeile
             
