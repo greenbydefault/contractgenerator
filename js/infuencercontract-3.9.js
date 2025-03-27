@@ -617,58 +617,54 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Verbesserte Funktion zum Anzeigen von Unterschriftsfeldern mit Ort und Datum
     function addSignatureFields(doc, city) {
-        // Stellen Sie sicher, dass wir am Ende des Dokuments arbeiten
-        let y = doc.internal.pageSize.height - 70;
-
-        // Aktuelles Datum im deutschen Format (TT.MM.JJJJ)
-        const today = new Date();
-        const formattedDate = today.getDate() + "." + (today.getMonth() + 1) + "." + today.getFullYear();
-        
-        // Linke Spalte (Unternehmen)
-        const leftColumnX = 30;
-        const rightColumnX = 120;
-        
-        // Ort mit vorausgefülltem Wert
-        doc.text("Ort:", leftColumnX, y);
-        doc.setFont("helvetica", "bold");
-        doc.text(city, leftColumnX + 20, y - 3); // Leicht über der Linie
-        doc.setFont("helvetica", "normal");
-        doc.line(leftColumnX + 20, y, leftColumnX + 80, y); // Linie für Ort
-        
-        doc.text("Ort:", rightColumnX, y);
-        doc.setFont("helvetica", "bold");
-        doc.text(city, rightColumnX + 20, y - 3); // Leicht über der Linie
-        doc.setFont("helvetica", "normal");
-        doc.line(rightColumnX + 20, y, rightColumnX + 80, y); // Linie für Ort
-        
-        y += 15;
-        
-        // Datum mit vorausgefülltem Wert
-        doc.text("Datum:", leftColumnX, y);
-        doc.setFont("helvetica", "bold");
-        doc.text(formattedDate, leftColumnX + 30, y - 3); // Leicht über der Linie
-        doc.setFont("helvetica", "normal");
-        doc.line(leftColumnX + 30, y, leftColumnX + 80, y); // Linie für Datum
-        
-        doc.text("Datum:", rightColumnX, y);
-        doc.setFont("helvetica", "bold");
-        doc.text(formattedDate, rightColumnX + 30, y - 3); // Leicht über der Linie
-        doc.setFont("helvetica", "normal");
-        doc.line(rightColumnX + 30, y, rightColumnX + 80, y); // Linie für Datum
-        
-        y += 15;
-        
-        // Unterschriftslinien - dickere Linien
-        doc.setLineWidth(0.5); // Erhöhe die Liniendicke
-        doc.line(leftColumnX, y, leftColumnX + 80, y); // Linie für Unternehmen
-        doc.line(rightColumnX, y, rightColumnX + 80, y); // Linie für Influencer
-        doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
-        
-        y += 10;
-        
-        doc.text("[Unterschrift Unternehmen]", leftColumnX, y);
-        doc.text("[Unterschrift Influencer]", rightColumnX, y);
-    }
+    // Stellen Sie sicher, dass wir am Ende des Dokuments arbeiten
+    let y = doc.internal.pageSize.height - 70;
+    
+    // Aktuelles Datum im deutschen Format (TT.MM.JJJJ)
+    const today = new Date();
+    const formattedDate = today.getDate() + "." + (today.getMonth() + 1) + "." + today.getFullYear();
+    
+    // Linke Spalte (Unternehmen) - mit vorausgefüllten Werten
+    const leftColumnX = 30;
+    const rightColumnX = 120;
+    
+    // Ort - NUR für Unternehmen vorausgefüllt
+    doc.text("Ort:", leftColumnX, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(city, leftColumnX + 20, y - 3); // Leicht über der Linie
+    doc.setFont("helvetica", "normal");
+    doc.line(leftColumnX + 20, y, leftColumnX + 80, y); // Linie für Ort
+    
+    // Ort für Influencer - NICHT vorausgefüllt
+    doc.text("Ort:", rightColumnX, y);
+    doc.line(rightColumnX + 20, y, rightColumnX + 80, y); // Nur Linie ohne Text
+    
+    y += 15;
+    
+    // Datum - NUR für Unternehmen vorausgefüllt
+    doc.text("Datum:", leftColumnX, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(formattedDate, leftColumnX + 30, y - 3); // Leicht über der Linie
+    doc.setFont("helvetica", "normal");
+    doc.line(leftColumnX + 30, y, leftColumnX + 80, y); // Linie für Datum
+    
+    // Datum für Influencer - NICHT vorausgefüllt
+    doc.text("Datum:", rightColumnX, y);
+    doc.line(rightColumnX + 30, y, rightColumnX + 80, y); // Nur Linie ohne Text
+    
+    y += 15;
+    
+    // Unterschriftslinien - dickere Linien
+    doc.setLineWidth(0.5); // Erhöhe die Liniendicke
+    doc.line(leftColumnX, y, leftColumnX + 80, y); // Linie für Unternehmen
+    doc.line(rightColumnX, y, rightColumnX + 80, y); // Linie für Influencer
+    doc.setLineWidth(0.3); // Zurück zur Standard-Liniendicke
+    
+    y += 10;
+    
+    doc.text("[Unterschrift Unternehmen]", leftColumnX, y);
+    doc.text("[Unterschrift Influencer]", rightColumnX, y);
+}
 
     // Verbesserte Funktion zum Anzeigen von Checkbox-Optionen mit kleineren Boxen
     function renderCheckbox(doc, isChecked, text, x, y) {
@@ -1132,60 +1128,52 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.text("Nutzungsrecht.", 30, y);
             y += 12;
             
-            // §5 Produktion & Freigabe
+            // §5 Produktion & Freigabe - Neu strukturierte Version mit besseren Abständen
             y = addParagraphTitle(doc, "§5 Produktion & Freigabe", y);
             
-            // Briefing mit hervorgehobener Variable - verbesserte Ausrichtung
-            doc.text("Briefing: Das Briefing wird vom Unternehmen bis ", 30, y);
+            // Briefing - vereinfachte Version mit festen Abständen
+            doc.text("Briefing: Das Briefing wird vom Unternehmen bis", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(briefingDate, 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis "), y);
+            doc.text(briefingDate, 195, y, null, null, "right"); // Rechtsbündig
             doc.setFont("helvetica", "normal");
-            doc.text(" bereitgestellt.", 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis ") + doc.getTextWidth(briefingDate), y);
-            y += 8;
+            doc.text("bereitgestellt.", 30, y + 5);
+            y += 10;
             
-            // Skript mit hervorgehobenen Variablen - verbesserte Ausrichtung
-            if (scriptDate && scriptDate !== '[Datum/Uhrzeit]') {
-                doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur", 30, y);
-                y += 5;
-                doc.text("Freigabe bis ", 30, y);
-                doc.setFont("helvetica", "bold");
-                doc.text(scriptDate, 30 + doc.getTextWidth("Freigabe bis "), y);
-                doc.setFont("helvetica", "normal");
-                doc.text("/", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + 2, y);
-                doc.setFont("helvetica", "bold");
-                doc.text(scriptTime, 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + 4, y);
-                doc.setFont("helvetica", "normal");
-                doc.text(".", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + doc.getTextWidth(scriptTime) + 6, y);
-            } else {
-                doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur", 30, y);
-                y += 5;
-                doc.text("Freigabe bis [Datum/Uhrzeit].", 30, y);
-            }
-            y += 8;
-            
-            // Produktion mit hervorgehobenen Variablen - verbesserte Ausrichtung
-            doc.text("Produktion: Die Produktion erfolgt im Zeitraum ", 30, y);
+            // Skript - vereinfachte Version mit besserer Formatierung
+            doc.text("Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur", 30, y);
+            y += 5;
+            doc.text("Freigabe bis", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(productionStart, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum "), y);
+            doc.text(scriptDate, 80, y);
             doc.setFont("helvetica", "normal");
-            doc.text(" – ", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart), y);
+            doc.text("/", 105, y);
             doc.setFont("helvetica", "bold");
-            doc.text(productionEnd, 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – "), y);
+            doc.text(scriptTime, 110, y);
+            doc.setFont("helvetica", "normal");
+            doc.text(".", 130, y);
+            y += 10;
             
+            // Produktion - vereinfachte Version mit besserer Formatierung
+            doc.text("Produktion: Die Produktion erfolgt im Zeitraum", 30, y);
+            y += 5;
+            doc.setFont("helvetica", "bold");
+            doc.text(productionStart, 50, y);
+            doc.setFont("helvetica", "normal");
+            doc.text("–", 90, y);
+            doc.setFont("helvetica", "bold");
+            doc.text(productionEnd, 100, y);
+            doc.setFont("helvetica", "normal");
+            
+            // Produktionsort auf neuer Zeile, falls vorhanden
             if (productionLocation && productionLocation !== '[Adresse]') {
-                doc.setFont("helvetica", "normal");
-                doc.text(", ggf. am Produktionsort ", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – ") + doc.getTextWidth(productionEnd), y);
                 y += 5;
+                doc.text("Produktionsort:", 30, y);
                 doc.setFont("helvetica", "bold");
-                doc.text(productionLocation, 30, y);
+                doc.text(productionLocation, 85, y);
                 doc.setFont("helvetica", "normal");
-                doc.text(".", 30 + doc.getTextWidth(productionLocation), y);
-            } else {
-                doc.setFont("helvetica", "normal");
-                doc.text(".", 30 + doc.getTextWidth("Produktion: Die Produktion erfolgt im Zeitraum ") + doc.getTextWidth(productionStart) + doc.getTextWidth(" – ") + doc.getTextWidth(productionEnd), y);
             }
-            y += 8;
             
+            y += 8;
             // §5 Produktion & Freigabe - Ende
             y += 8;
             
@@ -1203,7 +1191,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") - 10, y);
             doc.setFont("helvetica", "normal");
             // Passe auch den Punkt entsprechend an
-            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €") - 10, y);
+            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €") + 1, y);
             y += 8;
             
             doc.text("Die Rechnungsstellung erfolgt nach Veröffentlichung.", 30, y);
@@ -1359,26 +1347,26 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.text("Vertragsende hinaus.", 30, y);
             y += 12;
             
-            // §12 Schlussbestimmungen - Korrigierte und optimierte Version
+            // §12 Schlussbestimmungen - Korrigierte Version mit besserer Zeilenaufteilung
             y = addParagraphTitle(doc, "§12 Schlussbestimmungen", y);
             
-            // Text in einem Stück mit korrekter Ausrichtung ohne Abstände - VERBESSERT
-            let schlussText = "Änderungen bedürfen der Schriftform. Gerichtsstand ist ";
-            doc.text(schlussText, 30, y);
+            // Erste Zeile mit Gerichtsstand
+            doc.text("Änderungen bedürfen der Schriftform. Gerichtsstand ist", 30, y);
+            y += 5; // Kleinerer Abstand innerhalb des Absatzes
+            
+            // Zeile mit Stadt in fetter Schrift
             doc.setFont("helvetica", "bold");
-            // Reduziere den Abstand um 15 Punkte
-            doc.text(companyCity, 30 + doc.getTextWidth(schlussText) - 15, y);
+            doc.text(companyCity + ".", 30, y);
             doc.setFont("helvetica", "normal");
-            // Passe auch den nachfolgenden Text entsprechend an
-            doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth(schlussText) + doc.getTextWidth(companyCity) - 15, y);
+            y += 8; // Normaler Absatzabstand
             
-            y += 8; // Abstand nach der ersten Zeile
+            // Zweite Zeile
+            doc.text("Es gilt das Recht der Bundesrepublik Deutschland.", 30, y);
+            y += 8; // Normaler Absatzabstand
             
-            doc.text("Bundesrepublik Deutschland. Sollte eine Bestimmung unwirksam sein, bleibt der", 30, y);
-            y += 8; // Abstand nach der zweiten Zeile
-            
-            doc.text("Vertrag im Übrigen wirksam.", 30, y);
-            
+            // Dritte Zeile
+            doc.text("Sollte eine Bestimmung unwirksam sein, bleibt der Vertrag im Übrigen wirksam.", 30, y);
+                        
             // Verbesserte Unterschriftsfelder mit vorausgefülltem Ort und Datum
             addSignatureFields(doc, companyCity);
             
