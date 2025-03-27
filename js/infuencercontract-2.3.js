@@ -1,4 +1,3 @@
-// Dieses Skript aktualisiert das Verhalten der Fortschrittsanzeige für das 9-Schritte-Formular
 document.addEventListener('DOMContentLoaded', function() {
     // Event-Listener für die Vertragstyp-Auswahl
     const contractTypeSelect = document.getElementById('contract-type');
@@ -114,6 +113,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressText = document.getElementById('progress-text');
     const progressMessage = document.getElementById('progress-message');
 
+    // Globale Variable für den aktuellen Schritt
+    let currentStep = 1;
+
+    // Event-Listener für Klicks auf die Fortschrittsschritte hinzufügen (direkte Navigation)
+    progressSteps.forEach(step => {
+        step.addEventListener('click', function() {
+            const stepNum = parseInt(this.getAttribute('data-step'));
+            goToStep(stepNum);
+        });
+    });
+
     // Event-Listener für "Weiter"-Buttons
     nextButtons.forEach(button => {
         button.addEventListener('click', function() {
@@ -132,6 +142,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Funktion zum Wechseln der Schritte
     function goToStep(stepNumber) {
+        // Aktuellen Schritt aktualisieren
+        currentStep = stepNumber;
+        
         // Alle Abschnitte ausblenden
         formSections.forEach(section => {
             section.classList.add('hidden');
@@ -165,22 +178,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fortschrittsanzeige aktualisieren
     function updateProgress() {
-        // Aktiven Schritt ermitteln
-        const activeStep = document.querySelector('.progress-step.active:last-child');
-        const stepNumber = parseInt(activeStep.getAttribute('data-step'));
-        
-        // Prozentwert berechnen (9 Schritte insgesamt)
-        const percentage = Math.floor((stepNumber / 9) * 100);
+        // Prozentwert basierend auf aktuellem Schritt berechnen (9 Schritte insgesamt)
+        const percentage = Math.min(Math.floor((currentStep / 9) * 100), 100);
         
         // Fortschrittsbalken aktualisieren
         progressFill.style.width = `${percentage}%`;
         progressText.textContent = `${percentage}% ausgefüllt`;
         
         // Fortschrittsnachricht aktualisieren
-        updateProgressMessage(stepNumber);
+        updateProgressMessage(currentStep);
         
         // Für die Vorschau im letzten Schritt
-        if (stepNumber === 9) {
+        if (currentStep === 9) {
             updatePreview();
         }
     }
@@ -200,6 +209,22 @@ document.addEventListener('DOMContentLoaded', function() {
         ];
         
         progressMessage.textContent = messages[stepNumber - 1] || "Lass uns anfangen!";
+    }
+
+    // Funktion zur Berechnung des tatsächlichen Fortschritts basierend auf ausgefüllten Feldern
+    function calculateRealProgress() {
+        // Zähle die ausgefüllten Pflichtfelder
+        const requiredFields = document.querySelectorAll('[required]');
+        let filledRequiredFields = 0;
+        
+        requiredFields.forEach(field => {
+            if (field.value) {
+                filledRequiredFields++;
+            }
+        });
+        
+        // Berechne den Prozentsatz
+        return Math.floor((filledRequiredFields / requiredFields.length) * 100);
     }
 
     // Vorschau im letzten Schritt aktualisieren
@@ -372,6 +397,11 @@ document.addEventListener('DOMContentLoaded', function() {
             additionalComp = 'ist nicht vereinbart';
         }
         document.getElementById('preview-additional-comp').textContent = additionalComp;
+
+        // Aktualisiere die Fortschrittsanzeige mit dem tatsächlichen Fortschritt
+        const realProgress = calculateRealProgress();
+        progressFill.style.width = `${realProgress}%`;
+        progressText.textContent = `${realProgress}% ausgefüllt`;
     }
 
     // Hilfsfunktion zum Formatieren von Datumsangaben
@@ -434,4 +464,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialisierung der Fortschrittsanzeige
     updateProgress();
+
+    // CSS für klickbare Schritte hinzufügen
+    const style = document.createElement('style');
+    style.textContent = `
+        .progress-step {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .progress-step:hover {
+            transform: scale(1.05);
+        }
+    `;
+    document.head.appendChild(style);
 });
