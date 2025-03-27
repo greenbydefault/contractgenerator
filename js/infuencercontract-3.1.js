@@ -928,26 +928,26 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont("helvetica", "bold");
             doc.text(instagramUsername, 30 + doc.getTextWidth("Instagram (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("Instagram (Profil: ") + 7 + doc.getTextWidth(instagramUsername), y);
+            doc.text(")", 30 + doc.getTextWidth("Instagram (Profil: ") + 1 + doc.getTextWidth(instagramUsername), y);
             y += 6;
             
             y = renderCheckbox(doc, tiktokSelected, "TikTok (Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(tiktokUsername, 30 + doc.getTextWidth("TikTok (Profil: ") + 7, y);
+            doc.text(tiktokUsername, 30 + doc.getTextWidth("TikTok (Profil: ") + 1, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("TikTok (Profil: ") + 7 + doc.getTextWidth(tiktokUsername), y);
+            doc.text(")", 30 + doc.getTextWidth("TikTok (Profil: ") + 1 + doc.getTextWidth(tiktokUsername), y);
             y += 6;
             
             y = renderCheckbox(doc, youtubeSelected, "YouTube (Profil: ", 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(youtubeUrl, 30 + doc.getTextWidth("YouTube (Profil: ") + 7, y);
             doc.setFont("helvetica", "normal");
-            doc.text(")", 30 + doc.getTextWidth("YouTube (Profil: ") + 7 + doc.getTextWidth(youtubeUrl), y);
+            doc.text(")", 30 + doc.getTextWidth("YouTube (Profil: ") + 1 + doc.getTextWidth(youtubeUrl), y);
             y += 6;
             
             y = renderCheckbox(doc, otherSelected, "Sonstiges: ", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(otherPlatform, 30 + doc.getTextWidth("Sonstiges: ") + 7, y);
+            doc.text(otherPlatform, 30 + doc.getTextWidth("Sonstiges: ") + 1, y);
             doc.setFont("helvetica", "normal");
             y += 10;
             
@@ -1087,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont("helvetica", "bold");
             doc.text(briefingDate, 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis "), y);
             doc.setFont("helvetica", "normal");
-            doc.text("bereitgestellt.", 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis ") + doc.getTextWidth(briefingDate) + 2, y);
+            doc.text("bereitgestellt.", 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis ") + doc.getTextWidth(briefingDate) - 20, y);
             y += 8;
             
             // Skript mit hervorgehobenen Variablen - verbesserte Ausrichtung
@@ -1100,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 doc.setFont("helvetica", "normal");
                 doc.text("/", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + 2, y);
                 doc.setFont("helvetica", "bold");
-                doc.text(scriptTime, 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + 4, y);
+                doc.text(scriptTime, 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + 1, y);
                 doc.setFont("helvetica", "normal");
                 doc.text(".", 30 + doc.getTextWidth("Freigabe bis ") + doc.getTextWidth(scriptDate) + doc.getTextWidth("/") + doc.getTextWidth(scriptTime) + 6, y);
             } else {
@@ -1148,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont("helvetica", "bold");
             doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt "), y);
             doc.setFont("helvetica", "normal");
-           doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €") - 2, y);
+           doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €") - 15, y);
             y += 8;
             
             doc.text("Die Rechnungsstellung erfolgt nach Veröffentlichung.", 30, y);
@@ -1313,7 +1313,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont("helvetica", "bold");
             doc.text(companyCity, 30 + doc.getTextWidth(schlussText), y);
             doc.setFont("helvetica", "normal");
-            doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth(schlussText) + doc.getTextWidth(companyCity), -2, y);
+            doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth(schlussText) + doc.getTextWidth(companyCity), -20, y);
             
             y += 8; // Abstand nach der ersten Zeile
             
