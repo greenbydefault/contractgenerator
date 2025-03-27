@@ -1080,11 +1080,11 @@ document.addEventListener('DOMContentLoaded', function() {
             y = addParagraphTitle(doc, "§5 Produktion & Freigabe", y);
             
             // Briefing mit hervorgehobener Variable - verbesserte Ausrichtung
-            doc.text("Briefing: Das Briefing wird vom Unternehmen bis", 30, y);
+            doc.text("Briefing: Das Briefing wird vom Unternehmen bis ", 30, y);
             doc.setFont("helvetica", "bold");
             doc.text(briefingDate, 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis "), y);
             doc.setFont("helvetica", "normal");
-            doc.text("bereitgestellt.", 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis ") + doc.getTextWidth(briefingDate) - 20, y);
+            doc.text(" bereitgestellt.", 30 + doc.getTextWidth("Briefing: Das Briefing wird vom Unternehmen bis ") + doc.getTextWidth(briefingDate), y);
             y += 8;
             
             // Skript mit hervorgehobenen Variablen - verbesserte Ausrichtung
@@ -1141,11 +1141,11 @@ document.addEventListener('DOMContentLoaded', function() {
             y = addParagraphTitle(doc, "§6 Vergütung", y);
             
             // Nettovergütung mit hervorgehobener Variable und Euro-Zeichen
-            doc.text("Die Nettovergütung beträgt ", 30, y);
+            doc.text("Die Nettovergütung beträgt", 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt "), y);
+            doc.text(compensation + " €", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") - 10, y);
             doc.setFont("helvetica", "normal");
-           doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €") - 15, y);
+            doc.text(".", 30 + doc.getTextWidth("Die Nettovergütung beträgt ") + doc.getTextWidth(compensation + " €") - 10, y);
             y += 8;
             
             doc.text("Die Rechnungsstellung erfolgt nach Veröffentlichung.", 30, y);
@@ -1305,12 +1305,12 @@ document.addEventListener('DOMContentLoaded', function() {
             y = addParagraphTitle(doc, "§12 Schlussbestimmungen", y);
             
             // Text in einem Stück mit korrekter Ausrichtung ohne Abstände
-            let schlussText = "Änderungen bedürfen der Schriftform. Gerichtsstand ist";
+            let schlussText = "Änderungen bedürfen der Schriftform. Gerichtsstand ist ";
             doc.text(schlussText, 30, y);
             doc.setFont("helvetica", "bold");
-            doc.text(companyCity, 30 + doc.getTextWidth(schlussText), y);
+            doc.text(companyCity, 30 + doc.getTextWidth(schlussText) - 15, y);
             doc.setFont("helvetica", "normal");
-            doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth(schlussText) + doc.getTextWidth(companyCity), -20, y);
+            doc.text(". Es gilt das Recht der", 30 + doc.getTextWidth(schlussText) + doc.getTextWidth(companyCity) - 15, y);
             
             y += 8; // Abstand nach der ersten Zeile
             
@@ -1320,7 +1320,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.text("Vertrag im Übrigen wirksam.", 30, y);
             
             // Verbesserte Unterschriftsfelder mit Ort und Datum
-            addSignatureFields(doc);
+            fixedSignatureFields(doc, companyCity);
             
             // Wasserzeichen hinzufügen
             addWatermark(doc);
