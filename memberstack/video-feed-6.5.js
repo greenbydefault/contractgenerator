@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
       initApp();
     }
   }
-};
+}
   
   // Globale Konfiguration initialisieren
   window.WEBFLOW_API = window.WEBFLOW_API || {};
