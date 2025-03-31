@@ -1,75 +1,4 @@
 /**
- * App-Start mit zusätzlicher Verzögerung und mehreren Fallbacks
- * 
- * Diese Funktion enthält mehrere Absicherungen:
- * 1. Prüft, ob das DOM bereits geladen ist
- * 2. Setzt eine Verzögerung für eine sicherere Initialisierung
- * 3. Stellt sicher, dass Memberstack geladen ist
- * 4. Prüft auf mögliche Fehler und reagiert entsprechend
- */
-const startVideoFeedApp = () => {
-  const initWithDelay = (delay = 100) => {
-    setTimeout(() => {
-      try {
-        console.log("📋 Video-Feed: Starte App...");
-        
-        // Überprüfen, ob Memberstack geladen ist
-        if (!window.$memberstackDom) {
-          console.warn("📋 Video-Feed: Memberstack noch nicht geladen, warte weitere 500ms...");
-          setTimeout(() => initWithDelay(500), 500);
-          return;
-        }
-        
-        const videoFeedApp = new VideoFeedApp();
-        videoFeedApp.init();
-        
-        // Für Debug-Zwecke global zugänglich machen
-        window.videoFeedApp = videoFeedApp;
-        
-        // Zusätzliches Event auslösen, damit andere Scripts wissen, dass der Video-Feed initialisiert wurde
-        const initEvent = new CustomEvent('videoFeedInitialized', { 
-          detail: { success: true } 
-        });
-        document.dispatchEvent(initEvent);
-        console.log("📋 Video-Feed: App erfolgreich gestartet");
-        
-      } catch (error) {
-        console.error("📋 Video-Feed: Kritischer Fehler beim Start", error);
-        
-        // Event für den Fehlerfall auslösen
-        const errorEvent = new CustomEvent('videoFeedInitError', { 
-          detail: { error: error.message } 
-        });
-        document.dispatchEvent(errorEvent);
-        
-        // Automatische Wiederholdung nach Fehler, falls weniger als 3 Versuche
-        if (!window.videoFeedRetryCount) {
-          window.videoFeedRetryCount = 1;
-        } else {
-          window.videoFeedRetryCount++;
-        }
-        
-        if (window.videoFeedRetryCount <= 3) {
-          console.log(`📋 Video-Feed: Automatischer Neustart (Versuch ${window.videoFeedRetryCount}/3) in 1s...`);
-          setTimeout(() => initWithDelay(500), 1000);
-        }
-      }
-    }, delay);
-  };
-
-  // Prüfen, ob das DOM bereits geladen ist
-  if (document.readyState === "loading") {
-    // Wenn noch nicht geladen, warten auf DOMContentLoaded und dann initialisieren
-    document.addEventListener("DOMContentLoaded", () => initWithDelay());
-  } else {
-    // Wenn DOM bereits geladen ist, direkt initialisieren
-    initWithDelay();
-  }
-};
-
-// App starten mit verbessertem Error-Handling
-startVideoFeedApp();
-  /**
    * App initialisieren mit verbesserten Fallbacks und Retry-Mechanismen
    */
   init() {
@@ -209,199 +138,72 @@ startVideoFeedApp();
     }
   }
 }
-  /**
-   * Videos für eingeloggten User laden und anzeigen
-   */
-  async loadUserVideos() {
-    try {
-      if (!this.videoContainer) {
-        console.error("📋 Video-Feed: Container nicht gefunden");
-        return;
-      }
-      
-      // Vermeidet doppelte Ladeanfragen
-      if (this.isLoading) {
-        console.log("📋 Video-Feed: Ladevorgang bereits aktiv, ignoriere Anfrage");
-        return;
-      }
-      
-      this.isLoading = true;
-      this.showLoading();
-      
-      // Memberstack-User laden
-      const member = await window.$memberstackDom.getCurrentMember();
-      this.currentMember = member;
-      const memberstackId = member?.data?.id;
-      
-      if (!memberstackId) {
-        this.showError("Kein eingeloggter User gefunden");
-        this.isLoading = false;
-        return;
-      }
-      
-      console.log("📋 Video-Feed: Eingeloggter User mit Memberstack-ID", memberstackId);
-      
-      // Video-Limit basierend auf Membership bestimmen
-      const maxUploads = this.getMembershipLimit(member);
-      console.log("📋 Video-Feed: Maximale Uploads für User:", maxUploads);
-      
-      // 1. Webflow-ID aus den Custom Fields der Memberstack-Daten extrahieren
-      let webflowMemberId = this.extractWebflowId(member);
-      
-      if (!webflowMemberId) {
-        this.showError("Keine Webflow-Member-ID in den Memberstack-Daten gefunden");
-        console.error("📋 Video-Feed: Memberstack-Daten ohne Webflow-ID:", member.data);
-        this.isLoading = false;
-        return;
-      }
-      
-      // 2. User direkt mit der Webflow-ID abrufen
-      const user = await this.getUserByWebflowId(webflowMemberId);
-      
-      if (!user) {
-        this.showError(`User mit Webflow-ID "${webflowMemberId}" nicht gefunden`);
-        this.isLoading = false;
-        return;
-      }
-      
-      // 3. Videos aus dem Video-Feed des Users holen
-      const videos = await this.getVideosFromUserFeed(user);
-      this.userVideos = videos;
-      
-      // Upload-Counter aktualisieren
-      this.updateUploadCounter(videos.length, maxUploads);
-      
-      // Videos anzeigen
-      this.renderVideos(videos);
-      
-      this.isLoading = false;
-    } catch (error) {
-      console.error("📋 Video-Feed: Fehler beim Laden der Videos", error);
-      this.showError(`Fehler beim Laden des Video-Feeds: ${error.message}`);
-      this.isLoading = false;
-    }
-  }
 
-  /**
-   * Helper-Methode zum Extrahieren der Webflow-ID aus Memberstack-Daten
-   */
-  extractWebflowId(member) {
-    if (!member || !member.data) return null;
-    
-    // Mögliche Orte für die Webflow-ID prüfen
-    if (member.data.customFields && member.data.customFields["webflow-member-id"]) {
-      const id = member.data.customFields["webflow-member-id"];
-      console.log("📋 Video-Feed: Webflow-Member-ID aus customFields gefunden:", id);
-      return id;
-    } 
-    
-    if (member.data.metaData && member.data.metaData["webflow-member-id"]) {
-      const id = member.data.metaData["webflow-member-id"];
-      console.log("📋 Video-Feed: Webflow-Member-ID aus metaData gefunden:", id);
-      return id;
-    }
-    
-    // Weitere mögliche Felder prüfen
-    const possibleFields = ["webflow-id", "webflow_id", "webflowId", "webflow_member_id"];
-    
-    // Prüfe customFields
-    if (member.data.customFields) {
-      for (const field of possibleFields) {
-        if (member.data.customFields[field]) {
-          console.log(`📋 Video-Feed: Webflow-Member-ID aus customFields["${field}"] gefunden:`, 
-            member.data.customFields[field]);
-          return member.data.customFields[field];
+/**
+ * App-Start mit zusätzlicher Verzögerung und mehreren Fallbacks
+ */
+const startVideoFeedApp = () => {
+  const initWithDelay = (delay = 100) => {
+    setTimeout(() => {
+      try {
+        console.log("📋 Video-Feed: Starte App...");
+        
+        // Überprüfen, ob Memberstack geladen ist
+        if (!window.$memberstackDom) {
+          console.warn("📋 Video-Feed: Memberstack noch nicht geladen, warte weitere 500ms...");
+          setTimeout(() => initWithDelay(500), 500);
+          return;
+        }
+        
+        const videoFeedApp = new VideoFeedApp();
+        videoFeedApp.init();
+        
+        // Für Debug-Zwecke global zugänglich machen
+        window.videoFeedApp = videoFeedApp;
+        
+        // Zusätzliches Event auslösen, damit andere Scripts wissen, dass der Video-Feed initialisiert wurde
+        const initEvent = new CustomEvent('videoFeedInitialized', { 
+          detail: { success: true } 
+        });
+        document.dispatchEvent(initEvent);
+        console.log("📋 Video-Feed: App erfolgreich gestartet");
+        
+      } catch (error) {
+        console.error("📋 Video-Feed: Kritischer Fehler beim Start", error);
+        
+        // Event für den Fehlerfall auslösen
+        const errorEvent = new CustomEvent('videoFeedInitError', { 
+          detail: { error: error.message } 
+        });
+        document.dispatchEvent(errorEvent);
+        
+        // Automatische Wiederholdung nach Fehler, falls weniger als 3 Versuche
+        if (!window.videoFeedRetryCount) {
+          window.videoFeedRetryCount = 1;
+        } else {
+          window.videoFeedRetryCount++;
+        }
+        
+        if (window.videoFeedRetryCount <= 3) {
+          console.log(`📋 Video-Feed: Automatischer Neustart (Versuch ${window.videoFeedRetryCount}/3) in 1s...`);
+          setTimeout(() => initWithDelay(500), 1000);
         }
       }
-    }
-    
-    // Prüfe metaData
-    if (member.data.metaData) {
-      for (const field of possibleFields) {
-        if (member.data.metaData[field]) {
-          console.log(`📋 Video-Feed: Webflow-Member-ID aus metaData["${field}"] gefunden:`, 
-            member.data.metaData[field]);
-          return member.data.metaData[field];
-        }
-      }
-    }
-    
-    return null;
-  }
-  /**
-   * Verbesserte Methode zum Initialisieren und Suchen von UI-Elementen
-   * Diese Methode versucht verschiedene Wege, die UI-Elemente zu finden
-   */
-  initUIElements() {
-    console.log("📊 Video-Feed: Initialisiere UI-Elemente");
-    
-    // Mehrere Möglichkeiten zum Finden der Elemente (IDs, Klassen, Datenattribute)
-    const findElement = (primaryId, fallbackSelectors = []) => {
-      // Erst über ID versuchen
-      let element = document.getElementById(primaryId);
-      
-      // Wenn nicht gefunden, Fallback-Selektoren versuchen
-      if (!element && fallbackSelectors.length > 0) {
-        for (const selector of fallbackSelectors) {
-          const elements = document.querySelectorAll(selector);
-          if (elements.length > 0) {
-            element = elements[0];
-            console.log(`📊 Video-Feed: Element über Fallback-Selektor gefunden: ${selector}`);
-            break;
-          }
-        }
-      }
-      
-      return element;
-    };
-    
-    // Elemente suchen mit Fallbacks
-    const titleElement = findElement(
-      window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID, 
-      ['.upload-limit-title', '[data-title="upload-limit"]']
-    );
-    
-    const counterElement = findElement(
-      window.WEBFLOW_API.UPLOAD_COUNTER_ID,
-      ['#counter_id', '.upload-counter', '[data-counter="uploads"]']
-    );
-    
-    const progressElement = findElement(
-      window.WEBFLOW_API.UPLOAD_PROGRESS_ID,
-      ['.upload-progress', '[data-progress="uploads"]']
-    );
-    
-    const messageElement = findElement(
-      window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID,
-      ['.limit-message', '[data-message="limit"]']
-    );
-    
-    // Ergebnisse in die Instanzvariablen speichern
-    this.uiElements = {
-      title: titleElement,
-      counter: counterElement,
-      progress: progressElement,
-      limitMessage: messageElement
-    };
-    
-    console.log("📊 Video-Feed: UI-Elemente gefunden:", {
-      title: Boolean(titleElement),
-      counter: Boolean(counterElement),
-      progress: Boolean(progressElement),
-      limitMessage: Boolean(messageElement)
-    });
-    
-    // Alle IDs im Dokument für Debugging ausgeben
-    const allIds = [];
-    document.querySelectorAll('[id]').forEach(el => {
-      allIds.push(el.id);
-    });
-    console.log("📊 Video-Feed: Alle IDs im Dokument:", allIds);
-    
-    return this.uiElements;
-  }
+    }, delay);
+  };
 
-  /**
+  // Prüfen, ob das DOM bereits geladen ist
+  if (document.readyState === "loading") {
+    // Wenn noch nicht geladen, warten auf DOMContentLoaded und dann initialisieren
+    document.addEventListener("DOMContentLoaded", () => initWithDelay());
+  } else {
+    // Wenn DOM bereits geladen ist, direkt initialisieren
+    initWithDelay();
+  }
+};
+
+// App starten mit verbessertem Error-Handling
+startVideoFeedApp();  /**
    * Verbesserte Ladeanimation mit Skeleton Loader und Fallback
    */
   showLoading() {
@@ -525,12 +327,130 @@ startVideoFeedApp();
         </button>
       </div>
     `;
-  }// 🌐 Webflow API Integration für Video-Feed
-// Fixed Version 7.0.1
+  }
 
-/**
- * Konfigurationswerte mit Defaults
- */
+  /**
+   * Videos für eingeloggten User laden und anzeigen
+   */
+  async loadUserVideos() {
+    try {
+      if (!this.videoContainer) {
+        console.error("📋 Video-Feed: Container nicht gefunden");
+        return;
+      }
+      
+      // Vermeidet doppelte Ladeanfragen
+      if (this.isLoading) {
+        console.log("📋 Video-Feed: Ladevorgang bereits aktiv, ignoriere Anfrage");
+        return;
+      }
+      
+      this.isLoading = true;
+      this.showLoading();
+      
+      // Memberstack-User laden
+      const member = await window.$memberstackDom.getCurrentMember();
+      this.currentMember = member;
+      const memberstackId = member?.data?.id;
+      
+      if (!memberstackId) {
+        this.showError("Kein eingeloggter User gefunden");
+        this.isLoading = false;
+        return;
+      }
+      
+      console.log("📋 Video-Feed: Eingeloggter User mit Memberstack-ID", memberstackId);
+      
+      // Video-Limit basierend auf Membership bestimmen
+      const maxUploads = this.getMembershipLimit(member);
+      console.log("📋 Video-Feed: Maximale Uploads für User:", maxUploads);
+      
+      // 1. Webflow-ID aus den Custom Fields der Memberstack-Daten extrahieren
+      let webflowMemberId = this.extractWebflowId(member);
+      
+      if (!webflowMemberId) {
+        this.showError("Keine Webflow-Member-ID in den Memberstack-Daten gefunden");
+        console.error("📋 Video-Feed: Memberstack-Daten ohne Webflow-ID:", member.data);
+        this.isLoading = false;
+        return;
+      }
+      
+      // 2. User direkt mit der Webflow-ID abrufen
+      const user = await this.getUserByWebflowId(webflowMemberId);
+      
+      if (!user) {
+        this.showError(`User mit Webflow-ID "${webflowMemberId}" nicht gefunden`);
+        this.isLoading = false;
+        return;
+      }
+      
+      // 3. Videos aus dem Video-Feed des Users holen
+      const videos = await this.getVideosFromUserFeed(user);
+      this.userVideos = videos;
+      
+      // Upload-Counter aktualisieren
+      this.updateUploadCounter(videos.length, maxUploads);
+      
+      // Videos anzeigen
+      this.renderVideos(videos);
+      
+      this.isLoading = false;
+    } catch (error) {
+      console.error("📋 Video-Feed: Fehler beim Laden der Videos", error);
+      this.showError(`Fehler beim Laden des Video-Feeds: ${error.message}`);
+      this.isLoading = false;
+    }
+  }
+
+  /**
+   * Helper-Methode zum Extrahieren der Webflow-ID aus Memberstack-Daten
+   */
+  extractWebflowId(member) {
+    if (!member || !member.data) return null;
+    
+    // Mögliche Orte für die Webflow-ID prüfen
+    if (member.data.customFields && member.data.customFields["webflow-member-id"]) {
+      const id = member.data.customFields["webflow-member-id"];
+      console.log("📋 Video-Feed: Webflow-Member-ID aus customFields gefunden:", id);
+      return id;
+    } 
+    
+    if (member.data.metaData && member.data.metaData["webflow-member-id"]) {
+      const id = member.data.metaData["webflow-member-id"];
+      console.log("📋 Video-Feed: Webflow-Member-ID aus metaData gefunden:", id);
+      return id;
+    }
+    
+    // Weitere mögliche Felder prüfen
+    const possibleFields = ["webflow-id", "webflow_id", "webflowId", "webflow_member_id"];
+    
+    // Prüfe customFields
+    if (member.data.customFields) {
+      for (const field of possibleFields) {
+        if (member.data.customFields[field]) {
+          console.log(`📋 Video-Feed: Webflow-Member-ID aus customFields["${field}"] gefunden:`, 
+            member.data.customFields[field]);
+          return member.data.customFields[field];
+        }
+      }
+    }
+    
+    // Prüfe metaData
+    if (member.data.metaData) {
+      for (const field of possibleFields) {
+        if (member.data.metaData[field]) {
+          console.log(`📋 Video-Feed: Webflow-Member-ID aus metaData["${field}"] gefunden:`, 
+            member.data.metaData[field]);
+          return member.data.metaData[field];
+        }
+      }
+    }
+    
+    return null;
+  }// 🌐 Webflow API Integration für Video-Feed
+// Fixed Version 7.1.1
+
+// Konfigurationswerte mit Defaults
 const DEFAULT_BASE_URL = "https://api.webflow.com/v2/collections";
 const DEFAULT_WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url=";
 const DEFAULT_MEMBER_COLLECTION_ID = "6448faf9c5a8a15f6cc05526";
@@ -538,9 +458,7 @@ const DEFAULT_VIDEO_COLLECTION_ID = "67d806e65cadcadf2f41e659";
 const DEFAULT_FREE_MEMBER_LIMIT = 1;
 const DEFAULT_PAID_MEMBER_LIMIT = 12;
 
-/**
- * Globale Konfiguration für das Video-Feed-Skript
- */
+// Globale Konfiguration für das Video-Feed-Skript
 window.WEBFLOW_API = window.WEBFLOW_API || {};
 
 // Funktion zur sicheren Initialisierung von Konfigurationswerten
@@ -559,10 +477,10 @@ ensureConfigValue('VIDEO_COLLECTION_ID', DEFAULT_VIDEO_COLLECTION_ID);
 ensureConfigValue('FREE_MEMBER_LIMIT', DEFAULT_FREE_MEMBER_LIMIT);
 ensureConfigValue('PAID_MEMBER_LIMIT', DEFAULT_PAID_MEMBER_LIMIT);
 
-// UI-Konfiguration mit korrigierten IDs basierend auf den Log-Daten
+// UI-Konfiguration mit korrigierten IDs
 window.WEBFLOW_API.VIDEO_CONTAINER_ID = window.WEBFLOW_API.VIDEO_CONTAINER_ID || "video-feed";
 window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID = window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID || "upload-limit-title";
-window.WEBFLOW_API.UPLOAD_COUNTER_ID = window.WEBFLOW_API.UPLOAD_COUNTER_ID || "counter_id"; // Geändert von "uploads-counter" zu "counter_id"
+window.WEBFLOW_API.UPLOAD_COUNTER_ID = window.WEBFLOW_API.UPLOAD_COUNTER_ID || "counter_id";
 window.WEBFLOW_API.UPLOAD_PROGRESS_ID = window.WEBFLOW_API.UPLOAD_PROGRESS_ID || "uploads-progress";
 window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID = window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID || "upload-limit-message";
 
@@ -1293,4 +1211,76 @@ class VideoFeedApp {
     
     // Nach dem Rendern den Upload-Counter und Fortschrittsbalken aktualisieren
     this.updateUploadCounter(videos.length, maxUploads);
+  }
+
+  /**
+   * Verbesserte Methode zum Initialisieren und Suchen von UI-Elementen
+   */
+  initUIElements() {
+    console.log("📊 Video-Feed: Initialisiere UI-Elemente");
+    
+    // Mehrere Möglichkeiten zum Finden der Elemente (IDs, Klassen, Datenattribute)
+    const findElement = (primaryId, fallbackSelectors = []) => {
+      // Erst über ID versuchen
+      let element = document.getElementById(primaryId);
+      
+      // Wenn nicht gefunden, Fallback-Selektoren versuchen
+      if (!element && fallbackSelectors.length > 0) {
+        for (const selector of fallbackSelectors) {
+          const elements = document.querySelectorAll(selector);
+          if (elements.length > 0) {
+            element = elements[0];
+            console.log(`📊 Video-Feed: Element über Fallback-Selektor gefunden: ${selector}`);
+            break;
+          }
+        }
+      }
+      
+      return element;
+    };
+    
+    // Elemente suchen mit Fallbacks
+    const titleElement = findElement(
+      window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID, 
+      ['.upload-limit-title', '[data-title="upload-limit"]']
+    );
+    
+    const counterElement = findElement(
+      window.WEBFLOW_API.UPLOAD_COUNTER_ID,
+      ['#counter_id', '.upload-counter', '[data-counter="uploads"]']
+    );
+    
+    const progressElement = findElement(
+      window.WEBFLOW_API.UPLOAD_PROGRESS_ID,
+      ['.upload-progress', '[data-progress="uploads"]']
+    );
+    
+    const messageElement = findElement(
+      window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID,
+      ['.limit-message', '[data-message="limit"]']
+    );
+    
+    // Ergebnisse in die Instanzvariablen speichern
+    this.uiElements = {
+      title: titleElement,
+      counter: counterElement,
+      progress: progressElement,
+      limitMessage: messageElement
+    };
+    
+    console.log("📊 Video-Feed: UI-Elemente gefunden:", {
+      title: Boolean(titleElement),
+      counter: Boolean(counterElement),
+      progress: Boolean(progressElement),
+      limitMessage: Boolean(messageElement)
+    });
+    
+    // Alle IDs im Dokument für Debugging ausgeben
+    const allIds = [];
+    document.querySelectorAll('[id]').forEach(el => {
+      allIds.push(el.id);
+    });
+    console.log("📊 Video-Feed: Alle IDs im Dokument:", allIds);
+    
+    return this.uiElements;
   }
