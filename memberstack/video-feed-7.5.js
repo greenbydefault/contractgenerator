@@ -489,7 +489,7 @@
         const categoryName = videoData["kategorie-name"] || "Nicht angegeben";
         const categoryP = document.createElement("p");
         categoryP.classList.add("is-txt-tiny");
-        categoryP.textContent = `Kategorie: ${categoryName}`;
+        categoryP.textContent = `${categoryName}`;
         
         // Edit-Button
         const editButton = document.createElement("button");
