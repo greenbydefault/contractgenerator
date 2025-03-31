@@ -959,3 +959,4 @@
         "Kategorie " + normalizedId.substring(0, 6) : 
         "Unbekannte Kategorie";
     }
+    };
