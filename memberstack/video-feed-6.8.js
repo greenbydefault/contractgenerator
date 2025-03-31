@@ -11,7 +11,6 @@ const DEFAULT_VIDEO_COLLECTION_ID = "67d806e65cadcadf2f41e659";
 const DEFAULT_FREE_MEMBER_LIMIT = 1;
 const DEFAULT_PAID_MEMBER_LIMIT = 12;
 
-
 /**
  * Globale Konfiguration für das Video-Feed-Skript
  */
@@ -39,7 +38,6 @@ window.WEBFLOW_API.UPLOAD_COUNTER_ID = window.WEBFLOW_API.UPLOAD_COUNTER_ID || "
 window.WEBFLOW_API.UPLOAD_PROGRESS_ID = window.WEBFLOW_API.UPLOAD_PROGRESS_ID || "uploads-progress";
 window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID = window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID || "upload-limit-message";
 
-
 // Kategorie-Mapping 
 if (!window.WEBFLOW_API.CATEGORY_MAPPING) {
   window.WEBFLOW_API.CATEGORY_MAPPING = {
@@ -64,7 +62,11 @@ console.log("📋 Video-Feed: WEBFLOW_API Konfiguration:", {
   MEMBER_COLLECTION_ID: window.WEBFLOW_API.MEMBER_COLLECTION_ID,
   VIDEO_COLLECTION_ID: window.WEBFLOW_API.VIDEO_COLLECTION_ID,
   FREE_MEMBER_LIMIT: window.WEBFLOW_API.FREE_MEMBER_LIMIT,
-  PAID_MEMBER_LIMIT: window.WEBFLOW_API.PAID_MEMBER_LIMIT
+  PAID_MEMBER_LIMIT: window.WEBFLOW_API.PAID_MEMBER_LIMIT,
+  VIDEO_CONTAINER_ID: window.WEBFLOW_API.VIDEO_CONTAINER_ID,
+  UPLOAD_COUNTER_ID: window.WEBFLOW_API.UPLOAD_COUNTER_ID,
+  UPLOAD_PROGRESS_ID: window.WEBFLOW_API.UPLOAD_PROGRESS_ID,
+  UPLOAD_LIMIT_MESSAGE_ID: window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID
 });
 
 /**
@@ -113,7 +115,7 @@ function getCategoryName(categoryId) {
   }
   
   // Fallback: Gib die ID zurück, wenn kein Mapping gefunden wurde
-  return categoryId;
+  return "Kategorie " + categoryId.substring(0, 6);
 }
 
 /**
@@ -123,9 +125,6 @@ class VideoFeedApp {
   constructor() {
     this.cache = new SimpleCache();
     this.videoContainer = null;
-    this.uploadCounter = null;
-    this.uploadProgress = null;
-    this.limitMessageEl = null;
     this.currentMember = null;
     this.userVideos = [];
     this.isLoading = false;
@@ -435,67 +434,60 @@ class VideoFeedApp {
     return limit;
   }
 
- /**
- * Aktualisiert den Upload-Counter und Fortschrittsbalken auf der Seite
- */
-updateUploadCounter(videoCount, maxUploads) {
-  // Elemente direkt aus dem DOM holen
-  const uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
-  const uploadProgress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
-  const limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
-  
-  // Stelle sicher, dass die Zahlen für die Anzeige gültig sind
-  const validVideoCount = isNaN(videoCount) ? 0 : videoCount;
-  const validMaxUploads = isNaN(maxUploads) ? 12 : maxUploads; // Fallback auf 12
-  
-  // Upload-Counter aktualisieren wenn Element gefunden
-  if (uploadCounter) {
-    uploadCounter.textContent = `${validVideoCount}/${validMaxUploads}`;
-  }
-  
-  // Fortschrittsbalken aktualisieren wenn Element gefunden
-  if (uploadProgress) {
-    // Prozentsatz berechnen
-    const progressPercent = validMaxUploads > 0 ? (validVideoCount / validMaxUploads) * 100 : 0;
+  /**
+   * Aktualisiert den Upload-Counter auf der Seite (VERBESSERTE VERSION)
+   */
+  updateUploadCounter(videoCount, maxUploads) {
+    console.log("📋 Video-Feed: updateUploadCounter aufgerufen mit", videoCount, maxUploads);
     
-    // Farbklassen basierend auf Fortschritt
-    uploadProgress.classList.remove("progress-low", "progress-medium", "progress-high", "progress-full");
+    // Elemente direkt aus dem DOM holen (jedes Mal neu)
+    const uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
+    const uploadProgress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
+    const limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
     
-    if (progressPercent >= 100) {
-      uploadProgress.classList.add("progress-full");
-    } else if (progressPercent >= 70) {
-      uploadProgress.classList.add("progress-high");
-    } else if (progressPercent >= 40) {
-      uploadProgress.classList.add("progress-medium");
+    // Debug-Info
+    console.log("📋 Video-Feed: Elemente gefunden:", {
+      counter: Boolean(uploadCounter),
+      progress: Boolean(uploadProgress),
+      limitMessage: Boolean(limitMessageEl)
+    });
+    
+    // Stelle sicher, dass die Zahlen für die Anzeige gültig sind
+    const validVideoCount = isNaN(videoCount) ? 0 : videoCount;
+    const validMaxUploads = isNaN(maxUploads) ? DEFAULT_PAID_MEMBER_LIMIT : maxUploads;
+    
+    // Upload-Counter aktualisieren wenn Element gefunden
+    if (uploadCounter) {
+      uploadCounter.textContent = `${validVideoCount}/${validMaxUploads}`;
+      console.log("📋 Video-Feed: Upload-Counter aktualisiert:", uploadCounter.textContent);
     } else {
-      uploadProgress.classList.add("progress-low");
+      console.warn("📋 Video-Feed: Upload-Counter Element nicht gefunden!");
     }
     
-    // Breite aktualisieren - Animation durch CSS
-    uploadProgress.style.width = `${progressPercent}%`;
-  }
-  
-  // Prüfen, ob das Limit erreicht ist
-  const isLimitReached = validVideoCount >= validMaxUploads;
-  
-  // Upload-Button je nach Limit-Status ein/ausblenden
-  const uploadButtons = document.querySelectorAll('[data-modal-toggle="new-upload"]');
-  uploadButtons.forEach(button => {
-    button.style.display = isLimitReached ? "none" : "";
-  });
-  
-  // Upload-Limit-Meldung aktualisieren
-  if (limitMessageEl) {
-    if (isLimitReached) {
-      limitMessageEl.style.display = "block";
-      limitMessageEl.textContent = "Upload-Limit erreicht";
-      limitMessageEl.classList.add("limit-reached");
+    // Fortschrittsbalken aktualisieren wenn Element gefunden
+    if (uploadProgress) {
+      // Prozentsatz berechnen
+      const progressPercent = validMaxUploads > 0 ? (validVideoCount / validMaxUploads) * 100 : 0;
+      
+      // Farbklassen basierend auf Fortschritt
+      uploadProgress.classList.remove("progress-low", "progress-medium", "progress-high", "progress-full");
+      
+      if (progressPercent >= 100) {
+        uploadProgress.classList.add("progress-full");
+      } else if (progressPercent >= 70) {
+        uploadProgress.classList.add("progress-high");
+      } else if (progressPercent >= 40) {
+        uploadProgress.classList.add("progress-medium");
+      } else {
+        uploadProgress.classList.add("progress-low");
+      }
+      
+      // Breite aktualisieren - Animation durch CSS
+      uploadProgress.style.width = `${progressPercent}%`;
+      console.log("📋 Video-Feed: Fortschrittsbalken auf", progressPercent, "% gesetzt");
     } else {
-      limitMessageEl.style.display = "none";
-      limitMessageEl.classList.remove("limit-reached");
+      console.warn("📋 Video-Feed: Upload-Progress Element nicht gefunden!");
     }
-  }
-}
     
     // Prüfen, ob das Limit erreicht ist
     const isLimitReached = validVideoCount >= validMaxUploads;
@@ -504,58 +496,26 @@ updateUploadCounter(videoCount, maxUploads) {
     console.log(`📋 Video-Feed: Upload-Status: ${validVideoCount}/${validMaxUploads}, Limit erreicht: ${isLimitReached}`);
     
     // Upload-Button je nach Limit-Status ein/ausblenden
-    this.updateUploadButton(isLimitReached);
+    const uploadButtons = document.querySelectorAll('[data-modal-toggle="new-upload"]');
+    uploadButtons.forEach(button => {
+      button.style.display = isLimitReached ? "none" : "";
+    });
+    console.log("📋 Video-Feed: Upload-Buttons aktualisiert, Anzahl:", uploadButtons.length);
     
     // Upload-Limit-Meldung aktualisieren
-    this.updateLimitMessage(isLimitReached);
-  }
-  
-  /**
-   * Upload-Button aktualisieren basierend auf dem Limit-Status
-   */
-  updateUploadButton(isLimitReached) {
-    // Upload-Button finden und je nach Limit-Status ein/ausblenden
-    const uploadButtons = document.querySelectorAll('[data-modal-toggle="new-upload"]');
-    
-    if (uploadButtons && uploadButtons.length > 0) {
-      uploadButtons.forEach(button => {
-        if (isLimitReached) {
-          // Button ausblenden
-          button.style.display = "none";
-          console.log("📋 Video-Feed: Upload-Limit erreicht, Button ausgeblendet");
-        } else {
-          // Button anzeigen
-          button.style.display = "";
-        }
-      });
-    }
-  }
-  
-  /**
-   * Upload-Limit-Meldung anzeigen oder ausblenden
-   */
-  updateLimitMessage(isLimitReached) {
-    // Element mit der konfigurierten ID suchen
-    if (!this.limitMessageEl) {
-      this.limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
-      
-      if (!this.limitMessageEl) {
-        console.warn(`📋 Video-Feed: Kein Limit-Meldungs-Element mit ID '${window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID}' gefunden`);
-        return;
+    if (limitMessageEl) {
+      if (isLimitReached) {
+        limitMessageEl.style.display = "block";
+        limitMessageEl.textContent = "Upload-Limit erreicht";
+        limitMessageEl.classList.add("limit-reached");
+        console.log("📋 Video-Feed: Limit-Meldung wird angezeigt");
+      } else {
+        limitMessageEl.style.display = "none";
+        limitMessageEl.classList.remove("limit-reached");
+        console.log("📋 Video-Feed: Limit-Meldung wird ausgeblendet");
       }
-    }
-    
-    if (isLimitReached) {
-      // Meldung anzeigen
-      this.limitMessageEl.style.display = "block";
-      this.limitMessageEl.textContent = "Upload-Limit erreicht";
-      this.limitMessageEl.classList.add("limit-reached");
-      console.log("📋 Video-Feed: Limit-Meldung wird angezeigt");
     } else {
-      // Meldung ausblenden
-      this.limitMessageEl.style.display = "none";
-      this.limitMessageEl.classList.remove("limit-reached");
-      console.log("📋 Video-Feed: Limit-Meldung wird ausgeblendet");
+      console.warn("📋 Video-Feed: Limit-Message Element nicht gefunden!");
     }
   }
 
@@ -597,9 +557,6 @@ updateUploadCounter(videoCount, maxUploads) {
     
     if (isLimitReached) {
       console.log("📋 Video-Feed: Upload-Limit erreicht", videos.length, "/", maxUploads);
-      
-      // Upload-Button ausblenden wenn Limit erreicht
-      this.updateUploadButton(true);
     }
     
     if (!videos || videos.length === 0) {
@@ -711,6 +668,9 @@ updateUploadCounter(videoCount, maxUploads) {
       addButtonContainer.appendChild(addButton);
       this.videoContainer.appendChild(addButtonContainer);
     }
+    
+    // Nach dem Rendern den Upload-Counter und Fortschrittsbalken aktualisieren
+    this.updateUploadCounter(videos.length, maxUploads);
   }
 
   /**
@@ -944,11 +904,6 @@ updateUploadCounter(videoCount, maxUploads) {
         }
         
         console.log("📋 Video-Feed: Container erfolgreich gefunden");
-        
-        // UI-Elemente für Uploads initialisieren
-        this.uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
-        this.uploadProgress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
-        this.limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
         
         // Event-Listener für Video-Feed-Updates
         document.addEventListener('videoFeedUpdate', () => {
