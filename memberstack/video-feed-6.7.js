@@ -11,6 +11,7 @@ const DEFAULT_VIDEO_COLLECTION_ID = "67d806e65cadcadf2f41e659";
 const DEFAULT_FREE_MEMBER_LIMIT = 1;
 const DEFAULT_PAID_MEMBER_LIMIT = 12;
 
+
 /**
  * Globale Konfiguration für das Video-Feed-Skript
  */
@@ -37,6 +38,7 @@ window.WEBFLOW_API.VIDEO_CONTAINER_ID = window.WEBFLOW_API.VIDEO_CONTAINER_ID ||
 window.WEBFLOW_API.UPLOAD_COUNTER_ID = window.WEBFLOW_API.UPLOAD_COUNTER_ID || "uploads-counter";
 window.WEBFLOW_API.UPLOAD_PROGRESS_ID = window.WEBFLOW_API.UPLOAD_PROGRESS_ID || "uploads-progress";
 window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID = window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID || "upload-limit-message";
+
 
 // Kategorie-Mapping 
 if (!window.WEBFLOW_API.CATEGORY_MAPPING) {
@@ -433,55 +435,67 @@ class VideoFeedApp {
     return limit;
   }
 
-  /**
-   * Aktualisiert den Upload-Counter auf der Seite
-   */
-  updateUploadCounter(videoCount, maxUploads) {
-    // Upload-Counter initialisieren falls noch nicht geschehen
-    if (!this.uploadCounter) {
-      this.uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
+ /**
+ * Aktualisiert den Upload-Counter und Fortschrittsbalken auf der Seite
+ */
+updateUploadCounter(videoCount, maxUploads) {
+  // Elemente direkt aus dem DOM holen
+  const uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
+  const uploadProgress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
+  const limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
+  
+  // Stelle sicher, dass die Zahlen für die Anzeige gültig sind
+  const validVideoCount = isNaN(videoCount) ? 0 : videoCount;
+  const validMaxUploads = isNaN(maxUploads) ? 12 : maxUploads; // Fallback auf 12
+  
+  // Upload-Counter aktualisieren wenn Element gefunden
+  if (uploadCounter) {
+    uploadCounter.textContent = `${validVideoCount}/${validMaxUploads}`;
+  }
+  
+  // Fortschrittsbalken aktualisieren wenn Element gefunden
+  if (uploadProgress) {
+    // Prozentsatz berechnen
+    const progressPercent = validMaxUploads > 0 ? (validVideoCount / validMaxUploads) * 100 : 0;
+    
+    // Farbklassen basierend auf Fortschritt
+    uploadProgress.classList.remove("progress-low", "progress-medium", "progress-high", "progress-full");
+    
+    if (progressPercent >= 100) {
+      uploadProgress.classList.add("progress-full");
+    } else if (progressPercent >= 70) {
+      uploadProgress.classList.add("progress-high");
+    } else if (progressPercent >= 40) {
+      uploadProgress.classList.add("progress-medium");
+    } else {
+      uploadProgress.classList.add("progress-low");
     }
     
-    // Fortschrittsbalken initialisieren falls noch nicht geschehen
-    if (!this.uploadProgress) {
-      this.uploadProgress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
+    // Breite aktualisieren - Animation durch CSS
+    uploadProgress.style.width = `${progressPercent}%`;
+  }
+  
+  // Prüfen, ob das Limit erreicht ist
+  const isLimitReached = validVideoCount >= validMaxUploads;
+  
+  // Upload-Button je nach Limit-Status ein/ausblenden
+  const uploadButtons = document.querySelectorAll('[data-modal-toggle="new-upload"]');
+  uploadButtons.forEach(button => {
+    button.style.display = isLimitReached ? "none" : "";
+  });
+  
+  // Upload-Limit-Meldung aktualisieren
+  if (limitMessageEl) {
+    if (isLimitReached) {
+      limitMessageEl.style.display = "block";
+      limitMessageEl.textContent = "Upload-Limit erreicht";
+      limitMessageEl.classList.add("limit-reached");
+    } else {
+      limitMessageEl.style.display = "none";
+      limitMessageEl.classList.remove("limit-reached");
     }
-    
-    // Limit-Message-Element initialisieren falls noch nicht geschehen
-    if (!this.limitMessageEl) {
-      this.limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
-    }
-    
-    // Stelle sicher, dass die Zahlen für die Anzeige gültig sind
-    const validVideoCount = isNaN(videoCount) ? 0 : videoCount;
-    const validMaxUploads = isNaN(maxUploads) ? DEFAULT_PAID_MEMBER_LIMIT : maxUploads;
-    
-    // Upload-Counter aktualisieren wenn Element gefunden
-    if (this.uploadCounter) {
-      this.uploadCounter.textContent = `${validVideoCount}/${validMaxUploads}`;
-    }
-    
-    // Fortschrittsbalken aktualisieren wenn Element gefunden
-    if (this.uploadProgress) {
-      // Prozentsatz berechnen
-      const progressPercent = validMaxUploads > 0 ? (validVideoCount / validMaxUploads) * 100 : 0;
-      
-      // Farbklassen basierend auf Fortschritt
-      this.uploadProgress.classList.remove("progress-low", "progress-medium", "progress-high", "progress-full");
-      
-      if (progressPercent >= 100) {
-        this.uploadProgress.classList.add("progress-full");
-      } else if (progressPercent >= 70) {
-        this.uploadProgress.classList.add("progress-high");
-      } else if (progressPercent >= 40) {
-        this.uploadProgress.classList.add("progress-medium");
-      } else {
-        this.uploadProgress.classList.add("progress-low");
-      }
-      
-      // Breite aktualisieren - Animation durch CSS
-      this.uploadProgress.style.width = `${progressPercent}%`;
-    }
+  }
+}
     
     // Prüfen, ob das Limit erreicht ist
     const isLimitReached = validVideoCount >= validMaxUploads;
