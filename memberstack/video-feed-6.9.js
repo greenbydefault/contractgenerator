@@ -32,8 +32,9 @@ ensureConfigValue('VIDEO_COLLECTION_ID', DEFAULT_VIDEO_COLLECTION_ID);
 ensureConfigValue('FREE_MEMBER_LIMIT', DEFAULT_FREE_MEMBER_LIMIT);
 ensureConfigValue('PAID_MEMBER_LIMIT', DEFAULT_PAID_MEMBER_LIMIT);
 
-// UI-Konfiguration
+// UI-Konfiguration mit korrigierten IDs
 window.WEBFLOW_API.VIDEO_CONTAINER_ID = window.WEBFLOW_API.VIDEO_CONTAINER_ID || "video-feed";
+window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID = window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID || "upload-limit-title";
 window.WEBFLOW_API.UPLOAD_COUNTER_ID = window.WEBFLOW_API.UPLOAD_COUNTER_ID || "uploads-counter";
 window.WEBFLOW_API.UPLOAD_PROGRESS_ID = window.WEBFLOW_API.UPLOAD_PROGRESS_ID || "uploads-progress";
 window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID = window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID || "upload-limit-message";
@@ -64,6 +65,7 @@ console.log("📋 Video-Feed: WEBFLOW_API Konfiguration:", {
   FREE_MEMBER_LIMIT: window.WEBFLOW_API.FREE_MEMBER_LIMIT,
   PAID_MEMBER_LIMIT: window.WEBFLOW_API.PAID_MEMBER_LIMIT,
   VIDEO_CONTAINER_ID: window.WEBFLOW_API.VIDEO_CONTAINER_ID,
+  UPLOAD_LIMIT_TITLE_ID: window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID,
   UPLOAD_COUNTER_ID: window.WEBFLOW_API.UPLOAD_COUNTER_ID,
   UPLOAD_PROGRESS_ID: window.WEBFLOW_API.UPLOAD_PROGRESS_ID,
   UPLOAD_LIMIT_MESSAGE_ID: window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID
@@ -438,19 +440,49 @@ class VideoFeedApp {
    * Aktualisiert den Upload-Counter auf der Seite (VERBESSERTE VERSION)
    */
   updateUploadCounter(videoCount, maxUploads) {
-    console.log("📋 Video-Feed: updateUploadCounter aufgerufen mit", videoCount, maxUploads);
+    console.log("📊 Video-Feed: updateUploadCounter aufgerufen mit", videoCount, maxUploads);
     
-    // Elemente direkt aus dem DOM holen (jedes Mal neu)
-    const uploadCounter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
-    const uploadProgress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
-    const limitMessageEl = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
+    // Explizite Selektoren für zusätzliche Sicherheit
+    const selectors = {
+      title: `#${window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID}, [id="${window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID}"]`,
+      counter: `#${window.WEBFLOW_API.UPLOAD_COUNTER_ID}, [id="${window.WEBFLOW_API.UPLOAD_COUNTER_ID}"]`,
+      progress: `#${window.WEBFLOW_API.UPLOAD_PROGRESS_ID}, [id="${window.WEBFLOW_API.UPLOAD_PROGRESS_ID}"]`,
+      limitMessage: `#${window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID}, [id="${window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID}"]`
+    };
     
-    // Debug-Info
-    console.log("📋 Video-Feed: Elemente gefunden:", {
+    // Debug-Ausgabe: Alle IDs, die gesucht werden
+    console.log("📊 Video-Feed: Suche nach DOM-Elementen:", {
+      title_id: window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID,
+      counter_id: window.WEBFLOW_API.UPLOAD_COUNTER_ID,
+      progress_id: window.WEBFLOW_API.UPLOAD_PROGRESS_ID,
+      limitMessage_id: window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID
+    });
+    
+    // Elemente direkt aus dem DOM holen mit mehreren Selektoren für zusätzliche Sicherheit
+    const uploadTitle = document.querySelector(selectors.title);
+    const uploadCounter = document.querySelector(selectors.counter);
+    const uploadProgress = document.querySelector(selectors.progress);
+    const limitMessageEl = document.querySelector(selectors.limitMessage);
+    
+    // Debug-Ausgabe: Welche Elemente wurden gefunden?
+    console.log("📊 Video-Feed: DOM-Elemente gefunden:", {
+      title: Boolean(uploadTitle),
       counter: Boolean(uploadCounter),
       progress: Boolean(uploadProgress),
       limitMessage: Boolean(limitMessageEl)
     });
+    
+    // Wenn nichts gefunden wurde, versuche globale Suche im Body
+    if (!uploadCounter && !uploadProgress && !limitMessageEl) {
+      console.warn("📊 Video-Feed: Keine DOM-Elemente gefunden, versuche DOM-Baum zu durchsuchen");
+      
+      // Ausgabe aller IDs im Dokument zur Fehlersuche
+      const allIds = [];
+      document.querySelectorAll('[id]').forEach(el => {
+        allIds.push(el.id);
+      });
+      console.log("📊 Video-Feed: Alle IDs im Dokument:", allIds);
+    }
     
     // Stelle sicher, dass die Zahlen für die Anzeige gültig sind
     const validVideoCount = isNaN(videoCount) ? 0 : videoCount;
@@ -459,9 +491,9 @@ class VideoFeedApp {
     // Upload-Counter aktualisieren wenn Element gefunden
     if (uploadCounter) {
       uploadCounter.textContent = `${validVideoCount}/${validMaxUploads}`;
-      console.log("📋 Video-Feed: Upload-Counter aktualisiert:", uploadCounter.textContent);
+      console.log("📊 Video-Feed: Upload-Counter aktualisiert:", uploadCounter.textContent);
     } else {
-      console.warn("📋 Video-Feed: Upload-Counter Element nicht gefunden!");
+      console.warn("📊 Video-Feed: Upload-Counter Element nicht gefunden!");
     }
     
     // Fortschrittsbalken aktualisieren wenn Element gefunden
@@ -484,23 +516,23 @@ class VideoFeedApp {
       
       // Breite aktualisieren - Animation durch CSS
       uploadProgress.style.width = `${progressPercent}%`;
-      console.log("📋 Video-Feed: Fortschrittsbalken auf", progressPercent, "% gesetzt");
+      console.log("📊 Video-Feed: Fortschrittsbalken auf", progressPercent, "% gesetzt");
     } else {
-      console.warn("📋 Video-Feed: Upload-Progress Element nicht gefunden!");
+      console.warn("📊 Video-Feed: Upload-Progress Element nicht gefunden!");
     }
     
     // Prüfen, ob das Limit erreicht ist
     const isLimitReached = validVideoCount >= validMaxUploads;
     
     // Logging, um den Zustand besser zu verstehen
-    console.log(`📋 Video-Feed: Upload-Status: ${validVideoCount}/${validMaxUploads}, Limit erreicht: ${isLimitReached}`);
+    console.log(`📊 Video-Feed: Upload-Status: ${validVideoCount}/${validMaxUploads}, Limit erreicht: ${isLimitReached}`);
     
     // Upload-Button je nach Limit-Status ein/ausblenden
     const uploadButtons = document.querySelectorAll('[data-modal-toggle="new-upload"]');
     uploadButtons.forEach(button => {
       button.style.display = isLimitReached ? "none" : "";
     });
-    console.log("📋 Video-Feed: Upload-Buttons aktualisiert, Anzahl:", uploadButtons.length);
+    console.log("📊 Video-Feed: Upload-Buttons aktualisiert, Anzahl:", uploadButtons.length);
     
     // Upload-Limit-Meldung aktualisieren
     if (limitMessageEl) {
@@ -508,14 +540,15 @@ class VideoFeedApp {
         limitMessageEl.style.display = "block";
         limitMessageEl.textContent = "Upload-Limit erreicht";
         limitMessageEl.classList.add("limit-reached");
-        console.log("📋 Video-Feed: Limit-Meldung wird angezeigt");
+        console.log("📊 Video-Feed: Limit-Meldung wird angezeigt");
       } else {
+        // Limit nicht erreicht, mach die Nachricht unsichtbar
         limitMessageEl.style.display = "none";
         limitMessageEl.classList.remove("limit-reached");
-        console.log("📋 Video-Feed: Limit-Meldung wird ausgeblendet");
+        console.log("📊 Video-Feed: Limit-Meldung wird ausgeblendet");
       }
     } else {
-      console.warn("📋 Video-Feed: Limit-Message Element nicht gefunden!");
+      console.warn("📊 Video-Feed: Limit-Message Element nicht gefunden!");
     }
   }
 
@@ -758,6 +791,40 @@ class VideoFeedApp {
       </div>
     `;
   }
+  
+  /**
+   * Initialisiert UI-Elemente explizit und überprüft deren Existenz
+   */
+  initUIElements() {
+    console.log("📊 Video-Feed: Initialisiere UI-Elemente");
+    
+    // Alle UI-Elemente finden
+    const titleElement = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID);
+    const counterElement = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
+    const progressElement = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
+    const messageElement = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
+    
+    console.log("📊 Video-Feed: UI-Elemente gefunden:", {
+      title: Boolean(titleElement),
+      counter: Boolean(counterElement),
+      progress: Boolean(progressElement),
+      message: Boolean(messageElement)
+    });
+    
+    // Alle IDs im Dokument ausgeben für Debugging
+    const allIds = [];
+    document.querySelectorAll('[id]').forEach(el => {
+      allIds.push(el.id);
+    });
+    console.log("📊 Video-Feed: Alle IDs im Dokument:", allIds);
+    
+    return {
+      title: titleElement,
+      counter: counterElement,
+      progress: progressElement,
+      message: messageElement
+    };
+  }
 
   /**
    * Videos für eingeloggten User laden und anzeigen
@@ -886,6 +953,9 @@ class VideoFeedApp {
     // Initialisierungsfunktion definieren
     const initApp = () => {
       try {
+        // UI-Elemente vorher explizit initialisieren
+        this.initUIElements();
+        
         // Video-Container finden
         this.videoContainer = document.getElementById(window.WEBFLOW_API.VIDEO_CONTAINER_ID);
         
