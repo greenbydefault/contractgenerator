@@ -122,7 +122,6 @@
       'd9e7f4': 'Home & Living'
     }
   };
-  };
 
   /**
    * Cache-Klasse für API-Antworten und andere Daten
