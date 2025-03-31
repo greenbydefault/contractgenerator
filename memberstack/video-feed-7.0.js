@@ -1,5 +1,5 @@
 // 🌐 Webflow API Integration für Video-Feed
-// Optimierte Version 3.0
+// Fixed Version 6.9.1
 
 /**
  * Konfigurationswerte mit Defaults
@@ -15,6 +15,10 @@ const DEFAULT_PAID_MEMBER_LIMIT = 12;
  * Globale Konfiguration für das Video-Feed-Skript
  */
 window.WEBFLOW_API = window.WEBFLOW_API || {};
+
+// App starten mit verbessertem Error-Handling
+startVideoFeedApp();
+
 
 // Funktion zur sicheren Initialisierung von Konfigurationswerten
 function ensureConfigValue(key, defaultValue) {
@@ -32,10 +36,10 @@ ensureConfigValue('VIDEO_COLLECTION_ID', DEFAULT_VIDEO_COLLECTION_ID);
 ensureConfigValue('FREE_MEMBER_LIMIT', DEFAULT_FREE_MEMBER_LIMIT);
 ensureConfigValue('PAID_MEMBER_LIMIT', DEFAULT_PAID_MEMBER_LIMIT);
 
-// UI-Konfiguration mit korrigierten IDs
+// UI-Konfiguration mit korrigierten IDs basierend auf den Log-Daten
 window.WEBFLOW_API.VIDEO_CONTAINER_ID = window.WEBFLOW_API.VIDEO_CONTAINER_ID || "video-feed";
 window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID = window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID || "upload-limit-title";
-window.WEBFLOW_API.UPLOAD_COUNTER_ID = window.WEBFLOW_API.UPLOAD_COUNTER_ID || "uploads-counter";
+window.WEBFLOW_API.UPLOAD_COUNTER_ID = window.WEBFLOW_API.UPLOAD_COUNTER_ID || "counter_id"; // Geändert von "uploads-counter" zu "counter_id"
 window.WEBFLOW_API.UPLOAD_PROGRESS_ID = window.WEBFLOW_API.UPLOAD_PROGRESS_ID || "uploads-progress";
 window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID = window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID || "upload-limit-message";
 
@@ -130,6 +134,12 @@ class VideoFeedApp {
     this.currentMember = null;
     this.userVideos = [];
     this.isLoading = false;
+    this.uiElements = {
+      title: null,
+      counter: null,
+      progress: null,
+      limitMessage: null
+    };
     
     console.log("📋 Video-Feed: Initialisiert mit Limits:", 
       window.WEBFLOW_API.FREE_MEMBER_LIMIT, 
@@ -437,88 +447,146 @@ class VideoFeedApp {
   }
 
   /**
-   * Aktualisiert den Upload-Counter auf der Seite (VERBESSERTE VERSION)
+   * Verbesserte Version: Aktualisiert den Upload-Counter auf der Seite
+   * Diese Version sucht flexibler nach den Elementen und erstellt sie bei Bedarf
    */
   updateUploadCounter(videoCount, maxUploads) {
     console.log("📊 Video-Feed: updateUploadCounter aufgerufen mit", videoCount, maxUploads);
-    
-    // Explizite Selektoren für zusätzliche Sicherheit
-    const selectors = {
-      title: `#${window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID}, [id="${window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID}"]`,
-      counter: `#${window.WEBFLOW_API.UPLOAD_COUNTER_ID}, [id="${window.WEBFLOW_API.UPLOAD_COUNTER_ID}"]`,
-      progress: `#${window.WEBFLOW_API.UPLOAD_PROGRESS_ID}, [id="${window.WEBFLOW_API.UPLOAD_PROGRESS_ID}"]`,
-      limitMessage: `#${window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID}, [id="${window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID}"]`
-    };
-    
-    // Debug-Ausgabe: Alle IDs, die gesucht werden
-    console.log("📊 Video-Feed: Suche nach DOM-Elementen:", {
-      title_id: window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID,
-      counter_id: window.WEBFLOW_API.UPLOAD_COUNTER_ID,
-      progress_id: window.WEBFLOW_API.UPLOAD_PROGRESS_ID,
-      limitMessage_id: window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID
-    });
-    
-    // Elemente direkt aus dem DOM holen mit mehreren Selektoren für zusätzliche Sicherheit
-    const uploadTitle = document.querySelector(selectors.title);
-    const uploadCounter = document.querySelector(selectors.counter);
-    const uploadProgress = document.querySelector(selectors.progress);
-    const limitMessageEl = document.querySelector(selectors.limitMessage);
-    
-    // Debug-Ausgabe: Welche Elemente wurden gefunden?
-    console.log("📊 Video-Feed: DOM-Elemente gefunden:", {
-      title: Boolean(uploadTitle),
-      counter: Boolean(uploadCounter),
-      progress: Boolean(uploadProgress),
-      limitMessage: Boolean(limitMessageEl)
-    });
-    
-    // Wenn nichts gefunden wurde, versuche globale Suche im Body
-    if (!uploadCounter && !uploadProgress && !limitMessageEl) {
-      console.warn("📊 Video-Feed: Keine DOM-Elemente gefunden, versuche DOM-Baum zu durchsuchen");
-      
-      // Ausgabe aller IDs im Dokument zur Fehlersuche
-      const allIds = [];
-      document.querySelectorAll('[id]').forEach(el => {
-        allIds.push(el.id);
-      });
-      console.log("📊 Video-Feed: Alle IDs im Dokument:", allIds);
-    }
     
     // Stelle sicher, dass die Zahlen für die Anzeige gültig sind
     const validVideoCount = isNaN(videoCount) ? 0 : videoCount;
     const validMaxUploads = isNaN(maxUploads) ? DEFAULT_PAID_MEMBER_LIMIT : maxUploads;
     
-    // Upload-Counter aktualisieren wenn Element gefunden
-    if (uploadCounter) {
-      uploadCounter.textContent = `${validVideoCount}/${validMaxUploads}`;
-      console.log("📊 Video-Feed: Upload-Counter aktualisiert:", uploadCounter.textContent);
-    } else {
-      console.warn("📊 Video-Feed: Upload-Counter Element nicht gefunden!");
+    // Counter-Element finden oder erstellen
+    if (!this.uiElements.counter) {
+      // Erst versuchen, über ID zu finden
+      this.uiElements.counter = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
+      
+      // Wenn nicht gefunden, nach Attributen suchen
+      if (!this.uiElements.counter) {
+        this.uiElements.counter = document.querySelector('[data-counter="uploads"]') || 
+                                   document.querySelector('.upload-counter');
+      }
+      
+      // Wenn immer noch nicht gefunden, erstellen
+      if (!this.uiElements.counter && this.videoContainer) {
+        const counterDiv = document.createElement('div');
+        counterDiv.id = window.WEBFLOW_API.UPLOAD_COUNTER_ID;
+        counterDiv.classList.add('upload-counter');
+        counterDiv.style.margin = '10px 0';
+        counterDiv.style.fontWeight = 'bold';
+        
+        // Vor dem Container einfügen
+        this.videoContainer.parentNode.insertBefore(counterDiv, this.videoContainer);
+        this.uiElements.counter = counterDiv;
+        console.log("📊 Video-Feed: Counter-Element wurde erstellt");
+      }
     }
     
-    // Fortschrittsbalken aktualisieren wenn Element gefunden
-    if (uploadProgress) {
+    // Progress-Element finden oder erstellen
+    if (!this.uiElements.progress) {
+      // Erst versuchen, über ID zu finden
+      this.uiElements.progress = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
+      
+      // Wenn nicht gefunden, nach Attributen suchen
+      if (!this.uiElements.progress) {
+        this.uiElements.progress = document.querySelector('[data-progress="uploads"]') || 
+                                    document.querySelector('.upload-progress');
+      }
+      
+      // Wenn immer noch nicht gefunden, erstellen
+      if (!this.uiElements.progress && this.videoContainer) {
+        const progressContainer = document.createElement('div');
+        progressContainer.style.width = '100%';
+        progressContainer.style.backgroundColor = '#f0f0f0';
+        progressContainer.style.borderRadius = '4px';
+        progressContainer.style.margin = '10px 0 20px 0';
+        progressContainer.style.overflow = 'hidden';
+        
+        const progressBar = document.createElement('div');
+        progressBar.id = window.WEBFLOW_API.UPLOAD_PROGRESS_ID;
+        progressBar.classList.add('upload-progress', 'progress-low');
+        progressBar.style.height = '10px';
+        progressBar.style.width = '0%';
+        progressBar.style.backgroundColor = '#4CAF50';
+        progressBar.style.transition = 'width 0.3s ease';
+        
+        progressContainer.appendChild(progressBar);
+        
+        // Nach dem Counter einfügen
+        if (this.uiElements.counter && this.uiElements.counter.nextSibling) {
+          this.uiElements.counter.parentNode.insertBefore(progressContainer, this.uiElements.counter.nextSibling);
+        } else {
+          // Oder vor dem Container
+          this.videoContainer.parentNode.insertBefore(progressContainer, this.videoContainer);
+        }
+        
+        this.uiElements.progress = progressBar;
+        console.log("📊 Video-Feed: Progress-Element wurde erstellt");
+      }
+    }
+    
+    // Limit-Message-Element finden oder erstellen
+    if (!this.uiElements.limitMessage) {
+      // Erst versuchen, über ID zu finden
+      this.uiElements.limitMessage = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
+      
+      // Wenn nicht gefunden, nach Attributen suchen
+      if (!this.uiElements.limitMessage) {
+        this.uiElements.limitMessage = document.querySelector('[data-message="limit"]') || 
+                                        document.querySelector('.limit-message');
+      }
+      
+      // Wenn immer noch nicht gefunden, erstellen
+      if (!this.uiElements.limitMessage && this.videoContainer) {
+        const messageDiv = document.createElement('div');
+        messageDiv.id = window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID;
+        messageDiv.classList.add('limit-message');
+        messageDiv.style.color = '#e53e3e';
+        messageDiv.style.fontWeight = 'bold';
+        messageDiv.style.margin = '10px 0';
+        messageDiv.style.display = 'none';
+        
+        // Vor dem Container einfügen
+        this.videoContainer.parentNode.insertBefore(messageDiv, this.videoContainer);
+        this.uiElements.limitMessage = messageDiv;
+        console.log("📊 Video-Feed: Limit-Message-Element wurde erstellt");
+      }
+    }
+    
+    // Jetzt die UI-Elemente aktualisieren
+    
+    // Counter aktualisieren
+    if (this.uiElements.counter) {
+      this.uiElements.counter.textContent = `Videos: ${validVideoCount}/${validMaxUploads}`;
+      console.log("📊 Video-Feed: Counter aktualisiert:", this.uiElements.counter.textContent);
+    }
+    
+    // Progress-Bar aktualisieren
+    if (this.uiElements.progress) {
       // Prozentsatz berechnen
       const progressPercent = validMaxUploads > 0 ? (validVideoCount / validMaxUploads) * 100 : 0;
       
       // Farbklassen basierend auf Fortschritt
-      uploadProgress.classList.remove("progress-low", "progress-medium", "progress-high", "progress-full");
+      this.uiElements.progress.classList.remove("progress-low", "progress-medium", "progress-high", "progress-full");
       
       if (progressPercent >= 100) {
-        uploadProgress.classList.add("progress-full");
+        this.uiElements.progress.classList.add("progress-full");
+        this.uiElements.progress.style.backgroundColor = '#e53e3e';
       } else if (progressPercent >= 70) {
-        uploadProgress.classList.add("progress-high");
+        this.uiElements.progress.classList.add("progress-high");
+        this.uiElements.progress.style.backgroundColor = '#f6ad55';
       } else if (progressPercent >= 40) {
-        uploadProgress.classList.add("progress-medium");
+        this.uiElements.progress.classList.add("progress-medium");
+        this.uiElements.progress.style.backgroundColor = '#68d391';
       } else {
-        uploadProgress.classList.add("progress-low");
+        this.uiElements.progress.classList.add("progress-low");
+        this.uiElements.progress.style.backgroundColor = '#4CAF50';
       }
       
-      // Breite aktualisieren - Animation durch CSS
-      uploadProgress.style.width = `${progressPercent}%`;
+      // Breite aktualisieren
+      this.uiElements.progress.style.width = `${progressPercent}%`;
       console.log("📊 Video-Feed: Fortschrittsbalken auf", progressPercent, "% gesetzt");
-    } else {
-      console.warn("📊 Video-Feed: Upload-Progress Element nicht gefunden!");
     }
     
     // Prüfen, ob das Limit erreicht ist
@@ -535,20 +603,18 @@ class VideoFeedApp {
     console.log("📊 Video-Feed: Upload-Buttons aktualisiert, Anzahl:", uploadButtons.length);
     
     // Upload-Limit-Meldung aktualisieren
-    if (limitMessageEl) {
+    if (this.uiElements.limitMessage) {
       if (isLimitReached) {
-        limitMessageEl.style.display = "block";
-        limitMessageEl.textContent = "Upload-Limit erreicht";
-        limitMessageEl.classList.add("limit-reached");
+        this.uiElements.limitMessage.style.display = "block";
+        this.uiElements.limitMessage.textContent = "Upload-Limit erreicht";
+        this.uiElements.limitMessage.classList.add("limit-reached");
         console.log("📊 Video-Feed: Limit-Meldung wird angezeigt");
       } else {
         // Limit nicht erreicht, mach die Nachricht unsichtbar
-        limitMessageEl.style.display = "none";
-        limitMessageEl.classList.remove("limit-reached");
+        this.uiElements.limitMessage.style.display = "none";
+        this.uiElements.limitMessage.classList.remove("limit-reached");
         console.log("📊 Video-Feed: Limit-Meldung wird ausgeblendet");
       }
-    } else {
-      console.warn("📊 Video-Feed: Limit-Message Element nicht gefunden!");
     }
   }
 
@@ -705,316 +771,3 @@ class VideoFeedApp {
     // Nach dem Rendern den Upload-Counter und Fortschrittsbalken aktualisieren
     this.updateUploadCounter(videos.length, maxUploads);
   }
-
-  /**
-   * Verbesserte Ladeanimation mit Skeleton Loader
-   */
-  showLoading() {
-    if (!this.videoContainer) return;
-    
-    // Container leeren
-    this.videoContainer.innerHTML = '';
-    
-    // DocumentFragment für bessere Performance
-    const fragment = document.createDocumentFragment();
-    
-    // CSS für Skeleton Loader hinzufügen, falls noch nicht vorhanden
-    if (!document.getElementById('skeleton-styles')) {
-      const styleElement = document.createElement('style');
-      styleElement.id = 'skeleton-styles';
-      styleElement.textContent = `
-        .skeleton-item {
-          position: relative;
-          overflow: hidden;
-        }
-        .skeleton-video-pulse, .skeleton-text-pulse, .skeleton-button-pulse {
-          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-          background-size: 200% 100%;
-          animation: skeleton-pulse 1.5s ease-in-out infinite;
-          border-radius: 4px;
-        }
-        .skeleton-video-pulse {
-          width: 100%;
-          height: 100%;
-          min-height: 180px;
-        }
-        .skeleton-button-pulse {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-        }
-        @keyframes skeleton-pulse {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `;
-      document.head.appendChild(styleElement);
-    }
-    
-    // Erstelle 3 Skeleton-Items
-    for (let i = 0; i < 3; i++) {
-      const skeleton = document.createElement('div');
-      skeleton.classList.add('db-upload-wrapper-item', 'skeleton-item');
-      
-      skeleton.innerHTML = `
-        <div class="db-upload-item-video skeleton-video">
-          <div class="skeleton-video-pulse" style="animation-delay: ${i * 0.15}s"></div>
-        </div>
-        <div class="db-upload-item-details">
-          <div class="db-upload-details-container">
-            <div class="skeleton-text-pulse" style="width: ${70 - i * 10}%; height: 20px; animation-delay: ${i * 0.1}s"></div>
-            <div class="skeleton-text-pulse" style="width: ${40 + i * 5}%; height: 14px; margin-top: 8px; animation-delay: ${i * 0.2}s"></div>
-          </div>
-          <div class="skeleton-button-pulse" style="animation-delay: ${i * 0.25}s"></div>
-        </div>
-      `;
-      
-      fragment.appendChild(skeleton);
-    }
-    
-    // Alle Skeleton-Items auf einmal anhängen
-    this.videoContainer.appendChild(fragment);
-  }
-  
-  /**
-   * Fehlermeldung anzeigen
-   */
-  showError(message) {
-    if (!this.videoContainer) return;
-    
-    this.videoContainer.innerHTML = `
-      <div class="error-message" style="padding: 20px; text-align: center; color: #e53e3e; background-color: #fff5f5; border: 1px solid #e53e3e; border-radius: 4px; margin: 20px 0;">
-        <p>🚫 ${message}</p>
-        <button style="margin-top: 10px; padding: 6px 12px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="window.videoFeedApp.loadUserVideos()">
-          Erneut versuchen
-        </button>
-      </div>
-    `;
-  }
-  
-  /**
-   * Initialisiert UI-Elemente explizit und überprüft deren Existenz
-   */
-  initUIElements() {
-    console.log("📊 Video-Feed: Initialisiere UI-Elemente");
-    
-    // Alle UI-Elemente finden
-    const titleElement = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID);
-    const counterElement = document.getElementById(window.WEBFLOW_API.UPLOAD_COUNTER_ID);
-    const progressElement = document.getElementById(window.WEBFLOW_API.UPLOAD_PROGRESS_ID);
-    const messageElement = document.getElementById(window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID);
-    
-    console.log("📊 Video-Feed: UI-Elemente gefunden:", {
-      title: Boolean(titleElement),
-      counter: Boolean(counterElement),
-      progress: Boolean(progressElement),
-      message: Boolean(messageElement)
-    });
-    
-    // Alle IDs im Dokument ausgeben für Debugging
-    const allIds = [];
-    document.querySelectorAll('[id]').forEach(el => {
-      allIds.push(el.id);
-    });
-    console.log("📊 Video-Feed: Alle IDs im Dokument:", allIds);
-    
-    return {
-      title: titleElement,
-      counter: counterElement,
-      progress: progressElement,
-      message: messageElement
-    };
-  }
-
-  /**
-   * Videos für eingeloggten User laden und anzeigen
-   */
-  async loadUserVideos() {
-    try {
-      if (!this.videoContainer) {
-        console.error("📋 Video-Feed: Container nicht gefunden");
-        return;
-      }
-      
-      // Vermeidet doppelte Ladeanfragen
-      if (this.isLoading) {
-        console.log("📋 Video-Feed: Ladevorgang bereits aktiv, ignoriere Anfrage");
-        return;
-      }
-      
-      this.isLoading = true;
-      this.showLoading();
-      
-      // Memberstack-User laden
-      const member = await window.$memberstackDom.getCurrentMember();
-      this.currentMember = member;
-      const memberstackId = member?.data?.id;
-      
-      if (!memberstackId) {
-        this.showError("Kein eingeloggter User gefunden");
-        this.isLoading = false;
-        return;
-      }
-      
-      console.log("📋 Video-Feed: Eingeloggter User mit Memberstack-ID", memberstackId);
-      
-      // Video-Limit basierend auf Membership bestimmen
-      const maxUploads = this.getMembershipLimit(member);
-      console.log("📋 Video-Feed: Maximale Uploads für User:", maxUploads);
-      
-      // 1. Webflow-ID aus den Custom Fields der Memberstack-Daten extrahieren
-      let webflowMemberId = this.extractWebflowId(member);
-      
-      if (!webflowMemberId) {
-        this.showError("Keine Webflow-Member-ID in den Memberstack-Daten gefunden");
-        console.error("📋 Video-Feed: Memberstack-Daten ohne Webflow-ID:", member.data);
-        this.isLoading = false;
-        return;
-      }
-      
-      // 2. User direkt mit der Webflow-ID abrufen
-      const user = await this.getUserByWebflowId(webflowMemberId);
-      
-      if (!user) {
-        this.showError(`User mit Webflow-ID "${webflowMemberId}" nicht gefunden`);
-        this.isLoading = false;
-        return;
-      }
-      
-      // 3. Videos aus dem Video-Feed des Users holen
-      const videos = await this.getVideosFromUserFeed(user);
-      this.userVideos = videos;
-      
-      // Upload-Counter aktualisieren
-      this.updateUploadCounter(videos.length, maxUploads);
-      
-      // Videos anzeigen
-      this.renderVideos(videos);
-      
-      this.isLoading = false;
-    } catch (error) {
-      console.error("📋 Video-Feed: Fehler beim Laden der Videos", error);
-      this.showError(`Fehler beim Laden des Video-Feeds: ${error.message}`);
-      this.isLoading = false;
-    }
-  }
-
-  /**
-   * Helper-Methode zum Extrahieren der Webflow-ID aus Memberstack-Daten
-   */
-  extractWebflowId(member) {
-    if (!member || !member.data) return null;
-    
-    // Mögliche Orte für die Webflow-ID prüfen
-    if (member.data.customFields && member.data.customFields["webflow-member-id"]) {
-      const id = member.data.customFields["webflow-member-id"];
-      console.log("📋 Video-Feed: Webflow-Member-ID aus customFields gefunden:", id);
-      return id;
-    } 
-    
-    if (member.data.metaData && member.data.metaData["webflow-member-id"]) {
-      const id = member.data.metaData["webflow-member-id"];
-      console.log("📋 Video-Feed: Webflow-Member-ID aus metaData gefunden:", id);
-      return id;
-    }
-    
-    // Weitere mögliche Felder prüfen
-    const possibleFields = ["webflow-id", "webflow_id", "webflowId", "webflow_member_id"];
-    
-    // Prüfe customFields
-    if (member.data.customFields) {
-      for (const field of possibleFields) {
-        if (member.data.customFields[field]) {
-          console.log(`📋 Video-Feed: Webflow-Member-ID aus customFields["${field}"] gefunden:`, 
-            member.data.customFields[field]);
-          return member.data.customFields[field];
-        }
-      }
-    }
-    
-    // Prüfe metaData
-    if (member.data.metaData) {
-      for (const field of possibleFields) {
-        if (member.data.metaData[field]) {
-          console.log(`📋 Video-Feed: Webflow-Member-ID aus metaData["${field}"] gefunden:`, 
-            member.data.metaData[field]);
-          return member.data.metaData[field];
-        }
-      }
-    }
-    
-    return null;
-  }
-
-  /**
-   * App initialisieren
-   */
-  init() {
-    // Initialisierungsfunktion definieren
-    const initApp = () => {
-      try {
-        // UI-Elemente vorher explizit initialisieren
-        this.initUIElements();
-        
-        // Video-Container finden
-        this.videoContainer = document.getElementById(window.WEBFLOW_API.VIDEO_CONTAINER_ID);
-        
-        if (!this.videoContainer) {
-          console.warn("📋 Video-Feed: Container-Element nicht gefunden! ID:", window.WEBFLOW_API.VIDEO_CONTAINER_ID);
-          
-          // Fallback: Versuche den Container über Klasse zu finden
-          const containerByClass = document.querySelector(".db-upload-wrapper");
-          if (containerByClass) {
-            console.log("📋 Video-Feed: Container über Klasse gefunden statt über ID");
-            this.videoContainer = containerByClass;
-          } else {
-            console.error("📋 Video-Feed: Container konnte weder über ID noch über Klasse gefunden werden");
-            return;
-          }
-        }
-        
-        console.log("📋 Video-Feed: Container erfolgreich gefunden");
-        
-        // Event-Listener für Video-Feed-Updates
-        document.addEventListener('videoFeedUpdate', () => {
-          console.log("📋 Video-Feed: Update-Event empfangen, lade Feed neu");
-          
-          // Cache löschen und Daten neu laden
-          this.cache.clear();
-          this.loadUserVideos();
-        });
-        
-        // Videos laden
-        this.loadUserVideos();
-      } catch (error) {
-        console.error("📋 Video-Feed: Kritischer Fehler bei Initialisierung", error);
-      }
-    };
-    
-    // Prüfen, ob das DOM bereits geladen ist
-    if (document.readyState === "loading") {
-      // Wenn noch nicht geladen, warten auf DOMContentLoaded
-      document.addEventListener("DOMContentLoaded", initApp);
-    } else {
-      // Wenn DOM bereits geladen ist, sofort initialisieren
-      initApp();
-    }
-  }
-}
-
-// App starten mit zusätzlicher Verzögerung, um sicherzustellen, dass alle globalen Variablen gesetzt sind
-document.addEventListener('DOMContentLoaded', () => {
-  // Kurze Verzögerung für sicherere Initialisierung
-  setTimeout(() => {
-    try {
-      console.log("📋 Video-Feed: Starte App...");
-      const videoFeedApp = new VideoFeedApp();
-      videoFeedApp.init();
-      
-      // Für Debug-Zwecke global zugänglich machen
-      window.videoFeedApp = videoFeedApp;
-    } catch (error) {
-      console.error("📋 Video-Feed: Kritischer Fehler beim Start", error);
-    }
-  }, 100);
-});
