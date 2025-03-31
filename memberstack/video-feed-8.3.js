@@ -1,6 +1,6 @@
 /**
  * Webflow API Integration für Video-Feed
- * Optimierte Version 8.1
+ * Optimierte Version 8.0
  * 
  * Ein modulares, robustes Script zur Verwaltung von Video-Uploads und deren Anzeige
  * mit verbesserter Fehlerbehandlung, Debugging und Konfigurationsmöglichkeiten.
@@ -80,9 +80,8 @@
     UPLOAD_LIMIT_MESSAGE_ID: 'upload-limit-message',
     PLAN_STATUS_ID: 'plan-status',
     
-    // Cache-Konfiguration
-    CACHE_ENABLED: false, // Cache standardmäßig deaktiviert
-    CACHE_EXPIRATION: 5 * 60 * 1000, // 5 Minuten (wird nur verwendet wenn Cache aktiviert ist)
+    // Cache-Zeit in Millisekunden (5 Minuten)
+    CACHE_EXPIRATION: 5 * 60 * 1000,
     
     // Kategorien-Mapping - vollständige Liste aller möglichen IDs für die Kategorien
     CATEGORY_MAPPING: {
@@ -128,37 +127,18 @@
    * Cache-Klasse für API-Antworten und andere Daten
    */
   class SimpleCache {
-    constructor(config) {
+    constructor(expirationTime = DEFAULT_CONFIG.CACHE_EXPIRATION) {
       this.items = {};
-      this.expiration = config.CACHE_EXPIRATION || 300000; // Default 5 Minuten
-      this.enabled = config.CACHE_ENABLED !== undefined ? config.CACHE_ENABLED : true;
-      DEBUG.log('Cache initialisiert mit Expiration: ' + this.expiration + 'ms, Aktiviert: ' + this.enabled);
-    }
-
-    /**
-     * Aktiviert oder deaktiviert den Cache
-     * @param {boolean} enabled - true zum Aktivieren, false zum Deaktivieren
-     */
-    setEnabled(enabled) {
-      this.enabled = enabled;
-      DEBUG.log(`Cache ist jetzt ${enabled ? 'aktiviert' : 'deaktiviert'}`);
-      if (!enabled) {
-        this.clear();
-      }
+      this.expiration = expirationTime;
+      DEBUG.log('Cache initialisiert mit Expiration: ' + expirationTime + 'ms');
     }
 
     /**
      * Holt einen Wert aus dem Cache
      * @param {string} key - Der Cache-Schlüssel
-     * @returns {any|null} - Der gecachte Wert oder null wenn nicht vorhanden/abgelaufen/deaktiviert
+     * @returns {any|null} - Der gecachte Wert oder null wenn nicht vorhanden/abgelaufen
      */
     get(key) {
-      // Wenn Cache deaktiviert ist, immer null zurückgeben
-      if (!this.enabled) {
-        DEBUG.log(`Cache deaktiviert, überspringe Cache-Lookup für '${key}'`);
-        return null;
-      }
-
       const item = this.items[key];
       if (!item) return null;
       
@@ -179,12 +159,6 @@
      * @param {any} data - Die zu cachenden Daten
      */
     set(key, data) {
-      // Wenn Cache deaktiviert ist, nicht speichern
-      if (!this.enabled) {
-        DEBUG.log(`Cache deaktiviert, überspringe Speichern für '${key}'`);
-        return;
-      }
-
       this.items[key] = {
         timestamp: Date.now(),
         data: data
@@ -635,7 +609,7 @@
   class ApiService {
     constructor(config) {
       this.config = config;
-      this.cache = new SimpleCache(config);
+      this.cache = new SimpleCache(config.CACHE_EXPIRATION);
     }
     
     /**
@@ -840,79 +814,38 @@
       
       // Kategorie-ID extrahieren und detailliertes Logging hinzufügen
       const categoryId = item.fieldData["video-kategorie"];
-      let categoryRawId = categoryId;
-      
-      DEBUG.log(`Verarbeite Video ${item.id} mit Kategorie-ID: "${categoryId}" (Typ: ${typeof categoryId})`);
+      DEBUG.log(`Verarbeite Video ${item.id} mit Kategorie-ID: "${categoryId}"`);
       
       // Kategorie-Name über das Mapping holen
       let categoryName = "Nicht angegeben";
-      let mappingFound = false;
       
       if (categoryId) {
-        // Normalisiere die ID für den Vergleich (nur wenn es ein String ist)
-        let normalizedId = typeof categoryId === 'string' ? categoryId.trim() : categoryId;
-        
         // Überprüfe das Mapping
-        if (this.config.CATEGORY_MAPPING && this.config.CATEGORY_MAPPING[normalizedId]) {
-          categoryName = this.config.CATEGORY_MAPPING[normalizedId];
-          DEBUG.log(`Kategorie-Mapping gefunden: "${normalizedId}" => "${categoryName}"`);
-          mappingFound = true;
+        if (this.config.CATEGORY_MAPPING && this.config.CATEGORY_MAPPING[categoryId]) {
+          categoryName = this.config.CATEGORY_MAPPING[categoryId];
+          DEBUG.log(`Kategorie-Mapping gefunden: "${categoryId}" => "${categoryName}"`);
         } else {
-          // Kein direktes Mapping gefunden - versuche eine fuzzy-Suche
-          DEBUG.log(`⚠️ Kein direktes Kategorie-Mapping gefunden für ID: "${normalizedId}"`, null, 'warn');
-          
-          // Dump aller Mapping-Keys für Debug-Zwecke
+          // Kein Mapping gefunden - detaillierte Informationen ausgeben
+          DEBUG.log(`⚠️ Kein Kategorie-Mapping gefunden für ID: "${categoryId}"`, null, 'warn');
           DEBUG.log('Verfügbare Kategorie-Mappings:', Object.keys(this.config.CATEGORY_MAPPING));
           
-          // Versuche exakte Teilstrings zu finden (wenn die ID ein String ist)
-          if (typeof normalizedId === 'string') {
-            // Normalisiere alle Mapping-Keys für konsistenten Vergleich
-            const normalizedMappings = {};
-            for (const [key, value] of Object.entries(this.config.CATEGORY_MAPPING)) {
-              normalizedMappings[key.trim()] = value;
-            }
-            
-            // Suche nach Mapping für verschiedene Substring-Längen
-            const trySubstrings = ['a1c318daa4a4fdc904d0ea6ae57e9eb6', 'a1c318daa4a4', 'a1c318da', 'a1c318'];
-            for (const substring of trySubstrings) {
-              if (normalizedId.includes(substring) || substring.includes(normalizedId)) {
-                categoryName = this.config.CATEGORY_MAPPING[substring];
-                DEBUG.log(`Gefundenes Teil-Mapping über Substring "${substring}" => "${categoryName}"`);
-                mappingFound = true;
-                break;
-              }
-            }
-            
-            // Wenn immer noch kein Mapping gefunden, suche nach einem Präfix-Match
-            if (!mappingFound) {
-              for (const [key, value] of Object.entries(this.config.CATEGORY_MAPPING)) {
-                if (normalizedId.startsWith(key.substring(0, 6)) || key.startsWith(normalizedId.substring(0, 6))) {
-                  categoryName = value;
-                  DEBUG.log(`Fuzzy-Match gefunden für Präfix "${key.substring(0, 6)}" => "${categoryName}"`);
-                  mappingFound = true;
-                  break;
-                }
-              }
-            }
-          }
+          // Erste 3 Zeichen überprüfen (für teilweise übereinstimmungen)
+          const prefix = categoryId.substring(0, 6);
+          const possibleMatches = Object.keys(this.config.CATEGORY_MAPPING)
+            .filter(key => key.startsWith(prefix));
           
-          // Fallback wenn immer noch kein Mapping gefunden wurde
-          if (!mappingFound) {
-            categoryName = typeof normalizedId === 'string' ? 
-              "Kategorie " + normalizedId.substring(0, 6) : 
-              "Unbekannte Kategorie";
-            DEBUG.log(`Kein Mapping gefunden, verwende Fallback-Namen: ${categoryName}`);
+          if (possibleMatches.length > 0) {
+            DEBUG.log(`Mögliche Kategorie-Übereinstimmungen gefunden:`, possibleMatches);
+            
+            // Nutze die erste mögliche Übereinstimmung
+            const firstMatch = possibleMatches[0];
+            categoryName = this.config.CATEGORY_MAPPING[firstMatch];
+            DEBUG.log(`Verwende ähnliche Kategorie: "${firstMatch}" => "${categoryName}"`);
+          } else {
+            categoryName = "Kategorie " + categoryId.substring(0, 6);
           }
         }
       }
-      
-      // Alle relevanten Daten ausgeben für bessere Diagnosemöglichkeiten
-      DEBUG.log(`Kategorie-Mapping-Ergebnis für Video ${item.id}:`, {
-        originalId: categoryRawId,
-        processedId: categoryId,
-        mappingFound: mappingFound,
-        resultName: categoryName
-      });
       
       return {
         id: item.id,
@@ -931,32 +864,403 @@
     getCategoryName(categoryId) {
       if (!categoryId) return "Nicht angegeben";
       
-      // Normalisiere die ID für den Vergleich
-      const normalizedId = typeof categoryId === 'string' ? categoryId.trim() : categoryId;
-      
       // Prüfe, ob die Kategorie-ID im Mapping existiert
-      if (this.config.CATEGORY_MAPPING && this.config.CATEGORY_MAPPING[normalizedId]) {
-        return this.config.CATEGORY_MAPPING[normalizedId];
+      if (this.config.CATEGORY_MAPPING && this.config.CATEGORY_MAPPING[categoryId]) {
+        return this.config.CATEGORY_MAPPING[categoryId];
       }
       
       // Debug-Ausgabe für problematische Kategorie-IDs
-      DEBUG.log(`Keine Mapping-Kategorie gefunden für ID: ${normalizedId}`, null, 'warn');
+      DEBUG.log(`Keine Mapping-Kategorie gefunden für ID: ${categoryId}`, null, 'warn');
       
-      // Verschiedene Teilstrings für Travel-Kategorie ausprobieren
-      const travelIds = ['a1c318daa4a4fdc904d0ea6ae57e9eb6', 'a1c318daa4a4', 'a1c318da', 'a1c318'];
+      // Fallback: Gekürzte ID zurückgeben
+      return "Kategorie " + categoryId.substring(0, 6);
+    }
+
+    /**
+     * Holt alle Videos aus dem Video-Feed eines Users
+     * @param {Object} user - Das User-Objekt
+     * @returns {Promise<Array>} - Array mit Video-Daten
+     */
+    async getVideosFromUserFeed(user) {
+      if (!user || !user.fieldData) {
+        DEBUG.log('Keine fieldData im User-Profil gefunden', null, 'warn');
+        return [];
+      }
       
-      if (typeof normalizedId === 'string') {
-        for (const travelId of travelIds) {
-          if (normalizedId.includes(travelId) || travelId.includes(normalizedId)) {
-            DEBUG.log(`Travel-Kategorie identifiziert über Teilübereinstimmung mit ${travelId}`);
-            return "Travel";
+      // Vorsichtiger Zugriff auf das video-feed Feld
+      if (!user.fieldData["video-feed"]) {
+        DEBUG.log('Keine Video-Referenzen im User-Profil gefunden', null, 'warn');
+        DEBUG.log('Verfügbare Felder: ' + Object.keys(user.fieldData).join(", "));
+        return [];
+      }
+      
+      // Das video-feed Feld enthält die IDs der Videos im User-Profil
+      const videoFeed = user.fieldData["video-feed"];
+      
+      // Debug-Info über das video-feed Feld
+      DEBUG.log(`Video-Feed-Typ: ${Array.isArray(videoFeed) ? "Array" : typeof videoFeed}`);
+      DEBUG.log(`Video-Feed-Länge: ${Array.isArray(videoFeed) ? videoFeed.length : "N/A"}`);
+      
+      if (!videoFeed || !Array.isArray(videoFeed) || videoFeed.length === 0) {
+        DEBUG.log('Leerer Video-Feed im User-Profil');
+        return [];
+      }
+      
+      DEBUG.log(`${videoFeed.length} Video-IDs im User-Feed gefunden`);
+      
+      // Cache für bessere Performance nutzen
+      const cacheKey = `videos_${user.id}`;
+      const cachedVideos = this.cache.get(cacheKey);
+      
+      if (cachedVideos) {
+        DEBUG.log(`${cachedVideos.length} Videos aus Cache geladen`);
+        return cachedVideos;
+      }
+      
+      // Videos in Chunks laden
+      let videos = [];
+      
+      try {
+        videos = await this.fetchVideosInChunks(videoFeed);
+        DEBUG.log(`${videos.length} Videos geladen mit den nötigen Daten`);
+        
+        // Im Cache speichern
+        this.cache.set(cacheKey, videos);
+      } catch (error) {
+        DEBUG.log('Fehler beim Laden der Videos', error, 'error');
+      }
+      
+      return videos;
+    }
+  }
+
+  /**
+   * Memberstack-Service-Klasse - Verwaltet die Interaktion mit Memberstack
+   */
+  class MemberstackService {
+    constructor(config) {
+      this.config = config;
+    }
+    
+    /**
+     * Holt den aktuellen Memberstack-User
+     * @returns {Promise<Object>} - Das Memberstack-User-Objekt
+     */
+    async getCurrentMember() {
+      try {
+        if (!window.$memberstackDom) {
+          DEBUG.log('$memberstackDom nicht gefunden. Memberstack möglicherweise nicht geladen.', null, 'error');
+          return null;
+        }
+        
+        const member = await window.$memberstackDom.getCurrentMember();
+        
+        if (!member || !member.data || !member.data.id) {
+          DEBUG.log('Kein eingeloggter User gefunden', null, 'warn');
+          return null;
+        }
+        
+        DEBUG.log(`Memberstack-User gefunden: ${member.data.id}`);
+        return member;
+      } catch (error) {
+        DEBUG.log('Fehler beim Abrufen des Memberstack-Users', error, 'error');
+        return null;
+      }
+    }
+    
+    /**
+     * Bestimmt das Video-Limit basierend auf dem Mitgliedsstatus
+     * @param {Object} member - Das Memberstack-User-Objekt
+     * @returns {Object} - Objekt mit Limit und Plan-Status
+     */
+    getMembershipDetails(member) {
+      if (!member || !member.data) {
+        DEBUG.log('Kein Member-Objekt, verwende FREE_MEMBER_LIMIT', null, 'warn');
+        return {
+          limit: this.config.FREE_MEMBER_LIMIT,
+          status: 'Free'
+        };
+      }
+      
+      // Prüfen ob Paid-Member anhand verschiedener Kriterien
+      let isPaid = false;
+      
+      // Option 1: Prüfen auf planConnections Array (neuere Memberstack-Version)
+      if (member.data.planConnections && member.data.planConnections.length > 0) {
+        for (const connection of member.data.planConnections) {
+          if (connection.status === "ACTIVE" && connection.type !== "FREE") {
+            isPaid = true;
+            DEBUG.log('Paid-Member erkannt über planConnections');
+            break;
           }
         }
       }
       
-      // Fallback: Gekürzte ID zurückgeben
-      return typeof normalizedId === 'string' ? 
-        "Kategorie " + normalizedId.substring(0, 6) : 
-        "Unbekannte Kategorie";
+      // Option 2: Fallback auf ältere Memberstack-Version
+      if (!isPaid && member.data.acl && (
+          member.data.acl.includes("paid") || 
+          member.data.status === "paid"
+        )) {
+        isPaid = true;
+        DEBUG.log('Paid-Member erkannt über acl/status');
+      }
+      
+      const freeLimit = this.config.FREE_MEMBER_LIMIT;
+      const paidLimit = this.config.PAID_MEMBER_LIMIT;
+      const planStatus = isPaid ? 'Plus' : 'Free';
+      
+      // Verwende die Werte mit Fallbacks
+      const limit = isPaid ? paidLimit : freeLimit;
+      DEBUG.log(`Mitglied (${planStatus}) erhält Limit: ${limit}`);
+      
+      return {
+        limit,
+        status: planStatus
+      };
     }
-    };
+    
+    /**
+     * Extrahiert die Webflow-ID aus den Memberstack-Daten
+     * @param {Object} member - Das Memberstack-User-Objekt
+     * @returns {string|null} - Die Webflow-ID oder null
+     */
+    extractWebflowId(member) {
+      if (!member || !member.data) return null;
+      
+      // Mögliche Orte für die Webflow-ID prüfen
+      if (member.data.customFields && member.data.customFields["webflow-member-id"]) {
+        const id = member.data.customFields["webflow-member-id"];
+        DEBUG.log(`Webflow-Member-ID aus customFields gefunden: ${id}`);
+        return id;
+      } 
+      
+      if (member.data.metaData && member.data.metaData["webflow-member-id"]) {
+        const id = member.data.metaData["webflow-member-id"];
+        DEBUG.log(`Webflow-Member-ID aus metaData gefunden: ${id}`);
+        return id;
+      }
+      
+      // Weitere mögliche Felder prüfen
+      const possibleFields = ["webflow-id", "webflow_id", "webflowId", "webflow_member_id"];
+      
+      // Prüfe customFields
+      if (member.data.customFields) {
+        for (const field of possibleFields) {
+          if (member.data.customFields[field]) {
+            DEBUG.log(`Webflow-Member-ID aus customFields["${field}"] gefunden: ${member.data.customFields[field]}`);
+            return member.data.customFields[field];
+          }
+        }
+      }
+      
+      // Prüfe metaData
+      if (member.data.metaData) {
+        for (const field of possibleFields) {
+          if (member.data.metaData[field]) {
+            DEBUG.log(`Webflow-Member-ID aus metaData["${field}"] gefunden: ${member.data.metaData[field]}`);
+            return member.data.metaData[field];
+          }
+        }
+      }
+      
+      return null;
+    }
+  }
+
+  /**
+   * Haupt-App-Klasse für den Video-Feed
+   */
+  class VideoFeedApp {
+    constructor() {
+      // Konfiguration initialisieren
+      this.initConfig();
+      
+      // Services und Manager initialisieren
+      this.uiManager = new UIManager(this.config);
+      this.apiService = new ApiService(this.config);
+      this.memberstackService = new MemberstackService(this.config);
+      
+      // Zustandsdaten
+      this.currentMember = null;
+      this.userVideos = [];
+      this.isLoading = false;
+      
+      DEBUG.log('VideoFeedApp initialisiert mit Konfiguration:', this.config);
+    }
+    
+    /**
+     * Initialisiert die Konfiguration mit den Standardwerten und übergebenen Werten
+     */
+    initConfig() {
+      // Globales WEBFLOW_API-Objekt initialisieren
+      window.WEBFLOW_API = window.WEBFLOW_API || {};
+      
+      // Konfiguration aus allen Quellen zusammenführen
+      this.config = {};
+      
+      // Schleife durch alle DEFAULT_CONFIG-Werte und prüfe, ob sie in WEBFLOW_API existieren
+      for (const [key, defaultValue] of Object.entries(DEFAULT_CONFIG)) {
+        // Prüfe, ob der Wert in WEBFLOW_API existiert und nicht undefined ist
+        if (key in window.WEBFLOW_API && window.WEBFLOW_API[key] !== undefined) {
+          this.config[key] = window.WEBFLOW_API[key];
+          DEBUG.log(`Konfiguration ${key} aus WEBFLOW_API übernommen: ${JSON.stringify(window.WEBFLOW_API[key])}`);
+        } else {
+          // Ansonsten verwende den Standardwert
+          DEBUG.log(`Konfiguration ${key} nicht gefunden oder undefined, setze Default: ${JSON.stringify(defaultValue)}`, null, 'warn');
+          this.config[key] = defaultValue;
+          
+          // Auch in WEBFLOW_API setzen für Konsistenz
+          window.WEBFLOW_API[key] = defaultValue;
+        }
+      }
+      
+      // Sicherstellen, dass die Limits explizit als Zahlen definiert sind
+      this.config.FREE_MEMBER_LIMIT = parseInt(this.config.FREE_MEMBER_LIMIT) || 1;
+      this.config.PAID_MEMBER_LIMIT = parseInt(this.config.PAID_MEMBER_LIMIT) || 12;
+      
+      DEBUG.log('Konfiguration vollständig initialisiert mit Limits:', {
+        FREE_MEMBER_LIMIT: this.config.FREE_MEMBER_LIMIT,
+        PAID_MEMBER_LIMIT: this.config.PAID_MEMBER_LIMIT,
+        typeof_FREE: typeof this.config.FREE_MEMBER_LIMIT,
+        typeof_PAID: typeof this.config.PAID_MEMBER_LIMIT
+      });
+    }
+    
+    /**
+     * Initialisiert die App
+     */
+    init() {
+      // UI-Elemente initialisieren
+      this.uiManager.init();
+      
+      // Event-Listener für Video-Feed-Updates registrieren
+      document.addEventListener('videoFeedUpdate', () => {
+        DEBUG.log('Update-Event empfangen, lade Feed neu');
+        
+        // Cache löschen und Daten neu laden
+        this.apiService.cache.clear();
+        this.loadUserVideos();
+      });
+      
+      // Videos laden
+      this.loadUserVideos();
+    }
+    
+    /**
+     * Lädt die Videos des eingeloggten Users
+     */
+    async loadUserVideos() {
+      try {
+        // Verhindere parallele Ladeanfragen
+        if (this.isLoading) {
+          DEBUG.log('Ladevorgang bereits aktiv, ignoriere Anfrage');
+          return;
+        }
+        
+        this.isLoading = true;
+        this.uiManager.showLoading();
+        
+        // Memberstack-User laden
+        const member = await this.memberstackService.getCurrentMember();
+        if (!member) {
+          this.uiManager.showError("Kein eingeloggter User gefunden");
+          this.isLoading = false;
+          return;
+        }
+        
+        this.currentMember = member;
+        const memberstackId = member.data.id;
+        DEBUG.log(`Eingeloggter User mit Memberstack-ID ${memberstackId}`);
+        
+        // Membership-Details ermitteln
+        const membershipDetails = this.memberstackService.getMembershipDetails(member);
+        const maxUploads = membershipDetails.limit;
+        DEBUG.log(`Ermittelte Membership-Details:`, membershipDetails);
+        
+        // Plan-Status anzeigen
+        this.uiManager.updatePlanStatus(membershipDetails.status);
+        
+        // Webflow-ID aus den Memberstack-Daten extrahieren
+        const webflowMemberId = this.memberstackService.extractWebflowId(member);
+        
+        if (!webflowMemberId) {
+          this.uiManager.showError("Keine Webflow-Member-ID in den Memberstack-Daten gefunden");
+          DEBUG.log('Memberstack-Daten ohne Webflow-ID:', member.data, 'error');
+          this.isLoading = false;
+          return;
+        }
+        
+        // User direkt mit der Webflow-ID abrufen
+        const user = await this.apiService.getUserByWebflowId(webflowMemberId);
+        
+        if (!user) {
+          this.uiManager.showError(`User mit Webflow-ID "${webflowMemberId}" nicht gefunden`);
+          this.isLoading = false;
+          return;
+        }
+        
+        // Videos aus dem Video-Feed des Users holen
+        const videos = await this.apiService.getVideosFromUserFeed(user);
+        this.userVideos = videos;
+        
+        DEBUG.log(`Vor dem Rendern - Videoanzahl: ${videos.length}, Max-Uploads: ${maxUploads}`);
+        
+        // Videos anzeigen und Upload-Counter aktualisieren
+        this.uiManager.renderVideos(videos, maxUploads);
+        
+        this.isLoading = false;
+      } catch (error) {
+        DEBUG.log('Fehler beim Laden der Videos', error, 'error');
+        this.uiManager.showError(`Fehler beim Laden des Video-Feeds: ${error.message}`);
+        this.isLoading = false;
+      }
+    }
+  }
+
+  /**
+   * App-Startup-Funktion
+   * Wird nach dem DOM-Laden ausgeführt
+   */
+  function startApp() {
+    try {
+      DEBUG.log('Starte Video-Feed App...');
+      const videoFeedApp = new VideoFeedApp();
+      videoFeedApp.init();
+      
+      // Für externe Verwendung und Debug-Zwecke global zugänglich machen
+      window.videoFeedApp = videoFeedApp;
+      
+      // Debug-Funktionen global zur Verfügung stellen
+      window.videoFeedDebug = {
+        enable: () => DEBUG.setEnabled(true),
+        disable: () => DEBUG.setEnabled(false),
+        status: () => console.log(`Debugging ist derzeit ${DEBUG.enabled ? 'aktiviert' : 'deaktiviert'}`),
+        showConfig: () => console.log('Aktuelle Konfiguration:', videoFeedApp.config),
+        clearCache: () => {
+          videoFeedApp.apiService.cache.clear();
+          console.log('Cache geleert');
+        },
+        reloadFeed: () => {
+          console.log('Lade Video-Feed neu...');
+          videoFeedApp.loadUserVideos();
+        }
+      };
+      
+      DEBUG.log('App erfolgreich initialisiert. Debug-Befehle verfügbar unter window.videoFeedDebug');
+    } catch (error) {
+      DEBUG.log('Kritischer Fehler beim Start der App', error, 'error');
+    }
+  }
+
+  // App starten, wenn DOM vollständig geladen ist
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      // Kurze Verzögerung, um sicherzustellen, dass alle abhängigen Skripte geladen sind
+      setTimeout(startApp, 100);
+    });
+  } else {
+    // DOM bereits geladen
+    setTimeout(startApp, 100);
+  }
+
+})();
