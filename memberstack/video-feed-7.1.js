@@ -1,5 +1,532 @@
-// 🌐 Webflow API Integration für Video-Feed
-// Fixed Version 6.9.1
+/**
+ * App-Start mit zusätzlicher Verzögerung und mehreren Fallbacks
+ * 
+ * Diese Funktion enthält mehrere Absicherungen:
+ * 1. Prüft, ob das DOM bereits geladen ist
+ * 2. Setzt eine Verzögerung für eine sicherere Initialisierung
+ * 3. Stellt sicher, dass Memberstack geladen ist
+ * 4. Prüft auf mögliche Fehler und reagiert entsprechend
+ */
+const startVideoFeedApp = () => {
+  const initWithDelay = (delay = 100) => {
+    setTimeout(() => {
+      try {
+        console.log("📋 Video-Feed: Starte App...");
+        
+        // Überprüfen, ob Memberstack geladen ist
+        if (!window.$memberstackDom) {
+          console.warn("📋 Video-Feed: Memberstack noch nicht geladen, warte weitere 500ms...");
+          setTimeout(() => initWithDelay(500), 500);
+          return;
+        }
+        
+        const videoFeedApp = new VideoFeedApp();
+        videoFeedApp.init();
+        
+        // Für Debug-Zwecke global zugänglich machen
+        window.videoFeedApp = videoFeedApp;
+        
+        // Zusätzliches Event auslösen, damit andere Scripts wissen, dass der Video-Feed initialisiert wurde
+        const initEvent = new CustomEvent('videoFeedInitialized', { 
+          detail: { success: true } 
+        });
+        document.dispatchEvent(initEvent);
+        console.log("📋 Video-Feed: App erfolgreich gestartet");
+        
+      } catch (error) {
+        console.error("📋 Video-Feed: Kritischer Fehler beim Start", error);
+        
+        // Event für den Fehlerfall auslösen
+        const errorEvent = new CustomEvent('videoFeedInitError', { 
+          detail: { error: error.message } 
+        });
+        document.dispatchEvent(errorEvent);
+        
+        // Automatische Wiederholdung nach Fehler, falls weniger als 3 Versuche
+        if (!window.videoFeedRetryCount) {
+          window.videoFeedRetryCount = 1;
+        } else {
+          window.videoFeedRetryCount++;
+        }
+        
+        if (window.videoFeedRetryCount <= 3) {
+          console.log(`📋 Video-Feed: Automatischer Neustart (Versuch ${window.videoFeedRetryCount}/3) in 1s...`);
+          setTimeout(() => initWithDelay(500), 1000);
+        }
+      }
+    }, delay);
+  };
+
+  // Prüfen, ob das DOM bereits geladen ist
+  if (document.readyState === "loading") {
+    // Wenn noch nicht geladen, warten auf DOMContentLoaded und dann initialisieren
+    document.addEventListener("DOMContentLoaded", () => initWithDelay());
+  } else {
+    // Wenn DOM bereits geladen ist, direkt initialisieren
+    initWithDelay();
+  }
+};
+
+// App starten mit verbessertem Error-Handling
+startVideoFeedApp();
+  /**
+   * App initialisieren mit verbesserten Fallbacks und Retry-Mechanismen
+   */
+  init() {
+    // Initialisierungsfunktion definieren
+    const initApp = () => {
+      try {
+        // UI-Elemente vorher explizit initialisieren
+        this.initUIElements();
+        
+        // Video-Container mit mehreren Methoden finden
+        const findContainer = () => {
+          // 1. Versuch: Über die konfigurierte ID
+          let container = document.getElementById(window.WEBFLOW_API.VIDEO_CONTAINER_ID);
+          
+          if (container) {
+            console.log(`📋 Video-Feed: Container über ID gefunden: ${window.WEBFLOW_API.VIDEO_CONTAINER_ID}`);
+            return container;
+          }
+          
+          // 2. Versuch: Über bekannte Klassen
+          const knownContainerClasses = [
+            ".db-upload-wrapper", 
+            ".upload-wrapper", 
+            ".video-feed-container",
+            ".video-container"
+          ];
+          
+          for (const className of knownContainerClasses) {
+            container = document.querySelector(className);
+            if (container) {
+              console.log(`📋 Video-Feed: Container über Klasse gefunden: ${className}`);
+              return container;
+            }
+          }
+          
+          // 3. Versuch: Über Datenattribute
+          container = document.querySelector('[data-video-feed="container"]');
+          if (container) {
+            console.log("📋 Video-Feed: Container über Datenattribut gefunden");
+            return container;
+          }
+          
+          // 4. Versuch: Intelligente Suche nach bekannten Kind-Elementen
+          const potentialContainers = document.querySelectorAll('div');
+          for (const div of potentialContainers) {
+            // Prüfe auf Kinder mit Video-bezogenen Klassen
+            if (div.querySelector('.db-upload-item-video, .video-item, [data-modal-toggle="new-upload"]')) {
+              console.log("📋 Video-Feed: Container über Kind-Elemente gefunden");
+              return div;
+            }
+          }
+          
+          // Nichts gefunden
+          return null;
+        };
+        
+        this.videoContainer = findContainer();
+        
+        // Container erstellen, wenn keiner gefunden wurde
+        if (!this.videoContainer) {
+          console.warn("📋 Video-Feed: Kein Container gefunden, erstelle einen neuen");
+          
+          // Versuche einen geeigneten Ort für den Container zu finden
+          const mainContent = document.querySelector('main') || 
+                             document.querySelector('.main-content') || 
+                             document.querySelector('.content-wrapper') ||
+                             document.body;
+          
+          if (mainContent) {
+            this.videoContainer = document.createElement('div');
+            this.videoContainer.id = window.WEBFLOW_API.VIDEO_CONTAINER_ID;
+            this.videoContainer.classList.add('db-upload-wrapper', 'video-feed-container');
+            
+            // Container sichtbar und ansprechend stylen
+            this.videoContainer.style.margin = '20px 0';
+            this.videoContainer.style.padding = '20px';
+            this.videoContainer.style.border = '1px solid #e2e8f0';
+            this.videoContainer.style.borderRadius = '8px';
+            
+            // Container einfügen
+            mainContent.appendChild(this.videoContainer);
+            console.log("📋 Video-Feed: Neuer Container erstellt und eingefügt");
+          } else {
+            console.error("📋 Video-Feed: Konnte keinen geeigneten Ort für einen neuen Container finden");
+            return;
+          }
+        }
+        
+        console.log("📋 Video-Feed: Container erfolgreich gefunden/erstellt");
+        
+        // Event-Listener für Video-Feed-Updates
+        document.addEventListener('videoFeedUpdate', () => {
+          console.log("📋 Video-Feed: Update-Event empfangen, lade Feed neu");
+          
+          // Cache löschen und Daten neu laden
+          this.cache.clear();
+          this.loadUserVideos();
+        });
+        
+        // Videos laden mit Retry-Mechanismus
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        const loadVideosWithRetry = async () => {
+          try {
+            await this.loadUserVideos();
+          } catch (error) {
+            console.error(`📋 Video-Feed: Fehler beim Laden der Videos (Versuch ${retryCount + 1}/${maxRetries})`, error);
+            
+            if (retryCount < maxRetries) {
+              retryCount++;
+              const delay = 1000 * retryCount;
+              console.log(`📋 Video-Feed: Wiederhole in ${delay}ms...`);
+              setTimeout(loadVideosWithRetry, delay);
+            } else {
+              console.error("📋 Video-Feed: Maximale Anzahl an Versuchen erreicht");
+              this.showError(`Fehler beim Laden des Video-Feeds: ${error.message}. Bitte Seite neu laden.`);
+            }
+          }
+        };
+        
+        loadVideosWithRetry();
+        
+      } catch (error) {
+        console.error("📋 Video-Feed: Kritischer Fehler bei Initialisierung", error);
+      }
+    };
+    
+    // Prüfen, ob das DOM bereits geladen ist
+    if (document.readyState === "loading") {
+      // Wenn noch nicht geladen, warten auf DOMContentLoaded
+      document.addEventListener("DOMContentLoaded", initApp);
+    } else {
+      // Wenn DOM bereits geladen ist, sofort initialisieren mit kurzer Verzögerung
+      // für sicherere Initialisierung
+      setTimeout(initApp, 100);
+    }
+  }
+}
+  /**
+   * Videos für eingeloggten User laden und anzeigen
+   */
+  async loadUserVideos() {
+    try {
+      if (!this.videoContainer) {
+        console.error("📋 Video-Feed: Container nicht gefunden");
+        return;
+      }
+      
+      // Vermeidet doppelte Ladeanfragen
+      if (this.isLoading) {
+        console.log("📋 Video-Feed: Ladevorgang bereits aktiv, ignoriere Anfrage");
+        return;
+      }
+      
+      this.isLoading = true;
+      this.showLoading();
+      
+      // Memberstack-User laden
+      const member = await window.$memberstackDom.getCurrentMember();
+      this.currentMember = member;
+      const memberstackId = member?.data?.id;
+      
+      if (!memberstackId) {
+        this.showError("Kein eingeloggter User gefunden");
+        this.isLoading = false;
+        return;
+      }
+      
+      console.log("📋 Video-Feed: Eingeloggter User mit Memberstack-ID", memberstackId);
+      
+      // Video-Limit basierend auf Membership bestimmen
+      const maxUploads = this.getMembershipLimit(member);
+      console.log("📋 Video-Feed: Maximale Uploads für User:", maxUploads);
+      
+      // 1. Webflow-ID aus den Custom Fields der Memberstack-Daten extrahieren
+      let webflowMemberId = this.extractWebflowId(member);
+      
+      if (!webflowMemberId) {
+        this.showError("Keine Webflow-Member-ID in den Memberstack-Daten gefunden");
+        console.error("📋 Video-Feed: Memberstack-Daten ohne Webflow-ID:", member.data);
+        this.isLoading = false;
+        return;
+      }
+      
+      // 2. User direkt mit der Webflow-ID abrufen
+      const user = await this.getUserByWebflowId(webflowMemberId);
+      
+      if (!user) {
+        this.showError(`User mit Webflow-ID "${webflowMemberId}" nicht gefunden`);
+        this.isLoading = false;
+        return;
+      }
+      
+      // 3. Videos aus dem Video-Feed des Users holen
+      const videos = await this.getVideosFromUserFeed(user);
+      this.userVideos = videos;
+      
+      // Upload-Counter aktualisieren
+      this.updateUploadCounter(videos.length, maxUploads);
+      
+      // Videos anzeigen
+      this.renderVideos(videos);
+      
+      this.isLoading = false;
+    } catch (error) {
+      console.error("📋 Video-Feed: Fehler beim Laden der Videos", error);
+      this.showError(`Fehler beim Laden des Video-Feeds: ${error.message}`);
+      this.isLoading = false;
+    }
+  }
+
+  /**
+   * Helper-Methode zum Extrahieren der Webflow-ID aus Memberstack-Daten
+   */
+  extractWebflowId(member) {
+    if (!member || !member.data) return null;
+    
+    // Mögliche Orte für die Webflow-ID prüfen
+    if (member.data.customFields && member.data.customFields["webflow-member-id"]) {
+      const id = member.data.customFields["webflow-member-id"];
+      console.log("📋 Video-Feed: Webflow-Member-ID aus customFields gefunden:", id);
+      return id;
+    } 
+    
+    if (member.data.metaData && member.data.metaData["webflow-member-id"]) {
+      const id = member.data.metaData["webflow-member-id"];
+      console.log("📋 Video-Feed: Webflow-Member-ID aus metaData gefunden:", id);
+      return id;
+    }
+    
+    // Weitere mögliche Felder prüfen
+    const possibleFields = ["webflow-id", "webflow_id", "webflowId", "webflow_member_id"];
+    
+    // Prüfe customFields
+    if (member.data.customFields) {
+      for (const field of possibleFields) {
+        if (member.data.customFields[field]) {
+          console.log(`📋 Video-Feed: Webflow-Member-ID aus customFields["${field}"] gefunden:`, 
+            member.data.customFields[field]);
+          return member.data.customFields[field];
+        }
+      }
+    }
+    
+    // Prüfe metaData
+    if (member.data.metaData) {
+      for (const field of possibleFields) {
+        if (member.data.metaData[field]) {
+          console.log(`📋 Video-Feed: Webflow-Member-ID aus metaData["${field}"] gefunden:`, 
+            member.data.metaData[field]);
+          return member.data.metaData[field];
+        }
+      }
+    }
+    
+    return null;
+  }
+  /**
+   * Verbesserte Methode zum Initialisieren und Suchen von UI-Elementen
+   * Diese Methode versucht verschiedene Wege, die UI-Elemente zu finden
+   */
+  initUIElements() {
+    console.log("📊 Video-Feed: Initialisiere UI-Elemente");
+    
+    // Mehrere Möglichkeiten zum Finden der Elemente (IDs, Klassen, Datenattribute)
+    const findElement = (primaryId, fallbackSelectors = []) => {
+      // Erst über ID versuchen
+      let element = document.getElementById(primaryId);
+      
+      // Wenn nicht gefunden, Fallback-Selektoren versuchen
+      if (!element && fallbackSelectors.length > 0) {
+        for (const selector of fallbackSelectors) {
+          const elements = document.querySelectorAll(selector);
+          if (elements.length > 0) {
+            element = elements[0];
+            console.log(`📊 Video-Feed: Element über Fallback-Selektor gefunden: ${selector}`);
+            break;
+          }
+        }
+      }
+      
+      return element;
+    };
+    
+    // Elemente suchen mit Fallbacks
+    const titleElement = findElement(
+      window.WEBFLOW_API.UPLOAD_LIMIT_TITLE_ID, 
+      ['.upload-limit-title', '[data-title="upload-limit"]']
+    );
+    
+    const counterElement = findElement(
+      window.WEBFLOW_API.UPLOAD_COUNTER_ID,
+      ['#counter_id', '.upload-counter', '[data-counter="uploads"]']
+    );
+    
+    const progressElement = findElement(
+      window.WEBFLOW_API.UPLOAD_PROGRESS_ID,
+      ['.upload-progress', '[data-progress="uploads"]']
+    );
+    
+    const messageElement = findElement(
+      window.WEBFLOW_API.UPLOAD_LIMIT_MESSAGE_ID,
+      ['.limit-message', '[data-message="limit"]']
+    );
+    
+    // Ergebnisse in die Instanzvariablen speichern
+    this.uiElements = {
+      title: titleElement,
+      counter: counterElement,
+      progress: progressElement,
+      limitMessage: messageElement
+    };
+    
+    console.log("📊 Video-Feed: UI-Elemente gefunden:", {
+      title: Boolean(titleElement),
+      counter: Boolean(counterElement),
+      progress: Boolean(progressElement),
+      limitMessage: Boolean(messageElement)
+    });
+    
+    // Alle IDs im Dokument für Debugging ausgeben
+    const allIds = [];
+    document.querySelectorAll('[id]').forEach(el => {
+      allIds.push(el.id);
+    });
+    console.log("📊 Video-Feed: Alle IDs im Dokument:", allIds);
+    
+    return this.uiElements;
+  }
+
+  /**
+   * Verbesserte Ladeanimation mit Skeleton Loader und Fallback
+   */
+  showLoading() {
+    if (!this.videoContainer) {
+      console.error("📋 Video-Feed: Container nicht gefunden für Loading-Animation");
+      return;
+    }
+    
+    // Container leeren
+    this.videoContainer.innerHTML = '';
+    
+    // DocumentFragment für bessere Performance
+    const fragment = document.createDocumentFragment();
+    
+    // CSS für Skeleton Loader hinzufügen, falls noch nicht vorhanden
+    if (!document.getElementById('skeleton-styles')) {
+      try {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'skeleton-styles';
+        styleElement.textContent = `
+          .skeleton-item {
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+          }
+          .skeleton-video-pulse, .skeleton-text-pulse, .skeleton-button-pulse {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-pulse 1.5s ease-in-out infinite;
+            border-radius: 4px;
+          }
+          .skeleton-video-pulse {
+            width: 100%;
+            height: 100%;
+            min-height: 180px;
+          }
+          .skeleton-text-pulse {
+            margin-bottom: 8px;
+          }
+          .skeleton-button-pulse {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+          }
+          @keyframes skeleton-pulse {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
+        `;
+        document.head.appendChild(styleElement);
+        console.log("📋 Video-Feed: Skeleton-Styles hinzugefügt");
+      } catch (error) {
+        console.error("📋 Video-Feed: Fehler beim Hinzufügen der Skeleton-Styles", error);
+      }
+    }
+    
+    // Versuche herauszufinden, ob die Klassen existieren
+    const hasRequiredClasses = document.querySelector('.db-upload-wrapper-item, .db-upload-item-video');
+    
+    if (hasRequiredClasses) {
+      // Erstelle 3 Skeleton-Items mit den vorhandenen Klassen
+      for (let i = 0; i < 3; i++) {
+        const skeleton = document.createElement('div');
+        skeleton.classList.add('db-upload-wrapper-item', 'skeleton-item');
+        
+        skeleton.innerHTML = `
+          <div class="db-upload-item-video skeleton-video">
+            <div class="skeleton-video-pulse" style="animation-delay: ${i * 0.15}s"></div>
+          </div>
+          <div class="db-upload-item-details">
+            <div class="db-upload-details-container">
+              <div class="skeleton-text-pulse" style="width: ${70 - i * 10}%; height: 20px; animation-delay: ${i * 0.1}s"></div>
+              <div class="skeleton-text-pulse" style="width: ${40 + i * 5}%; height: 14px; margin-top: 8px; animation-delay: ${i * 0.2}s"></div>
+            </div>
+            <div class="skeleton-button-pulse" style="animation-delay: ${i * 0.25}s"></div>
+          </div>
+        `;
+        
+        fragment.appendChild(skeleton);
+      }
+    } else {
+      // Einfacherer Fallback ohne spezifische Klassen
+      for (let i = 0; i < 3; i++) {
+        const skeleton = document.createElement('div');
+        skeleton.classList.add('skeleton-item');
+        skeleton.style.marginBottom = '20px';
+        
+        skeleton.innerHTML = `
+          <div style="margin-bottom: 10px;">
+            <div class="skeleton-video-pulse" style="animation-delay: ${i * 0.15}s"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex-grow: 1;">
+              <div class="skeleton-text-pulse" style="width: ${70 - i * 10}%; height: 20px; animation-delay: ${i * 0.1}s"></div>
+              <div class="skeleton-text-pulse" style="width: ${40 + i * 5}%; height: 14px; margin-top: 8px; animation-delay: ${i * 0.2}s"></div>
+            </div>
+            <div class="skeleton-button-pulse" style="animation-delay: ${i * 0.25}s"></div>
+          </div>
+        `;
+        
+        fragment.appendChild(skeleton);
+      }
+    }
+    
+    // Alle Skeleton-Items auf einmal anhängen
+    this.videoContainer.appendChild(fragment);
+    console.log("📋 Video-Feed: Loading-Animation angezeigt");
+  }
+  
+  /**
+   * Fehlermeldung anzeigen
+   */
+  showError(message) {
+    if (!this.videoContainer) return;
+    
+    this.videoContainer.innerHTML = `
+      <div class="error-message" style="padding: 20px; text-align: center; color: #e53e3e; background-color: #fff5f5; border: 1px solid #e53e3e; border-radius: 4px; margin: 20px 0;">
+        <p>🚫 ${message}</p>
+        <button style="margin-top: 10px; padding: 6px 12px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="window.videoFeedApp.loadUserVideos()">
+          Erneut versuchen
+        </button>
+      </div>
+    `;
+  }// 🌐 Webflow API Integration für Video-Feed
+// Fixed Version 7.0.1
 
 /**
  * Konfigurationswerte mit Defaults
@@ -15,10 +542,6 @@ const DEFAULT_PAID_MEMBER_LIMIT = 12;
  * Globale Konfiguration für das Video-Feed-Skript
  */
 window.WEBFLOW_API = window.WEBFLOW_API || {};
-
-// App starten mit verbessertem Error-Handling
-startVideoFeedApp();
-
 
 // Funktion zur sicheren Initialisierung von Konfigurationswerten
 function ensureConfigValue(key, defaultValue) {
