@@ -74,9 +74,15 @@
     // Cache-Zeit in Millisekunden (5 Minuten)
     CACHE_EXPIRATION: 5 * 60 * 1000,
     
-    // Kategorien-Mapping
+    // Kategorien-Mapping - mit allen möglichen Varianten für "Travel"
     CATEGORY_MAPPING: {
+      // Original Mapping
       'a1c318daa4a4fdc904d0ea6ae57e9eb6': 'Travel',
+      // Alternative Schreibweise/ID für Travel (ohne Leerzeichen/mit Leerzeichen)
+      'a1c318': 'Travel',
+      'a1c318da': 'Travel',
+      'a1c318daa4a4': 'Travel',
+      // Andere Kategorien unverändert
       'f7375698898acddde00653547c8fa793': 'Entertainment',
       '0e068df04f18438e4a5b68d397782f36': 'Food',
       '2f1f2fe0cd35ddd19ca98f4b85b16258': 'Beauty',
@@ -485,11 +491,11 @@
         titleDiv.classList.add("db-upload-video-title");
         titleDiv.textContent = videoData["video-name"] || "Unbenanntes Video";
         
-        // Kategorie
+        // Kategorie - nur den Namen ohne "Kategorie:" davor
         const categoryName = videoData["kategorie-name"] || "Nicht angegeben";
         const categoryP = document.createElement("p");
         categoryP.classList.add("is-txt-tiny");
-        categoryP.textContent = `${categoryName}`;
+        categoryP.textContent = categoryName;
         
         // Edit-Button
         const editButton = document.createElement("button");
@@ -790,6 +796,9 @@
       if (this.config.CATEGORY_MAPPING && this.config.CATEGORY_MAPPING[categoryId]) {
         return this.config.CATEGORY_MAPPING[categoryId];
       }
+      
+      // Debug-Ausgabe für problematische Kategorie-IDs
+      DEBUG.log(`Keine Mapping-Kategorie gefunden für ID: ${categoryId}`, null, 'warn');
       
       // Fallback: Gekürzte ID zurückgeben
       return "Kategorie " + categoryId.substring(0, 6);
