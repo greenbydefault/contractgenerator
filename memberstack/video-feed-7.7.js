@@ -1,4 +1,63 @@
-/**
+getMembershipDetails(member) {
+      if (!member || !member.data) {
+        DEBUG.log('Kein Member-Objekt, verwende FREE_MEMBER_LIMIT', null, 'warn');
+        return {
+          limit: this.config.FREE_MEMBER_LIMIT,
+          status: 'Free'
+        };
+      }
+      
+      // Prüfen ob Paid-Member anhand verschiedener Kriterien
+      let isPaid = false;
+      
+      // Option 1: Prüfen auf planConnections Array (neuere Memberstack-Version)
+      if (member.data.planConnections && member.data.planConnections.length > 0) {
+        for (const connection of member.data.planConnections) {
+          if (connection.status === "ACTIVE" && connection.type !== "FREE") {
+            isPaid = true;
+            DEBUG.log('Paid-Member erkannt über planConnections');
+            break;
+          }
+        }
+      }
+      
+      // Option 2: Fallback auf ältere Memberstack-Version
+      if (!isPaid && member.data.acl && (
+          member.data.acl.includes("paid") || 
+          member.data.status === "paid"
+        )) {
+        isPaid = true;
+        DEBUG.log('Paid-Member erkannt über acl/status');
+      }
+      
+      // Debugging der Memberstack-Daten
+      DEBUG.log('Memberstack-Daten für Membership-Bestimmung:', {
+        id: member.data.id,
+        isPaid: isPaid,
+        hasPlanConnections: Boolean(member.data.planConnections),
+        planConnectionsCount: member.data.planConnections ? member.data.planConnections.length : 0,
+        hasAcl: Boolean(member.data.acl),
+        aclContent: member.data.acl ? member.data.acl : null,
+        memberStatus: member.data.status
+      });
+      
+      const freeLimit = parseInt(this.config.FREE_MEMBER_LIMIT);
+      const paidLimit = parseInt(this.config.PAID_MEMBER_LIMIT);
+      const planStatus = isPaid ? 'Plus' : 'Free';
+      
+      // Verwende die Werte mit Fallbacks und stelle sicher, dass es numerische Werte sind
+      const limit = isPaid ? 
+        (isNaN(paidLimit) ? 12 : paidLimit) : 
+        (isNaN(freeLimit) ? 1 : freeLimit);
+      
+      DEBUG.log(`Mitglied (${planStatus}) erhält Limit: ${limit}`, 
+        {isPaid, configFreeLimit: this.config.FREE_MEMBER_LIMIT, configPaidLimit: this.config.PAID_MEMBER_LIMIT});
+      
+      return {
+        limit,
+        status: planStatus
+      };
+    }/**
  * Webflow API Integration für Video-Feed
  * Optimierte Version 8.0
  * 
@@ -44,6 +103,15 @@
         default:
           console.log(`${prefix} ${message}`, data !== null ? data : '');
       }
+    },
+    
+    /**
+     * Aktiviert oder deaktiviert das Debugging
+     * @param {boolean} enabled - true zum Aktivieren, false zum Deaktivieren
+     */
+    setEnabled: function(enabled) {
+      this.enabled = enabled;
+      console.log(`${this.prefix} Debugging ${enabled ? 'aktiviert' : 'deaktiviert'}`);
     }
   };
   
@@ -59,7 +127,7 @@
     MEMBER_COLLECTION_ID: '6448faf9c5a8a15f6cc05526',
     VIDEO_COLLECTION_ID: '67d806e65cadcadf2f41e659',
     
-    // Memberships
+    // Memberships - explizit als Zahl
     FREE_MEMBER_LIMIT: 1,
     PAID_MEMBER_LIMIT: 12,
     
@@ -74,26 +142,45 @@
     // Cache-Zeit in Millisekunden (5 Minuten)
     CACHE_EXPIRATION: 5 * 60 * 1000,
     
-    // Kategorien-Mapping - mit allen möglichen Varianten für "Travel"
+    // Kategorien-Mapping - vollständige Liste aller möglichen IDs für die Kategorien
     CATEGORY_MAPPING: {
-      // Original Mapping
+      // Travel - verschiedene mögliche ID-Formate
       'a1c318daa4a4fdc904d0ea6ae57e9eb6': 'Travel',
-      // Alternative Schreibweise/ID für Travel (ohne Leerzeichen/mit Leerzeichen)
       'a1c318': 'Travel',
       'a1c318da': 'Travel',
       'a1c318daa4a4': 'Travel',
-      // Andere Kategorien unverändert
+      // Entertainment
       'f7375698898acddde00653547c8fa793': 'Entertainment',
+      'f73756': 'Entertainment',
+      // Food
       '0e068df04f18438e4a5b68d397782f36': 'Food',
+      '0e068d': 'Food',
+      // Beauty
       '2f1f2fe0cd35ddd19ca98f4b85b16258': 'Beauty',
+      '2f1f2f': 'Beauty',
+      // Fashion
       'd98ec62473786dfe4b680ffaff56df3d': 'Fashion',
+      'd98ec6': 'Fashion',
+      // Fitness
       '7a825bdb2886afb7afc15ace93407334': 'Fitness',
+      '7a825b': 'Fitness',
+      // Technology
       '172297c1eff716fecb37e1086835fb54': 'Technology',
+      '172297': 'Technology',
+      // Gaming
       '0150c802834f25c5eb9a235e5f333086': 'Gaming',
+      '0150c8': 'Gaming',
+      // Art & Culture
       '827b3ec71e6dd2e64687ac4a2bcde003': 'Art & Culture',
+      '827b3e': 'Art & Culture',
+      // Household
       '17907bdb5206dc3d81ffc984f810e58b': 'Household',
-      'd9e7f4c91b3e5a8022c3a6497f1d8b55': 'Home & Living'
+      '17907b': 'Household',
+      // Home & Living
+      'd9e7f4c91b3e5a8022c3a6497f1d8b55': 'Home & Living',
+      'd9e7f4': 'Home & Living'
     }
+  };
   };
 
   /**
@@ -255,10 +342,14 @@
       const validVideoCount = isNaN(videoCount) ? 0 : videoCount;
       const validMaxUploads = isNaN(maxUploads) ? DEFAULT_CONFIG.PAID_MEMBER_LIMIT : maxUploads;
       
+      DEBUG.log(`Verwende validierte Werte: ${validVideoCount}/${validMaxUploads}`);
+      
       // Upload-Counter aktualisieren
       if (this.elements.uploadCounter) {
         this.elements.uploadCounter.textContent = `${validVideoCount}/${validMaxUploads}`;
         DEBUG.log('Upload-Counter aktualisiert:', `${validVideoCount}/${validMaxUploads}`);
+      } else {
+        DEBUG.log('⚠️ Upload-Counter Element nicht gefunden!', null, 'warn');
       }
       
       // Fortschrittsbalken aktualisieren
@@ -285,6 +376,8 @@
         // Breite aktualisieren - Animation durch CSS
         this.elements.uploadProgress.style.width = `${progressPercent}%`;
         DEBUG.log('Fortschrittsbalken aktualisiert:', `${progressPercent}%`);
+      } else {
+        DEBUG.log('⚠️ Upload-Progress Element nicht gefunden!', null, 'warn');
       }
       
       // Limit-Status bestimmen
@@ -303,6 +396,8 @@
         this.elements.uploadLimitMessage.textContent = isLimitReached ? "Upload-Limit erreicht" : "";
         this.elements.uploadLimitMessage.classList.toggle("limit-reached", isLimitReached);
         DEBUG.log(`Limit-Meldung: ${isLimitReached ? 'angezeigt' : 'ausgeblendet'}`);
+      } else {
+        DEBUG.log('⚠️ Limit-Message Element nicht gefunden!', null, 'warn');
       }
       
       return isLimitReached;
@@ -438,12 +533,15 @@
         return;
       }
       
+      DEBUG.log(`Beginne Rendering von ${videos?.length || 0} Videos mit maxUploads = ${maxUploads}`);
+      
       // Container leeren
       this.elements.videoContainer.innerHTML = "";
       
       // Prüfen, ob Videos vorhanden sind
       if (!videos || videos.length === 0) {
         this.createEmptyStateUploadButton();
+        this.updateUploadCounter(0, maxUploads); // Expliziter counter update für leeren Zustand
         return;
       }
       
@@ -496,6 +594,9 @@
         const categoryP = document.createElement("p");
         categoryP.classList.add("is-txt-tiny");
         categoryP.textContent = categoryName;
+        
+        // Debug-Ausgabe für Kategorie-Namen
+        DEBUG.log(`Video ${videoData.id} verwendet Kategorie "${categoryName}" (Original-ID: "${videoData["video-kategorie"]}")`);
         
         // Edit-Button
         const editButton = document.createElement("button");
@@ -555,9 +656,9 @@
         this.elements.videoContainer.appendChild(addButtonContainer);
       }
       
-      DEBUG.log(`${videos.length} Videos gerendert`);
+      DEBUG.log(`${videos.length} Videos gerendert, maxUploads = ${maxUploads}`);
       
-      // Upload-Counter aktualisieren
+      // Expliziten Upload-Counter-Update durchführen
       return this.updateUploadCounter(videos.length, maxUploads);
     }
   }
@@ -771,9 +872,40 @@
         return null;
       }
       
-      // Kategorie-Name über das Mapping holen
+      // Kategorie-ID extrahieren und detailliertes Logging hinzufügen
       const categoryId = item.fieldData["video-kategorie"];
-      const categoryName = this.getCategoryName(categoryId);
+      DEBUG.log(`Verarbeite Video ${item.id} mit Kategorie-ID: "${categoryId}"`);
+      
+      // Kategorie-Name über das Mapping holen
+      let categoryName = "Nicht angegeben";
+      
+      if (categoryId) {
+        // Überprüfe das Mapping
+        if (this.config.CATEGORY_MAPPING && this.config.CATEGORY_MAPPING[categoryId]) {
+          categoryName = this.config.CATEGORY_MAPPING[categoryId];
+          DEBUG.log(`Kategorie-Mapping gefunden: "${categoryId}" => "${categoryName}"`);
+        } else {
+          // Kein Mapping gefunden - detaillierte Informationen ausgeben
+          DEBUG.log(`⚠️ Kein Kategorie-Mapping gefunden für ID: "${categoryId}"`, null, 'warn');
+          DEBUG.log('Verfügbare Kategorie-Mappings:', Object.keys(this.config.CATEGORY_MAPPING));
+          
+          // Erste 3 Zeichen überprüfen (für teilweise übereinstimmungen)
+          const prefix = categoryId.substring(0, 6);
+          const possibleMatches = Object.keys(this.config.CATEGORY_MAPPING)
+            .filter(key => key.startsWith(prefix));
+          
+          if (possibleMatches.length > 0) {
+            DEBUG.log(`Mögliche Kategorie-Übereinstimmungen gefunden:`, possibleMatches);
+            
+            // Nutze die erste mögliche Übereinstimmung
+            const firstMatch = possibleMatches[0];
+            categoryName = this.config.CATEGORY_MAPPING[firstMatch];
+            DEBUG.log(`Verwende ähnliche Kategorie: "${firstMatch}" => "${categoryName}"`);
+          } else {
+            categoryName = "Kategorie " + categoryId.substring(0, 6);
+          }
+        }
+      }
       
       return {
         id: item.id,
@@ -1031,9 +1163,10 @@
         // Prüfe, ob der Wert in WEBFLOW_API existiert und nicht undefined ist
         if (key in window.WEBFLOW_API && window.WEBFLOW_API[key] !== undefined) {
           this.config[key] = window.WEBFLOW_API[key];
+          DEBUG.log(`Konfiguration ${key} aus WEBFLOW_API übernommen: ${JSON.stringify(window.WEBFLOW_API[key])}`);
         } else {
           // Ansonsten verwende den Standardwert
-          DEBUG.log(`Konfiguration ${key} nicht gefunden oder undefined, setze Default:`, defaultValue, 'warn');
+          DEBUG.log(`Konfiguration ${key} nicht gefunden oder undefined, setze Default: ${JSON.stringify(defaultValue)}`, null, 'warn');
           this.config[key] = defaultValue;
           
           // Auch in WEBFLOW_API setzen für Konsistenz
@@ -1041,7 +1174,16 @@
         }
       }
       
-      DEBUG.log('Konfiguration vollständig initialisiert:', this.config);
+      // Sicherstellen, dass die Limits explizit als Zahlen definiert sind
+      this.config.FREE_MEMBER_LIMIT = parseInt(this.config.FREE_MEMBER_LIMIT) || 1;
+      this.config.PAID_MEMBER_LIMIT = parseInt(this.config.PAID_MEMBER_LIMIT) || 12;
+      
+      DEBUG.log('Konfiguration vollständig initialisiert mit Limits:', {
+        FREE_MEMBER_LIMIT: this.config.FREE_MEMBER_LIMIT,
+        PAID_MEMBER_LIMIT: this.config.PAID_MEMBER_LIMIT,
+        typeof_FREE: typeof this.config.FREE_MEMBER_LIMIT,
+        typeof_PAID: typeof this.config.PAID_MEMBER_LIMIT
+      });
     }
     
     /**
@@ -1093,6 +1235,7 @@
         // Membership-Details ermitteln
         const membershipDetails = this.memberstackService.getMembershipDetails(member);
         const maxUploads = membershipDetails.limit;
+        DEBUG.log(`Ermittelte Membership-Details:`, membershipDetails);
         
         // Plan-Status anzeigen
         this.uiManager.updatePlanStatus(membershipDetails.status);
@@ -1120,6 +1263,8 @@
         const videos = await this.apiService.getVideosFromUserFeed(user);
         this.userVideos = videos;
         
+        DEBUG.log(`Vor dem Rendern - Videoanzahl: ${videos.length}, Max-Uploads: ${maxUploads}`);
+        
         // Videos anzeigen und Upload-Counter aktualisieren
         this.uiManager.renderVideos(videos, maxUploads);
         
@@ -1144,6 +1289,24 @@
       
       // Für externe Verwendung und Debug-Zwecke global zugänglich machen
       window.videoFeedApp = videoFeedApp;
+      
+      // Debug-Funktionen global zur Verfügung stellen
+      window.videoFeedDebug = {
+        enable: () => DEBUG.setEnabled(true),
+        disable: () => DEBUG.setEnabled(false),
+        status: () => console.log(`Debugging ist derzeit ${DEBUG.enabled ? 'aktiviert' : 'deaktiviert'}`),
+        showConfig: () => console.log('Aktuelle Konfiguration:', videoFeedApp.config),
+        clearCache: () => {
+          videoFeedApp.apiService.cache.clear();
+          console.log('Cache geleert');
+        },
+        reloadFeed: () => {
+          console.log('Lade Video-Feed neu...');
+          videoFeedApp.loadUserVideos();
+        }
+      };
+      
+      DEBUG.log('App erfolgreich initialisiert. Debug-Befehle verfügbar unter window.videoFeedDebug');
     } catch (error) {
       DEBUG.log('Kritischer Fehler beim Start der App', error, 'error');
     }
