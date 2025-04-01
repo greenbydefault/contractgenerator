@@ -483,14 +483,14 @@ function initUploadcare() {
         } else if (isVideoProcessing) {
             statusText = '<span style="color: #ff9900;">Video wird optimiert...</span>';
         } else {
-            statusText = '<span style="color: green;">✓ Erfolgreich hochgeladen</span>';
+            statusText = '<span style="color: green;">Erfolgreich hochgeladen</span>';
         }
         
         fileInfoDiv.innerHTML = `
-            <div style="margin-top: 10px; padding: 10px; border-radius: 5px; border: 1px solid #ddd; background-color: #f9f9f9;">
-                <p><strong>Datei:</strong> ${fileEntry.name}</p>
-                <p><strong>Größe:</strong> ${formatFileSize(fileEntry.size)}</p>
-                <p><strong>Status:</strong> ${statusText}</p>
+            <div>
+                <p class="is-txt-16"><strong>Datei:</strong> ${fileEntry.name}</p>
+                <p class="is-txt-16"><strong>Größe:</strong> ${formatFileSize(fileEntry.size)}</p>
+                <p class="is-txt-16"><strong>Status:</strong> ${statusText}</p>
             </div>
         `;
     }
