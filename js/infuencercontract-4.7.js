@@ -509,8 +509,8 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(para.page.toString(), doc.internal.pageSize.getWidth() - PAGE_MARGIN - 10, y, {align: 'right'});
       y += LINE_HEIGHT * 1.2;
     });
-    doc.addPage();
-    return CONTENT_START_Y; // Start Y for the next page
+    // doc.addPage(); // Removed, as the main content will start on this page or a new one if needed
+    return CONTENT_START_Y; // Start Y for the next page (or current if space)
   }
 
   function addCoverPage(doc, data) {
@@ -548,14 +548,17 @@ document.addEventListener('DOMContentLoaded', function() {
     y += LINE_HEIGHT;
     doc.text(`PLZ: ${data.influencerZip}, Stadt: ${data.influencerCity}, Land: ${data.influencerCountry}`, PAGE_MARGIN + 5, y);
     
-    doc.addPage();
+    doc.addPage(); // Page for Table of Contents
     return CONTENT_START_Y;
   }
 
   function addSignatureFields(doc, city, y) {
     y = checkAndAddPage(doc, y, LINE_HEIGHT * 7); // Ensure enough space for signatures
-    if (y < PAGE_HEIGHT - 80) { // If not enough space at the bottom, push to a new page or adjust
-        y = PAGE_HEIGHT - 80;
+    if (y < PAGE_HEIGHT - 80) { 
+        y = PAGE_HEIGHT - 80; // Push to bottom if not enough space, but ensure it's on the page
+    } else if (y > PAGE_HEIGHT - PAGE_MARGIN - LINE_HEIGHT * 7) { // If it would overflow, add new page
+        doc.addPage();
+        y = CONTENT_START_Y;
     }
 
 
@@ -584,38 +587,39 @@ document.addEventListener('DOMContentLoaded', function() {
   function renderCheckbox(doc, isChecked, text, x, y, currentY) {
     const boxSize = 3.5; 
     const textXOffset = boxSize + 2;
-    currentY = checkAndAddPage(doc, currentY, LINE_HEIGHT);
+    // currentY = checkAndAddPage(doc, currentY, LINE_HEIGHT); // Check page before rendering anything
 
     doc.setLineWidth(0.2);
     doc.rect(x, currentY - boxSize + 1 , boxSize, boxSize); // Draw the box
     if (isChecked) {
-      doc.line(x + 0.5, currentY - boxSize / 2 + 0.5, x + boxSize - 0.5, currentY - boxSize / 2 + 0.5); // Simple horizontal line for check
-      // For a cross:
-      // doc.line(x, currentY - boxSize +1, x + boxSize, currentY +1); 
-      // doc.line(x, currentY +1, x + boxSize, currentY - boxSize+1);
+      // Simple horizontal line for check, easier to render consistently
+      doc.line(x + 0.5, currentY - boxSize/2 + 1, x + boxSize - 0.5, currentY - boxSize/2 + 1); 
     }
-    doc.text(text, x + textXOffset, currentY);
-    return currentY + LINE_HEIGHT * 0.8; // Return new Y position
+    const textLines = doc.splitTextToSize(text, doc.internal.pageSize.getWidth() - x - textXOffset - PAGE_MARGIN);
+    doc.text(textLines, x + textXOffset, currentY);
+    return currentY + (textLines.length * LINE_HEIGHT * 0.8); // Return new Y position based on text lines
 }
 
 
   function generatePDF() {
     console.log('Starting PDF generation');
     try {
-      const { jsPDF } = window.jspdf;
-      if (!jsPDF) {
-          alert('jsPDF konnte nicht geladen werden. Bitte versuche es später erneut.');
-          return;
+      // Ensure jsPDF is loaded
+      if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+        alert('Die PDF-Bibliothek (jsPDF) konnte nicht geladen werden. Bitte stellen Sie sicher, dass die Bibliothek korrekt eingebunden ist und versuchen Sie es erneut.');
+        console.error('jsPDF is not loaded on window.jspdf');
+        return;
       }
+      const { jsPDF } = window.jspdf;
+      
       const doc = new jsPDF();
-      let currentPage = 1;
+      let currentPage = 1; // Start with cover page as page 1
       let tocEntries = [];
       let y = CONTENT_START_Y;
 
       // Helper to get value or default
       const getValue = (id, defaultValue = '') => {
         const el = document.getElementById(id);
-        // For radio buttons, find the checked one within a group
         if (el && el.type === 'radio') {
             const radioGroup = document.querySelectorAll(`input[name="${el.name}"]:checked`);
             return radioGroup.length > 0 ? radioGroup[0].value : defaultValue;
@@ -626,7 +630,21 @@ document.addEventListener('DOMContentLoaded', function() {
       
       const getSelectedRadioValue = (name, defaultValue = '') => {
         const selectedRadio = document.querySelector(`input[name="${name}"]:checked`);
-        return selectedRadio ? selectedRadio.value : defaultValue;
+        // Ensure the value is extracted, not the placeholder from the label
+        if (selectedRadio) {
+            // Example: if id is "duration-3", value might be "3 Monate"
+            // This part needs to be robust based on how values are set in HTML
+            if (selectedRadio.id.startsWith('duration-')) {
+                const val = selectedRadio.id.split('-')[1];
+                if (val === 'unlimited') return 'Unbegrenzt';
+                return `${val} Monate`;
+            }
+             if (selectedRadio.id.startsWith('term-')) {
+                return `${selectedRadio.id.split('-')[1]} Tage`;
+            }
+            return selectedRadio.value || defaultValue; // Fallback to element's value attribute
+        }
+        return defaultValue;
       };
 
 
@@ -668,43 +686,39 @@ document.addEventListener('DOMContentLoaded', function() {
         companyPublication: isChecked('company-publication'),
         noCompanyPublication: isChecked('no-company-publication'),
         mediaBuyoutYes: isChecked('media-buyout-yes'),
-        // mediaBuyoutNo: isChecked('media-buyout-no'), // Not needed if mediaBuyoutYes is primary
         adInstagram: isChecked('ad-instagram'),
         adFacebook: isChecked('ad-facebook'),
         adTiktok: isChecked('ad-tiktok'),
         adOther: isChecked('ad-other'),
         whitelisting: isChecked('whitelisting'),
         sparkAd: isChecked('spark-ad'),
-        usageDuration: getSelectedRadioValue('duration', ''), // Assuming radio group name is 'duration'
-        briefingDate: formatDate(getValue('briefing-date')),
-        scriptDate: formatDate(getValue('script-date')),
+        usageDuration: getSelectedRadioValue('duration', '[Dauer nicht festgelegt]'), 
+        briefingDate: formatDate(getValue('briefing-date', '[Datum]')),
+        scriptDate: formatDate(getValue('script-date', '[Datum]')),
         scriptTime: getValue('script-time', '12:00'),
-        productionStart: formatDate(getValue('production-start')),
-        productionEnd: formatDate(getValue('production-end')),
+        productionStart: formatDate(getValue('production-start', '[Datum]')),
+        productionEnd: formatDate(getValue('production-end', '[Datum]')),
         productionLocation: getValue('production-location', '[Adresse]'),
-        deliveryDate: formatDate(getValue('delivery-date')),
+        deliveryDate: formatDate(getValue('delivery-date', '[Datum]')),
         deliveryTime: getValue('delivery-time', '12:00'),
-        publicationDate: formatDate(getValue('publication-date')),
+        publicationDate: formatDate(getValue('publication-date', '[Datum]')),
         compensation: getValue('compensation', '[€ Betrag]'),
-        paymentTerm: getSelectedRadioValue('payment_term', ''), // Assuming radio group name is 'payment_term'
+        paymentTerm: getSelectedRadioValue('payment_term', '[Zahlungsziel nicht festgelegt]'), 
         additionalCompYes: isChecked('additional-yes'),
-        // additionalCompNo: isChecked('additional-no'), // Not needed
         additionalCompText: getValue('additional-comp-text', '[Textfeld falls ja]'),
         exclusivity: getValue('exklusiv', ''),
         extraInformation: getValue('extra-information', '')
       };
       
-      // Deckblatt hinzufügen
-      y = addCoverPage(doc, data); // Returns start Y for next page (Inhaltsverzeichnis)
-      currentPage = 2; // Deckblatt ist Seite 1, Inhaltsverzeichnis Seite 2
+      // Deckblatt hinzufügen (Seite 1)
+      y = addCoverPage(doc, data); // Returns start Y for next page
+      currentPage = 2; 
 
-      // TOC Einträge vorbereiten (Beispiel, Seitenzahlen müssen dynamisch ermittelt werden)
-      // Diese Struktur muss beibehalten und die Seitenzahlen aktualisiert werden,
-      // nachdem der gesamte Inhalt platziert wurde. Fürs Erste feste Werte.
+      // TOC Einträge initialisieren
       tocEntries = [
-            { num: "§1", title: "Vertragsgegenstand", page: 3 },
-            { num: "§2", title: "Plattformen & Veröffentlichung", page: 3 },
-            { num: "§3", title: "Nutzung für Werbung (Media Buyout)", page: 0 }, // Platzhalter
+            { num: "§1", title: "Vertragsgegenstand", page: 0 },
+            { num: "§2", title: "Plattformen & Veröffentlichung", page: 0 },
+            { num: "§3", title: "Nutzung für Werbung (Media Buyout)", page: 0 },
             { num: "§4", title: "Rechteübertragung", page: 0 },
             { num: "§5", title: "Produktion & Freigabe", page: 0 },
             { num: "§6", title: "Vergütung", page: 0 },
@@ -717,40 +731,47 @@ document.addEventListener('DOMContentLoaded', function() {
       ];
       
       // Inhaltsverzeichnis hinzufügen (Seite 2)
-      y = addTableOfContents(doc, tocEntries); // Beginnt auf neuer Seite, gibt Start-Y für Seite 3 zurück
-      currentPage = 3;
+      // Die Funktion addTableOfContents fügt selbst eine neue Seite hinzu, wenn sie aufgerufen wird.
+      // Sie sollte das y für den Start des Inhalts auf der *neuen* Seite zurückgeben.
+      y = addTableOfContents(doc, tocEntries); 
+      currentPage = 3; // Inhalt beginnt auf Seite 3
 
 
       // Vertragsinhalt - Seite 3 und folgende
       // §1 Vertragsgegenstand
-      tocEntries[0].page = currentPage;
+      tocEntries[0].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§1 Vertragsgegenstand", y);
       doc.text("Der Influencer verpflichtet sich zur Erstellung und Veröffentlichung werblicher Inhalte zugunsten des Unternehmens bzw. einer vom Unternehmen vertretenen Marke.", PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
-      y += LINE_HEIGHT * 1.5;
+      y += LINE_HEIGHT * 1.5; // Increased spacing
       y = checkAndAddPage(doc, y);
       if (data.contractType === 'client') {
-        doc.text(`Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden: ${data.clientName} (${data.clientStreet} ${data.clientNumber}, ${data.clientZip} ${data.clientCity}, ${data.clientCountry}). Alle Leistungen erfolgen im Namen und auf Rechnung des Unternehmens.`, PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
+        const clientDetails = `Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden: ${data.clientName || '[Kundenname fehlt]'} (${data.clientStreet || '[Straße fehlt]'} ${data.clientNumber || '[Nr. fehlt]'}, ${data.clientZip || '[PLZ fehlt]'} ${data.clientCity || '[Stadt fehlt]'}, ${data.clientCountry || '[Land fehlt]'}). Alle Leistungen erfolgen im Namen und auf Rechnung des Unternehmens.`;
+        const clientLines = doc.splitTextToSize(clientDetails, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+        doc.text(clientLines, PAGE_MARGIN, y);
+        y += LINE_HEIGHT * clientLines.length;
       } else {
         doc.text("Das Unternehmen handelt im eigenen Namen und auf eigene Rechnung.", PAGE_MARGIN, y);
+        y += LINE_HEIGHT;
       }
-      y += LINE_HEIGHT * 2;
+      y += LINE_HEIGHT; // Extra space
 
       // §2 Plattformen & Veröffentlichung
       tocEntries[1].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§2 Plattformen & Veröffentlichung", y);
       doc.text("Die Veröffentlichung der Inhalte erfolgt auf folgenden Plattformen:", PAGE_MARGIN, y);
-      y += LINE_HEIGHT;
-      if (data.instagramSelected) y = renderCheckbox(doc, true, `Instagram - Profil: ${data.instagramUsername || 'N/A'}`, PAGE_MARGIN + 5, y, y);
-      if (data.tiktokSelected)    y = renderCheckbox(doc, true, `TikTok - Profil: ${data.tiktokUsername || 'N/A'}`, PAGE_MARGIN + 5, y, y);
-      if (data.youtubeSelected)   y = renderCheckbox(doc, true, `YouTube - Kanal: ${data.youtubeUrl || 'N/A'}`, PAGE_MARGIN + 5, y, y);
-      if (data.otherSelected)     y = renderCheckbox(doc, true, `Sonstiges: ${data.otherPlatform || 'N/A'}`, PAGE_MARGIN + 5, y, y);
+      y += LINE_HEIGHT * 0.8;
+      let platformY = y; // Start Y for this block of checkboxes
+      if (data.instagramSelected) platformY = renderCheckbox(doc, true, `Instagram - Profil: ${data.instagramUsername || '[nicht angegeben]'}`, PAGE_MARGIN + 5, platformY, platformY);
+      if (data.tiktokSelected)    platformY = renderCheckbox(doc, true, `TikTok - Profil: ${data.tiktokUsername || '[nicht angegeben]'}`, PAGE_MARGIN + 5, platformY, platformY);
+      if (data.youtubeSelected)   platformY = renderCheckbox(doc, true, `YouTube - Kanal: ${data.youtubeUrl || '[nicht angegeben]'}`, PAGE_MARGIN + 5, platformY, platformY);
+      if (data.otherSelected)     platformY = renderCheckbox(doc, true, `Sonstiges: ${data.otherPlatform || '[nicht angegeben]'}`, PAGE_MARGIN + 5, platformY, platformY);
       if (!data.instagramSelected && !data.tiktokSelected && !data.youtubeSelected && !data.otherSelected) {
-          doc.text("Keine Plattformen ausgewählt.", PAGE_MARGIN + 5, y);
-          y += LINE_HEIGHT;
+          doc.text("Keine Plattformen ausgewählt.", PAGE_MARGIN + 5, platformY);
+          platformY += LINE_HEIGHT;
       }
-      y += LINE_HEIGHT;
+      y = platformY + LINE_HEIGHT * 0.5; // Update main y after checkbox block
       
       y = checkAndAddPage(doc, y);
       doc.text("Folgende Inhalte werden erstellt und veröffentlicht:", PAGE_MARGIN, y);
@@ -761,60 +782,79 @@ document.addEventListener('DOMContentLoaded', function() {
       if (parseInt(data.feedPosts) > 0) { doc.text(`• Feed-Posts (Bild/Karussell): ${data.feedPosts}`, PAGE_MARGIN + 5, y); y += LINE_HEIGHT; contentSpecified = true;}
       if (parseInt(data.youtubeVideos) > 0) { doc.text(`• YouTube Video: ${data.youtubeVideos}`, PAGE_MARGIN + 5, y); y += LINE_HEIGHT; contentSpecified = true;}
       if (!contentSpecified) { doc.text("Keine spezifischen Inhalte vereinbart.", PAGE_MARGIN + 5, y); y += LINE_HEIGHT;}
-      y += LINE_HEIGHT;
+      y += LINE_HEIGHT * 0.5;
 
       y = checkAndAddPage(doc, y);
       doc.text("Zusätzlich wird vereinbart:", PAGE_MARGIN, y);
-      y += LINE_HEIGHT;
+      y += LINE_HEIGHT * 0.8;
+      let additionalY = y;
       let additionalAgreed = false;
-      if (data.collabPost) { y = renderCheckbox(doc, true, "Co-Autoren-Post (Instagram Collab)", PAGE_MARGIN + 5, y, y); additionalAgreed = true;}
-      if (data.companyPublication) { y = renderCheckbox(doc, true, "Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen eigenem Kanal", PAGE_MARGIN + 5, y, y); additionalAgreed = true;}
-      if (data.noCompanyPublication) { y = renderCheckbox(doc, true, "Keine zusätzliche Veröffentlichung durch das Unternehmen", PAGE_MARGIN + 5, y, y); additionalAgreed = true;}
-      if (!additionalAgreed) { doc.text("Keine zusätzlichen Vereinbarungen getroffen.", PAGE_MARGIN + 5, y); y += LINE_HEIGHT;}
-      y += LINE_HEIGHT * 1.5;
+      if (data.collabPost) { additionalY = renderCheckbox(doc, true, "Co-Autoren-Post (Instagram Collab)", PAGE_MARGIN + 5, additionalY, additionalY); additionalAgreed = true;}
+      if (data.companyPublication) { additionalY = renderCheckbox(doc, true, "Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen eigenem Kanal", PAGE_MARGIN + 5, additionalY, additionalY); additionalAgreed = true;}
+      if (data.noCompanyPublication) { additionalY = renderCheckbox(doc, true, "Keine zusätzliche Veröffentlichung durch das Unternehmen", PAGE_MARGIN + 5, additionalY, additionalY); additionalAgreed = true;}
+      if (!additionalAgreed) { doc.text("Keine zusätzlichen Vereinbarungen getroffen.", PAGE_MARGIN + 5, additionalY); additionalY += LINE_HEIGHT;}
+      y = additionalY + LINE_HEIGHT; 
       
       // §3 Nutzung für Werbung (Media Buyout)
       tocEntries[2].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§3 Nutzung für Werbung (Media Buyout)", y);
       doc.text("Darf der erstellte Content für Werbezwecke genutzt werden?", PAGE_MARGIN, y);
-      y += LINE_HEIGHT;
+      y += LINE_HEIGHT * 0.8;
+      let buyoutY = y;
       if (data.mediaBuyoutYes) {
-        y = renderCheckbox(doc, true, "Ja", PAGE_MARGIN + 5, y, y);
-        doc.text("– Kanäle:", PAGE_MARGIN + 10, y); y += LINE_HEIGHT;
-        if(data.adInstagram) y = renderCheckbox(doc, true, "Instagram", PAGE_MARGIN + 15, y, y);
-        if(data.adFacebook) y = renderCheckbox(doc, true, "Facebook", PAGE_MARGIN + 15, y, y);
-        if(data.adTiktok) y = renderCheckbox(doc, true, "TikTok", PAGE_MARGIN + 15, y, y);
-        if(data.adOther) y = renderCheckbox(doc, true, "Sonstiges", PAGE_MARGIN + 15, y, y);
-        y += LINE_HEIGHT * 0.5;
-        doc.text("– Whitelisting (Meta):", PAGE_MARGIN + 10, y); y = renderCheckbox(doc, data.whitelisting, "Ja", PAGE_MARGIN + 55, y - LINE_HEIGHT*0.2, y); // align with text
-        doc.text("– Spark Ad (TikTok):", PAGE_MARGIN + 10, y); y = renderCheckbox(doc, data.sparkAd, "Ja", PAGE_MARGIN + 55, y - LINE_HEIGHT*0.2, y);
-        doc.text(`– Nutzungsdauer: ${data.usageDuration || 'Nicht spezifiziert'}`, PAGE_MARGIN + 10, y); y += LINE_HEIGHT;
+        buyoutY = renderCheckbox(doc, true, "Ja", PAGE_MARGIN + 5, buyoutY, buyoutY);
+        doc.text("– Kanäle:", PAGE_MARGIN + 10, buyoutY); buyoutY += LINE_HEIGHT;
+        let channelY = buyoutY;
+        if(data.adInstagram) channelY = renderCheckbox(doc, true, "Instagram", PAGE_MARGIN + 15, channelY, channelY);
+        if(data.adFacebook) channelY = renderCheckbox(doc, true, "Facebook", PAGE_MARGIN + 15, channelY, channelY);
+        if(data.adTiktok) channelY = renderCheckbox(doc, true, "TikTok", PAGE_MARGIN + 15, channelY, channelY);
+        if(data.adOther) channelY = renderCheckbox(doc, true, "Sonstiges", PAGE_MARGIN + 15, channelY, channelY);
+        buyoutY = channelY + LINE_HEIGHT * 0.5;
+        
+        buyoutY = checkAndAddPage(doc, buyoutY);
+        doc.text("– Whitelisting (Meta):", PAGE_MARGIN + 10, buyoutY); 
+        buyoutY = renderCheckbox(doc, data.whitelisting, "Ja", PAGE_MARGIN + 55, buyoutY - LINE_HEIGHT*0.05 , buyoutY); 
+        
+        buyoutY = checkAndAddPage(doc, buyoutY);
+        doc.text("– Spark Ad (TikTok):", PAGE_MARGIN + 10, buyoutY); 
+        buyoutY = renderCheckbox(doc, data.sparkAd, "Ja", PAGE_MARGIN + 55, buyoutY - LINE_HEIGHT*0.05, buyoutY);
+        
+        buyoutY = checkAndAddPage(doc, buyoutY);
+        doc.text(`– Nutzungsdauer: ${data.usageDuration || '[Nicht spezifiziert]'}`, PAGE_MARGIN + 10, buyoutY); 
+        buyoutY += LINE_HEIGHT;
       } else {
-        y = renderCheckbox(doc, false, "Ja", PAGE_MARGIN + 5, y, y); // Ja nicht gecheckt
-        y = renderCheckbox(doc, true, "Nein. Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung genutzt werden.", PAGE_MARGIN + 5, y, y);
+        buyoutY = renderCheckbox(doc, false, "Ja", PAGE_MARGIN + 5, buyoutY, buyoutY); 
+        buyoutY = renderCheckbox(doc, true, "Nein. Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung genutzt werden.", PAGE_MARGIN + 5, buyoutY, buyoutY);
       }
-      y += LINE_HEIGHT * 1.5;
+      y = buyoutY + LINE_HEIGHT;
 
       // §4 Rechteübertragung
       tocEntries[3].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§4 Rechteübertragung", y);
+      let rightsText = "";
       if (data.mediaBuyoutYes) {
-          doc.text(`Nur bei Zustimmung zur Nutzung für Werbung (§3) überträgt der Influencer dem Unternehmen für die gewählte Nutzungsdauer (${data.usageDuration || 'siehe §3'}) ein einfaches Nutzungsrecht an den erstellten Inhalten zur Verwendung in den vereinbarten Kanälen. Das Unternehmen ist ${data.contractType === 'client' ? 'berechtigt, die Inhalte dem benannten Kunden zur Nutzung zu überlassen.' : 'alleiniger Berechtigter dieser Nutzungsrechte.'} Die Inhalte dürfen technisch angepasst und bearbeitet werden. Die Weitergabe an sonstige Dritte ist nicht gestattet. Nach Ablauf der Nutzungsdauer erlischt das Nutzungsrecht.`, PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
+          rightsText = `Nur bei Zustimmung zur Nutzung für Werbung (§3) überträgt der Influencer dem Unternehmen für die gewählte Nutzungsdauer (${data.usageDuration || 'siehe §3'}) ein einfaches Nutzungsrecht an den erstellten Inhalten zur Verwendung in den vereinbarten Kanälen. Das Unternehmen ist ${data.contractType === 'client' ? 'berechtigt, die Inhalte dem benannten Kunden zur Nutzung zu überlassen.' : 'alleiniger Berechtigter dieser Nutzungsrechte.'} Die Inhalte dürfen technisch angepasst und bearbeitet werden. Die Weitergabe an sonstige Dritte ist nicht gestattet. Nach Ablauf der Nutzungsdauer erlischt das Nutzungsrecht.`;
       } else {
-          doc.text("Da keine Zustimmung zur Nutzung für Werbung erteilt wurde (§3), erfolgt keine erweiterte Rechteübertragung. Die Inhalte verbleiben beim Influencer.", PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
+          rightsText = "Da keine Zustimmung zur Nutzung für Werbung erteilt wurde (§3), erfolgt keine erweiterte Rechteübertragung. Die Inhalte verbleiben beim Influencer.";
       }
-      y += LINE_HEIGHT * 4; // Adjust based on text length
+      const rightsLines = doc.splitTextToSize(rightsText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      doc.text(rightsLines, PAGE_MARGIN, y);
+      y += LINE_HEIGHT * rightsLines.length + LINE_HEIGHT; 
 
       // §5 Produktion & Freigabe
       tocEntries[4].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§5 Produktion & Freigabe", y);
       doc.text(`Briefing: Das Briefing wird vom Unternehmen bis ${data.briefingDate || '[Datum nicht festgelegt]'} bereitgestellt.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
+      y = checkAndAddPage(doc,y);
       doc.text(`Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur Freigabe bis ${data.scriptDate || '[Datum nicht festgelegt]'} / ${data.scriptTime || '[Uhrzeit nicht festgelegt]'}.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
+      y = checkAndAddPage(doc,y);
       doc.text(`Produktion: Die Produktion erfolgt im Zeitraum ${data.productionStart || '[von nicht festgelegt]'} – ${data.productionEnd || '[bis nicht festgelegt]'}. Produktionsort: ${data.productionLocation || '[Ort nicht festgelegt]'}.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
+      y = checkAndAddPage(doc,y);
       doc.text(`Lieferung: Die Lieferung der finalen Inhalte erfolgt bis ${data.deliveryDate || '[Datum nicht festgelegt]'} / ${data.deliveryTime || '[Uhrzeit nicht festgelegt]'}.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
+      y = checkAndAddPage(doc,y);
       doc.text(`Veröffentlichung: Die Veröffentlichung erfolgt am ${data.publicationDate || '[Datum nicht festgelegt]'}.`, PAGE_MARGIN, y);
       y += LINE_HEIGHT * 1.5;
       
@@ -822,14 +862,17 @@ document.addEventListener('DOMContentLoaded', function() {
       tocEntries[5].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§6 Vergütung", y);
-      doc.text(`Die Nettovergütung beträgt ${data.compensation} €.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
+      doc.text(`Die Nettovergütung beträgt ${data.compensation || '[Betrag nicht festgelegt]'} €.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
+      y = checkAndAddPage(doc,y);
       doc.text(`Das Zahlungsziel beträgt ${data.paymentTerm || '[nicht festgelegt]'}.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
+      y = checkAndAddPage(doc,y);
       if (data.additionalCompYes) {
         doc.text(`Eine zusätzliche Vergütung ist vereinbart: ${data.additionalCompText || '[Details nicht spezifiziert]'}`, PAGE_MARGIN, y);
       } else {
         doc.text("Eine zusätzliche Vergütung ist nicht vereinbart.", PAGE_MARGIN, y);
       }
       y += LINE_HEIGHT;
+      y = checkAndAddPage(doc,y);
       doc.text("Bei Nichterfüllung entfällt die Vergütungspflicht.", PAGE_MARGIN, y);
       y += LINE_HEIGHT * 1.5;
 
@@ -837,22 +880,29 @@ document.addEventListener('DOMContentLoaded', function() {
       tocEntries[6].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§7 Qualität & Upload", y);
-      doc.text("Die Inhalte sind in hochwertiger Bild- und Tonqualität zu erstellen. Untertitel und Grafiken sind korrekt zu platzieren. Der Upload erfolgt ausschließlich via Drive, WeTransfer oder E-Mail (kein Messenger). Dateibenennung: [Unternehmen_Creator_VideoX_VersionY]", PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
-      y += LINE_HEIGHT * 3;
+      const qualityText = "Die Inhalte sind in hochwertiger Bild- und Tonqualität zu erstellen. Untertitel und Grafiken sind korrekt zu platzieren. Der Upload erfolgt ausschließlich via Drive, WeTransfer oder E-Mail (kein Messenger). Dateibenennung: [Unternehmen_Creator_VideoX_VersionY]";
+      const qualityLines = doc.splitTextToSize(qualityText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      doc.text(qualityLines, PAGE_MARGIN, y);
+      y += LINE_HEIGHT * qualityLines.length + LINE_HEIGHT;
 
       // §8 Rechte Dritter & Musik
       tocEntries[7].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§8 Rechte Dritter & Musik", y);
-      doc.text("Der Influencer darf keine fremden Marken, Logos oder Namen ohne Zustimmung verwenden. Persönlichkeitsrechte Dritter dürfen nicht verletzt werden. Bei Nutzung lizenzfreier Musik ist die Quelle anzugeben. Für alle Verstöße haftet der Influencer.", PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
-      y += LINE_HEIGHT * 3.5;
+      const thirdPartyText = "Der Influencer darf keine fremden Marken, Logos oder Namen ohne Zustimmung verwenden. Persönlichkeitsrechte Dritter dürfen nicht verletzt werden. Bei Nutzung lizenzfreier Musik ist die Quelle anzugeben. Für alle Verstöße haftet der Influencer.";
+      const thirdPartyLines = doc.splitTextToSize(thirdPartyText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      doc.text(thirdPartyLines, PAGE_MARGIN, y);
+      y += LINE_HEIGHT * thirdPartyLines.length + LINE_HEIGHT;
 
       // §9 Werbekennzeichnung & Exklusivität
       tocEntries[8].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§9 Werbekennzeichnung & Exklusivität", y);
-      doc.text('Der Influencer verpflichtet sich zur ordnungsgemäßen Werbekennzeichnung ("Werbung" / "Anzeige"). Bei einem Verstoß dagegen, haftet der Influencer für die entstandenen Schäden.', PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
-      y += LINE_HEIGHT * 2;
+      const adText = 'Der Influencer verpflichtet sich zur ordnungsgemäßen Werbekennzeichnung ("Werbung" / "Anzeige"). Bei einem Verstoß dagegen, haftet der Influencer für die entstandenen Schäden.';
+      const adLines = doc.splitTextToSize(adText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      doc.text(adLines, PAGE_MARGIN, y);
+      y += LINE_HEIGHT * adLines.length + LINE_HEIGHT * 0.5;
+      y = checkAndAddPage(doc,y);
       if (data.exclusivity) {
         doc.text(`Exklusivität: ${data.exclusivity}`, PAGE_MARGIN, y);
       } else {
@@ -864,25 +914,32 @@ document.addEventListener('DOMContentLoaded', function() {
       tocEntries[9].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§10 Verbindlichkeit Briefing & Skript", y);
-      doc.text("Der Influencer verpflichtet sich, die im Briefing festgelegten Do's and Don'ts sowie alle sonstigen schriftlichen Vorgaben und das ggf. freigegebene Skript vollständig einzuhalten. Bei Verstoß kann das Unternehmen: 1. Nachbesserung verlangen, 2. eine Neuproduktion auf eigene Kosten fordern, 3. bei wiederholtem Verstoß vom Vertrag zurücktreten. Vergütung entfällt bei Nichterfüllung.", PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
-      y += LINE_HEIGHT * 5;
+      const briefingText = "Der Influencer verpflichtet sich, die im Briefing festgelegten Do's and Don'ts sowie alle sonstigen schriftlichen Vorgaben und das ggf. freigegebene Skript vollständig einzuhalten. Bei Verstoß kann das Unternehmen: 1. Nachbesserung verlangen, 2. eine Neuproduktion auf eigene Kosten fordern, 3. bei wiederholtem Verstoß vom Vertrag zurücktreten. Vergütung entfällt bei Nichterfüllung.";
+      const briefingLines = doc.splitTextToSize(briefingText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      doc.text(briefingLines, PAGE_MARGIN, y);
+      y += LINE_HEIGHT * briefingLines.length + LINE_HEIGHT;
 
       // §11 Datenschutz & Vertraulichkeit
       tocEntries[10].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§11 Datenschutz & Vertraulichkeit", y);
-      doc.text("Beide Parteien verpflichten sich zur Einhaltung der DSGVO. Daten werden ausschließlich zur Vertragserfüllung genutzt. Vertraulichkeit gilt auch über das Vertragsende hinaus.", PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
-      y += LINE_HEIGHT * 2.5;
+      const privacyText = "Beide Parteien verpflichten sich zur Einhaltung der DSGVO. Daten werden ausschließlich zur Vertragserfüllung genutzt. Vertraulichkeit gilt auch über das Vertragsende hinaus.";
+      const privacyLines = doc.splitTextToSize(privacyText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      doc.text(privacyLines, PAGE_MARGIN, y);
+      y += LINE_HEIGHT * privacyLines.length + LINE_HEIGHT;
       
       // §12 Schlussbestimmungen & Zusätzliche Informationen
       tocEntries[11].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§12 Schlussbestimmungen & Zusätzliche Informationen", y);
-      doc.text(`Änderungen bedürfen der Schriftform. Gerichtsstand ist ${data.companyCity}. Es gilt das Recht der Bundesrepublik Deutschland. Sollte eine Bestimmung unwirksam sein, bleibt der Vertrag im Übrigen wirksam.`, PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
-      y += LINE_HEIGHT * 3;
+      const finalClauseText = `Änderungen bedürfen der Schriftform. Gerichtsstand ist ${data.companyCity || '[Stadt nicht festgelegt]'}. Es gilt das Recht der Bundesrepublik Deutschland. Sollte eine Bestimmung unwirksam sein, bleibt der Vertrag im Übrigen wirksam.`;
+      const finalClauseLines = doc.splitTextToSize(finalClauseText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      doc.text(finalClauseLines, PAGE_MARGIN, y);
+      y += LINE_HEIGHT * finalClauseLines.length + LINE_HEIGHT;
       
+      y = checkAndAddPage(doc,y);
       if (data.extraInformation) {
-        y = checkAndAddPage(doc, y, LINE_HEIGHT * 2); // Space for title
+        y = checkAndAddPage(doc, y, LINE_HEIGHT * 2); 
         doc.setFont("helvetica", "bold");
         doc.text("Zusätzliche Informationen:", PAGE_MARGIN, y);
         y += LINE_HEIGHT;
@@ -891,15 +948,18 @@ document.addEventListener('DOMContentLoaded', function() {
         doc.text(extraInfoLines, PAGE_MARGIN, y);
         y += LINE_HEIGHT * extraInfoLines.length;
       }
-      y += LINE_HEIGHT * 2;
+      y += LINE_HEIGHT;
 
 
       // Unterschriftsfelder hinzufügen
-      y = addSignatureFields(doc, data.companyCity, y);
+      y = addSignatureFields(doc, data.companyCity || '[Stadt nicht festgelegt]', y);
 
       // Inhaltsverzeichnis mit korrekten Seitenzahlen neu erstellen
-      doc.setPage(2); // Gehe zur Seite des Inhaltsverzeichnisses
-      addTableOfContents(doc, tocEntries); // Zeichne es neu mit den jetzt bekannten Seitenzahlen
+      // Speichere die aktuelle Seite, gehe zu Seite 2, zeichne TOC, dann zurück
+      const endPage = doc.internal.getNumberOfPages();
+      doc.setPage(2); 
+      addTableOfContents(doc, tocEntries); 
+      doc.setPage(endPage); // Gehe zurück zur letzten Seite, auf der der Inhalt endete
 
       // Wasserzeichen hinzufügen
       addWatermark(doc);
@@ -949,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('Vertrag wird generiert...');
       try {
         generatePDF();
-        showSuccessAnimation();
+        // showSuccessAnimation(); // Animation should be shown after successful PDF generation inside generatePDF
       } catch (error) {
         console.error("Fehler bei der PDF-Generierung:", error);
         alert('Bei der Generierung des Vertrags ist ein Fehler aufgetreten: ' + error.message);
@@ -997,7 +1057,7 @@ document.addEventListener('DOMContentLoaded', function() {
     sidebar.className = 'sidebar'; 
     container.appendChild(sidebar);
 
-    const progressBar = document.querySelector('.progress-bar-container'); // Assuming a container for progress bar and message
+    const progressBar = document.querySelector('.progress-bar-container'); 
     if (progressBar) {
       sidebar.appendChild(progressBar);
     }
