@@ -605,10 +605,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (val === 'unlimited') return 'Unbegrenzt';
                 return `${val} Monate`;
             }
-            // *** KORREKTUR HIER: 'term-' ID-Präfix für Zahlungsziel ***
             if (selectedRadio.id.startsWith('term-')) { 
-                // Der Wert des Radio-Buttons (z.B. "14", "30") wird direkt verwendet
-                // und " Tage" angehängt.
                 return `${selectedRadio.value} Tage`;
             }
             return selectedRadio.value || defaultValue; // Fallback auf den Wert des Radio-Buttons
@@ -658,7 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
         adFacebook: isChecked('ad-facebook'),
         adTiktok: isChecked('ad-tiktok'),
         adOther: isChecked('ad-other'), 
-        adOtherText: getValue('ad-other-text', '[nicht spezifiziert]'), // Text für sonstige Ad-Plattform
+        adOtherText: getValue('ad-other-text', '[nicht spezifiziert]'), 
         whitelisting: isChecked('whitelisting'),
         sparkAd: isChecked('spark-ad'),
         usageDuration: getSelectedRadioValue('usage-duration', '[Dauer nicht festgelegt]'), 
@@ -672,7 +669,6 @@ document.addEventListener('DOMContentLoaded', function() {
         deliveryTime: getValue('delivery-time', '12:00'),
         publicationDate: formatDate(getValue('publication-date', '[Datum]')),
         compensation: getValue('compensation', '[€ Betrag]'),
-        // *** KORREKTUR HIER: 'payment_term' zu 'payment-term' geändert ***
         paymentTerm: getSelectedRadioValue('payment-term', '[Zahlungsziel nicht festgelegt]'), 
         additionalCompYes: isChecked('additional-yes'),
         additionalCompText: getValue('additional-comp-text', '[Textfeld falls ja]'),
@@ -680,10 +676,8 @@ document.addEventListener('DOMContentLoaded', function() {
         extraInformation: getValue('extra-information', '') 
       };
       
-      // Titelseite hinzufügen und Y-Position für die nächste Seite erhalten
-      y = addCoverPage(doc, data); // Deckblatt auf Seite 1, fügt Seite 2 hinzu. y ist CONTENT_START_Y für Seite 2.
+      y = addCoverPage(doc, data); 
       
-      // Einträge für das Inhaltsverzeichnis definieren (Seitenzahlen werden später aktualisiert)
       tocEntries = [
             { num: "§1", title: "Vertragsgegenstand", page: 0 },
             { num: "§2", title: "Plattformen & Veröffentlichung", page: 0 },
@@ -699,9 +693,8 @@ document.addEventListener('DOMContentLoaded', function() {
             { num: "§12", title: "Schlussbestimmungen & Zus. Infos", page: 0 }
       ];
 
-      // Alle Inhalte hinzufügen und Seitenzahlen für ToC sammeln
       // §1 Vertragsgegenstand
-      tocEntries[0].page = doc.internal.getNumberOfPages(); // Aktuelle Seite für ToC speichern
+      tocEntries[0].page = doc.internal.getNumberOfPages(); 
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§1 Vertragsgegenstand", y);
       const p1Text = "Der Influencer verpflichtet sich zur Erstellung und Veröffentlichung werblicher Inhalte zugunsten des Unternehmens bzw. einer vom Unternehmen vertretenen Marke.";
@@ -727,7 +720,7 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text("Die Veröffentlichung der Inhalte erfolgt auf folgenden Plattformen:", PAGE_MARGIN, y, {baseline: 'top'});
       y += LINE_HEIGHT;
       let platformY = y; 
-      const platformIndent = PAGE_MARGIN + 5; // Einrückung für Plattform-Checkboxen
+      const platformIndent = PAGE_MARGIN + 5; 
       if (data.instagramSelected) platformY = renderCheckbox(doc, true, `Instagram - Profil: ${data.instagramUsername || '[nicht angegeben]'}`, platformIndent, platformY, platformY);
       if (data.tiktokSelected)    platformY = renderCheckbox(doc, true, `TikTok - Profil: ${data.tiktokUsername || '[nicht angegeben]'}`, platformIndent, platformY, platformY);
       if (data.youtubeSelected)   platformY = renderCheckbox(doc, true, `YouTube - Kanal: ${data.youtubeUrl || '[nicht angegeben]'}`, platformIndent, platformY, platformY);
@@ -741,7 +734,7 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text("Folgende Inhalte werden erstellt und veröffentlicht:", PAGE_MARGIN, y, {baseline: 'top'});
       y += LINE_HEIGHT;
       let contentSpecified = false;
-      const itemIndent = PAGE_MARGIN + 5; // Einrückung für Inhaltstypen
+      const itemIndent = PAGE_MARGIN + 5; 
       if (parseInt(data.storySlides) > 0) { doc.text(`• Story-Slides: ${data.storySlides}`, itemIndent, y, {baseline: 'top'}); y += LINE_HEIGHT; contentSpecified = true;}
       if (parseInt(data.reelsTiktok) > 0) { doc.text(`• Reels / TikTok Videos: ${data.reelsTiktok}`, itemIndent, y, {baseline: 'top'}); y += LINE_HEIGHT; contentSpecified = true;}
       if (parseInt(data.feedPosts) > 0) { doc.text(`• Feed-Posts (Bild/Karussell): ${data.feedPosts}`, itemIndent, y, {baseline: 'top'}); y += LINE_HEIGHT; contentSpecified = true;}
@@ -753,7 +746,7 @@ document.addEventListener('DOMContentLoaded', function() {
       y += LINE_HEIGHT;
       let additionalY = y;
       let additionalAgreed = false;
-      const additionalIndent = PAGE_MARGIN + 5; // Einrückung für zusätzliche Vereinbarungen
+      const additionalIndent = PAGE_MARGIN + 5; 
       if (data.collabPost) { additionalY = renderCheckbox(doc, true, "Co-Autoren-Post (Instagram Collab)", additionalIndent, additionalY, additionalY); additionalAgreed = true;}
       if (data.companyPublication) { additionalY = renderCheckbox(doc, true, "Veröffentlichung des Contents durch das Unternehmen / den Kunden auf dessen eigenem Kanal", additionalIndent, additionalY, additionalY); additionalAgreed = true;}
       if (data.noCompanyPublication) { additionalY = renderCheckbox(doc, true, "Keine zusätzliche Veröffentlichung durch das Unternehmen", additionalIndent, additionalY, additionalY); additionalAgreed = true;}
@@ -767,9 +760,9 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text("Darf der erstellte Content für Werbezwecke genutzt werden?", PAGE_MARGIN, y, {baseline: 'top'});
       y += LINE_HEIGHT;
       let buyoutY = y;
-      const buyoutItemIndent = PAGE_MARGIN + 5; // Einrückung für "Ja"/"Nein"
-      const subOptionIndent = PAGE_MARGIN + 10; // Einrückung für Unteroptionen wie Kanäle, Whitelisting
-      const channelIndent = PAGE_MARGIN + 15; // Einrückung für spezifische Kanäle
+      const buyoutItemIndent = PAGE_MARGIN + 5; 
+      const subOptionIndent = PAGE_MARGIN + 10; 
+      const channelIndent = PAGE_MARGIN + 15; 
 
       if (data.mediaBuyoutYes) {
         buyoutY = renderCheckbox(doc, true, "Ja", buyoutItemIndent, buyoutY, buyoutY);
@@ -852,6 +845,8 @@ document.addEventListener('DOMContentLoaded', function() {
       y += LINE_HEIGHT;
       y = checkAndAddPage(doc,y);
       doc.text("Bei Nichterfüllung entfällt die Vergütungspflicht.", PAGE_MARGIN, y, {baseline: 'top'});
+      // *** KORREKTUR HIER: Zusätzlicher Zeilenumbruch für korrekten Abstand ***
+      y += LINE_HEIGHT; 
       y += PARAGRAPH_SPACING * 2;
 
       // §7 Qualität & Upload
@@ -921,38 +916,28 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       y += PARAGRAPH_SPACING * 2;
 
-      // Unterschriftsfelder hinzufügen
       y = addSignatureFields(doc, data.companyCity || '[Stadt nicht festgelegt]', y);
 
-      // KORREKTUR: Inhaltsverzeichnis Logik
-      // 1. Seitenzahlen in tocEntries anpassen, da ToC auf Seite 2 eingefügt wird
       tocEntries.forEach(entry => {
-        if (entry.page > 0) { // Nur gültige Seitenzahlen anpassen (nicht 0)
-            entry.page += 1; // Da das ToC selbst eine Seite einnimmt (Seite 2)
+        if (entry.page > 0) { 
+            entry.page += 1; 
         }
       });
 
-      // 2. Neue Seite für ToC an Position 2 einfügen
       const tocTargetPage = 2;
       const totalPagesAfterContent = doc.internal.getNumberOfPages();
-      doc.addPage(); // Fügt eine Seite am Ende hinzu
-      // Verschiebt die neue (jetzt letzte) Seite an die Position 2
+      doc.addPage(); 
       doc.movePage(doc.internal.getNumberOfPages(), tocTargetPage); 
 
-      // 3. Gehe zu Seite 2 und zeichne das ToC
       doc.setPage(tocTargetPage);
-      addTableOfContents(doc, tocEntries); // Diese Funktion fügt KEINE Seite mehr hinzu
+      addTableOfContents(doc, tocEntries); 
 
-      // 4. Gehe zur letzten Seite des Dokuments für den Wasserzeichen-Loop
-      // Die Gesamtseitenzahl ist jetzt totalPagesAfterContent + 1 (durch das Hinzufügen der ToC-Seite)
       doc.setPage(totalPagesAfterContent + 1); 
-      addWatermark(doc); // Wasserzeichen auf allen Seiten hinzufügen
+      addWatermark(doc); 
 
-      // PDF speichern
       doc.save('influencer-marketing-vertrag-final.pdf');
       console.log('PDF saved successfully');
 
-      // Erfolgsanimation anzeigen
       const successAnimation = document.getElementById('success-animation');
       if (successAnimation) successAnimation.classList.remove('hidden');
 
@@ -962,21 +947,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Event Listener für den "Vertrag generieren"-Button
   const generateButton = document.getElementById('generate-contract');
   if (generateButton) {
     generateButton.addEventListener('click', function() {
-      // Erneuter jsPDF-Check vor der Generierung
       if (typeof window.jsPDF === 'undefined') {
           alert('Die PDF-Bibliothek (jsPDF) ist nicht geladen. PDF kann nicht generiert werden. Bitte laden Sie die Seite neu oder kontaktieren Sie den Support.');
           return;
       }
-      // Validierung aller Schritte vor der Generierung
       let firstInvalidStep = -1;
-      const totalStepsToValidate = progressSteps.length || 9; // Fallback
-      for (let i = 1; i <= totalStepsToValidate ; i++) { // Validierung von Schritt 1 bis zum letzten Schritt
+      const totalStepsToValidate = progressSteps.length || 9; 
+      for (let i = 1; i <= totalStepsToValidate ; i++) { 
         const stepSection = document.getElementById(`step-${i}`);
-        if (stepSection) { // Nur prüfen, wenn der Abschnitt existiert
+        if (stepSection) { 
           const requiredFields = stepSection.querySelectorAll('[required]');
           let stepIsValid = true;
           requiredFields.forEach(field => {
@@ -986,16 +968,16 @@ document.addEventListener('DOMContentLoaded', function() {
           });
           if (!stepIsValid) {
             firstInvalidStep = i;
-            break; // Stoppe beim ersten ungültigen Schritt
+            break; 
           }
         }
       }
 
       if (firstInvalidStep !== -1) {
-        goToStep(firstInvalidStep); // Zum ersten ungültigen Schritt navigieren
-        markInvalidFieldsInCurrentStep(); // Ungültige Felder markieren
+        goToStep(firstInvalidStep); 
+        markInvalidFieldsInCurrentStep(); 
         showValidationError(`Bitte fülle alle Pflichtfelder in Schritt ${firstInvalidStep} aus, um den Vertrag zu generieren.`);
-        return; // Generierung abbrechen
+        return; 
       }
 
       console.log('Vertrag wird generiert...');
@@ -1008,66 +990,56 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Funktion zum Anzeigen der Erfolgsanimation (Beispiel)
   function showSuccessAnimation() {
     const successAnimation = document.getElementById('success-animation');
     if (successAnimation) {
       successAnimation.classList.remove('hidden');
-      // Ggf. nach einiger Zeit wieder ausblenden
-      // setTimeout(() => { successAnimation.classList.add('hidden'); }, 5000);
     }
   }
 
-  // Event Listener für den Download-Button (falls vorhanden, um Animation zu schließen)
   const downloadButton = document.getElementById('download-button');
   if (downloadButton) {
     downloadButton.addEventListener('click', function() {
       const successAnimation = document.getElementById('success-animation');
       if (successAnimation) {
-        successAnimation.classList.add('hidden'); // Animation ausblenden
+        successAnimation.classList.add('hidden'); 
       }
     });
   }
   
-  // Event Listener für Formularfelder zur Validierung und Fortschrittsaktualisierung
   document.querySelectorAll('[required], input, select, textarea').forEach(field => {
-    // Passenden Event-Typ wählen (change für Checkboxen/Radios/Selects, input für Textfelder)
     const eventType = (field.type === 'checkbox' || field.type === 'radio' || field.tagName === 'SELECT') ? 'change' : 'input';
     field.addEventListener(eventType, function() {
-      // Fehlerstyling entfernen, wenn ein Pflichtfeld ausgefüllt wird
       if (this.hasAttribute('required') && this.value.trim()) {
         this.classList.remove('error');
-        this.style.borderColor = ''; // Standard-Randfarbe wiederherstellen
+        this.style.borderColor = ''; 
       }
-      validateCurrentStep(); // Aktuellen Schritt validieren (aktiviert/deaktiviert "Weiter"-Button)
-      updateProgress(); // Fortschrittsbalken aktualisieren
+      validateCurrentStep(); 
+      updateProgress(); 
     });
   });
 
-  // Dynamisches Hinzufügen von Container- und Sidebar-Elementen, falls nicht vorhanden
-  // Dies dient dazu, die Struktur für Sidebar (mit Fortschrittsbalken) und Hauptinhalt (Formular) zu erstellen
   const form = document.querySelector('.db-contact-generator-wrapper');
-  if (form && !document.querySelector('.container')) { // Nur ausführen, wenn Formular existiert und Container noch nicht
+  if (form && !document.querySelector('.container')) { 
     const parentElement = form.parentElement;
     const container = document.createElement('div');
-    container.className = 'container'; // Hauptcontainer
+    container.className = 'container'; 
     parentElement.appendChild(container);
 
     const sidebar = document.createElement('div');
-    sidebar.className = 'sidebar'; // Sidebar für Fortschrittsanzeige
+    sidebar.className = 'sidebar'; 
     container.appendChild(sidebar);
 
-    const progressBar = document.querySelector('.progress-bar-container'); // Vorhandenen Fortschrittsbalken finden
+    const progressBar = document.querySelector('.progress-bar-container'); 
     if (progressBar) {
-      sidebar.appendChild(progressBar); // Fortschrittsbalken in die Sidebar verschieben
+      sidebar.appendChild(progressBar); 
     }
 
     const mainContent = document.createElement('div');
-    mainContent.className = 'main-content'; // Hauptinhaltsbereich
+    mainContent.className = 'main-content'; 
     container.appendChild(mainContent);
-    mainContent.appendChild(form); // Formular in den Hauptinhalt verschieben
+    mainContent.appendChild(form); 
   }
 
-  // Initialisierung: Zum ersten Schritt gehen und Fortschritt aktualisieren
   goToStep(1); 
 });
