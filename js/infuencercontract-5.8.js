@@ -605,8 +605,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (val === 'unlimited') return 'Unbegrenzt';
                 return `${val} Monate`;
             }
+            // *** KORREKTUR HIER: 'term-' ID-Präfix für Zahlungsziel ***
             if (selectedRadio.id.startsWith('term-')) { 
-                return `${selectedRadio.id.split('-')[1]} Tage`;
+                // Der Wert des Radio-Buttons (z.B. "14", "30") wird direkt verwendet
+                // und " Tage" angehängt.
+                return `${selectedRadio.value} Tage`;
             }
             return selectedRadio.value || defaultValue; // Fallback auf den Wert des Radio-Buttons
         }
@@ -669,7 +672,8 @@ document.addEventListener('DOMContentLoaded', function() {
         deliveryTime: getValue('delivery-time', '12:00'),
         publicationDate: formatDate(getValue('publication-date', '[Datum]')),
         compensation: getValue('compensation', '[€ Betrag]'),
-        paymentTerm: getSelectedRadioValue('payment_term', '[Zahlungsziel nicht festgelegt]'), 
+        // *** KORREKTUR HIER: 'payment_term' zu 'payment-term' geändert ***
+        paymentTerm: getSelectedRadioValue('payment-term', '[Zahlungsziel nicht festgelegt]'), 
         additionalCompYes: isChecked('additional-yes'),
         additionalCompText: getValue('additional-comp-text', '[Textfeld falls ja]'),
         exclusivity: getValue('exklusiv', ''), 
@@ -778,16 +782,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if(data.adOther) channelY = renderCheckbox(doc, true, `Sonstiges: ${data.adOtherText}`, channelIndent, channelY, channelY); 
         buyoutY = channelY; 
         
-        // *** HIER SIND DIE ANGEPASSTEN CHECKS ***
         buyoutY = renderCheckbox(doc, data.whitelisting, "Whitelisting (Meta)", subOptionIndent, buyoutY, buyoutY);
         buyoutY = renderCheckbox(doc, data.sparkAd, "Spark Ad (TikTok)", subOptionIndent, buyoutY, buyoutY);
-        // *****************************************
 
-        buyoutY = checkAndAddPage(doc, buyoutY); // Sicherstellen, dass genug Platz ist
+        buyoutY = checkAndAddPage(doc, buyoutY); 
         doc.text(`– Nutzungsdauer: ${data.usageDuration || '[Nicht spezifiziert]'}`, subOptionIndent, buyoutY, {baseline: 'top'}); 
         buyoutY += LINE_HEIGHT;
       } else {
-        buyoutY = renderCheckbox(doc, false, "Ja", buyoutItemIndent, buyoutY, buyoutY); // "Ja" ist nicht ausgewählt
+        buyoutY = renderCheckbox(doc, false, "Ja", buyoutItemIndent, buyoutY, buyoutY); 
         buyoutY = renderCheckbox(doc, true, "Nein. Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung genutzt werden.", buyoutItemIndent, buyoutY, buyoutY);
       }
       y = buyoutY + PARAGRAPH_SPACING * 2;
@@ -825,7 +827,7 @@ document.addEventListener('DOMContentLoaded', function() {
         doc.setFont("helvetica", "bold"); 
         doc.text("Exklusivität:", PAGE_MARGIN, y, {baseline: 'top'}); y += LINE_HEIGHT;
         doc.setFont("helvetica", "normal");
-        const exclusivityLines = doc.splitTextToSize(data.exclusivity, PAGE_WIDTH - 2 * PAGE_MARGIN - 5); // -5 für Einrückung
+        const exclusivityLines = doc.splitTextToSize(data.exclusivity, PAGE_WIDTH - 2 * PAGE_MARGIN - 5); 
         doc.text(exclusivityLines, PAGE_MARGIN + 5, y, {baseline: 'top'});
         y += LINE_HEIGHT * exclusivityLines.length;
       } else {
@@ -908,7 +910,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       y = checkAndAddPage(doc,y); 
       if (data.extraInformation) {
-        y = checkAndAddPage(doc, y, LINE_HEIGHT * 2); // Platz für Titel + erste Zeile Text
+        y = checkAndAddPage(doc, y, LINE_HEIGHT * 2); 
         doc.setFont("helvetica", "bold");
         doc.text("Zusätzliche Informationen:", PAGE_MARGIN, y, {baseline: 'top'});
         y += LINE_HEIGHT;
