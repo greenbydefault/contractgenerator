@@ -1,4 +1,22 @@
 document.addEventListener('DOMContentLoaded', function() {
+  // *** NEU: jsPDF-Check direkt am Anfang ***
+  if (typeof window.jsPDF === 'undefined') {
+    alert('WICHTIGER HINWEIS: Die PDF-Bibliothek (jsPDF) konnte nicht geladen werden. Die PDF-Generierung wird nicht funktionieren. Bitte stellen Sie sicher, dass die Bibliothek korrekt eingebunden ist und die Seite neu geladen wird.');
+    console.error('jsPDF is not loaded on window. PDF functionality will be disabled.');
+    // Optional: Deaktiviere den PDF-Generierungsbutton
+    const generateButton = document.getElementById('generate-contract');
+    if (generateButton) {
+      generateButton.disabled = true;
+      generateButton.title = 'PDF-Generierung nicht möglich, da die jsPDF-Bibliothek fehlt.';
+      // Style den Button, um anzuzeigen, dass er deaktiviert ist (optional)
+      generateButton.style.opacity = '0.5';
+      generateButton.style.cursor = 'not-allowed';
+    }
+    // Beende die weitere Ausführung von PDF-spezifischen Initialisierungen, falls nötig.
+    // In diesem Fall lassen wir den Rest des Formular-Codes laufen, da er auch ohne PDF-Funktion nützlich sein kann.
+  }
+
+
   // Globale Variable für den aktuellen Schritt
   let currentStep = 1;
 
@@ -245,12 +263,14 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function updateButtonState(button, isValid) {
-    if (isValid) {
-      button.disabled = false;
-      button.classList.remove('btn-disabled');
-    } else {
-      button.disabled = true;
-      button.classList.add('btn-disabled');
+    if (button) { // Check if button exists
+        if (isValid) {
+        button.disabled = false;
+        button.classList.remove('btn-disabled');
+        } else {
+        button.disabled = true;
+        button.classList.add('btn-disabled');
+        }
     }
   }
 
@@ -258,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentSection = document.getElementById(`step-${currentStep}`);
     if (!currentSection) return true; 
 
-    const nextButton = currentSection.querySelector('.next-step'); // Find button within the current step
+    const nextButton = currentSection.querySelector('.next-step'); 
 
     const requiredFields = currentSection.querySelectorAll('[required]');
     let allValid = true;
@@ -285,7 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     progressSteps.forEach(step => {
       const stepNum = parseInt(step.getAttribute('data-step'));
-      step.classList.toggle('active', stepNum === currentStep); // Only current step is active
+      step.classList.toggle('active', stepNum === currentStep); 
       step.classList.toggle('completed', stepNum < currentStep);
     });
 
@@ -295,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     updateProgress();
-    validateCurrentStep(); // Validate the new current step
+    validateCurrentStep(); 
 
     window.scrollTo({
       top: 0,
@@ -304,8 +324,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function updateProgress() {
-    const totalSteps = progressSteps.length > 0 ? progressSteps.length : 9; // Fallback to 9 if not detected
-    const percentage = Math.min(Math.floor(((currentStep -1) / totalSteps) * 100), 100); // More accurate percentage
+    const totalSteps = progressSteps.length > 0 ? progressSteps.length : 9; 
+    const percentage = Math.min(Math.floor(((currentStep -1) / totalSteps) * 100), 100); 
 
     if (progressFill) {
       progressFill.style.width = `${percentage}%`;
@@ -317,7 +337,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     updateProgressMessage(currentStep);
 
-    if (currentStep === totalSteps) { // Check against totalSteps
+    if (currentStep === totalSteps) { 
       updatePreview();
     }
   }
@@ -326,15 +346,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!progressMessage) return;
 
     const messages = [
-      "Lass uns anfangen! Wähle den Vertragstyp.", // Step 1
-      "Gut gemacht! Wer sind die Vertragspartner?", // Step 2
-      "Perfekt! Auf welchen Plattformen wird veröffentlicht?", // Step 3
-      "Super! Welche Inhalte sollen erstellt werden?", // Step 4
-      "Prima! Gibt es zusätzliche Vereinbarungen?", // Step 5
-      "Sehr gut! Klären wir die Rechte und Nutzung (Media Buyout).", // Step 6
-      "Fast geschafft! Wie sieht der Zeitplan aus?", // Step 7
-      "Letzte Details zur Vergütung.", // Step 8
-      "Alles klar! Überprüfe den Vertrag und generiere ihn." // Step 9
+      "Lass uns anfangen! Wähle den Vertragstyp.", 
+      "Gut gemacht! Wer sind die Vertragspartner?", 
+      "Perfekt! Auf welchen Plattformen wird veröffentlicht?", 
+      "Super! Welche Inhalte sollen erstellt werden?", 
+      "Prima! Gibt es zusätzliche Vereinbarungen?", 
+      "Sehr gut! Klären wir die Rechte und Nutzung (Media Buyout).", 
+      "Fast geschafft! Wie sieht der Zeitplan aus?", 
+      "Letzte Details zur Vergütung.", 
+      "Alles klar! Überprüfe den Vertrag und generiere ihn." 
     ];
 
     progressMessage.textContent = messages[stepNumber - 1] || "Weiter geht's!";
@@ -346,11 +366,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     allRequiredFields.forEach(field => {
         const section = field.closest('.form-section');
-        // Only count fields in visible sections or sections before current, or if it's the preview step
         if (section && (!section.classList.contains('hidden') || parseInt(section.id.split('-')[1]) < currentStep || currentStep === (progressSteps.length > 0 ? progressSteps.length : 9) )) {
             if (field.type === 'checkbox' || field.type === 'radio') {
-                if (field.checked && field.value.trim()) filledRequiredFields++; // Consider checked and having a value
-                else if (field.checked) filledRequiredFields++; // For simple yes/no checks
+                if (field.checked && field.value.trim()) filledRequiredFields++; 
+                else if (field.checked) filledRequiredFields++; 
             } else if (field.value && field.value.trim() !== '') {
                 filledRequiredFields++;
             }
@@ -362,14 +381,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function updatePreview() {
     try {
-      // Helper to get value or default
       const getValue = (id, defaultValue = '') => {
         const el = document.getElementById(id);
         return el && el.value ? el.value.trim() : defaultValue;
       };
       const isChecked = (id) => document.getElementById(id) ? document.getElementById(id).checked : false;
 
-      // Unternehmensdaten
       document.getElementById('preview-company-name').textContent = getValue('company-name', '[Name des Unternehmens]');
       document.getElementById('preview-company-contact').textContent = getValue('company-contact', '[Ansprechpartner]');
       document.getElementById('preview-company-street').textContent = getValue('company-street', '[Straße]');
@@ -378,7 +395,6 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('preview-company-city').textContent = getValue('company-city', '[Stadt]');
       document.getElementById('preview-company-country').textContent = getValue('company-country', '[Land]');
 
-      // Influencer-Daten
       document.getElementById('preview-influencer-name').textContent = getValue('influencer-name', '[Name des Influencers]');
       document.getElementById('preview-influencer-street').textContent = getValue('influencer-street', '[Straße]');
       document.getElementById('preview-influencer-number').textContent = getValue('influencer-number', '[Hausnummer]');
@@ -386,43 +402,45 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('preview-influencer-city').textContent = getValue('influencer-city', '[Stadt]');
       document.getElementById('preview-influencer-country').textContent = getValue('influencer-country', '[Land]');
 
-      // Kundensektion
       const isClientContract = getValue('contract-type') === 'client';
       const previewClientSection = document.getElementById('preview-client-section');
-      previewClientSection.classList.toggle('hidden', !isClientContract);
-      if (isClientContract) {
-        document.getElementById('preview-client-name').textContent = getValue('client-name', '[Name des Kunden]');
-        document.getElementById('preview-client-street').textContent = getValue('client-street', '[Straße Kunde]');
-        document.getElementById('preview-client-number').textContent = getValue('client-number', '[Hausnummer Kunde]');
-        document.getElementById('preview-client-zip').textContent = getValue('client-zip', '[PLZ Kunde]');
-        document.getElementById('preview-client-city').textContent = getValue('client-city', '[Stadt Kunde]');
-        document.getElementById('preview-client-country').textContent = getValue('client-country', '[Land Kunde]');
+      if (previewClientSection) { // Ensure element exists
+        previewClientSection.classList.toggle('hidden', !isClientContract);
+        if (isClientContract) {
+            document.getElementById('preview-client-name').textContent = getValue('client-name', '[Name des Kunden]');
+            document.getElementById('preview-client-street').textContent = getValue('client-street', '[Straße Kunde]');
+            document.getElementById('preview-client-number').textContent = getValue('client-number', '[Hausnummer Kunde]');
+            document.getElementById('preview-client-zip').textContent = getValue('client-zip', '[PLZ Kunde]');
+            document.getElementById('preview-client-city').textContent = getValue('client-city', '[Stadt Kunde]');
+            document.getElementById('preview-client-country').textContent = getValue('client-country', '[Land Kunde]');
+        }
       }
 
-      // Plattformen
+
       let platformsHtml = '';
       if (isChecked('platform-instagram')) platformsHtml += `<p>✓ Instagram (Profil: ${getValue('instagram-username', '[@nutzername]')})</p>`;
       if (isChecked('platform-tiktok')) platformsHtml += `<p>✓ TikTok (Profil: ${getValue('tiktok-username', '[@nutzername]')})</p>`;
       if (isChecked('platform-youtube')) platformsHtml += `<p>✓ YouTube (Kanal: ${getValue('youtube-url', '[URL]')})</p>`;
       if (isChecked('platform-other')) platformsHtml += `<p>✓ Sonstiges: ${getValue('other-platform', '[Frei eintragen]')})</p>`;
-      document.getElementById('preview-platforms').innerHTML = platformsHtml || '<p>Keine Plattformen ausgewählt</p>';
+      const previewPlatformsEl = document.getElementById('preview-platforms');
+      if (previewPlatformsEl) previewPlatformsEl.innerHTML = platformsHtml || '<p>Keine Plattformen ausgewählt</p>';
 
-      // Inhalte
+
       let contentTypesHtml = '';
       if (parseInt(getValue('story-slides', '0')) > 0) contentTypesHtml += `<li>Story-Slides: ${getValue('story-slides')}</li>`;
       if (parseInt(getValue('reels-tiktok', '0')) > 0) contentTypesHtml += `<li>Instagram Reels / TikTok Videos: ${getValue('reels-tiktok')}</li>`;
       if (parseInt(getValue('feed-posts', '0')) > 0) contentTypesHtml += `<li>Feed-Posts: ${getValue('feed-posts')}</li>`;
       if (parseInt(getValue('youtube-videos', '0')) > 0) contentTypesHtml += `<li>YouTube Videos: ${getValue('youtube-videos')}</li>`;
-      document.getElementById('preview-content-types').innerHTML = contentTypesHtml || '<li>Keine Inhalte spezifiziert</li>';
+      const previewContentTypesEl = document.getElementById('preview-content-types');
+      if (previewContentTypesEl) previewContentTypesEl.innerHTML = contentTypesHtml || '<li>Keine Inhalte spezifiziert</li>';
 
-      // Exklusivität
+
       const exclusivityValue = getValue('exklusiv');
       const previewExclusivityEl = document.getElementById('preview-exclusivity');
       if (previewExclusivityEl) {
         previewExclusivityEl.innerHTML = exclusivityValue ? `<p>Exklusivität: <strong>${exclusivityValue}</strong></p>` : '<p>Keine Exklusivität ausgewählt</p>';
       }
 
-      // Zusätzliche Informationen
       const extraInformationValue = getValue('extra-information');
       const previewExtraInfoEl = document.getElementById('preview-extra-information');
       if (previewExtraInfoEl) {
@@ -442,18 +460,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!dateString) return '';
     try {
         const date = new Date(dateString);
-        if (isNaN(date.getTime())) return dateString; // Return original if invalid
+        if (isNaN(date.getTime())) return dateString; 
         return date.toLocaleDateString('de-DE');
     } catch (e) {
-        return dateString; // Return original if error
+        return dateString; 
     }
   }
   
   // *** PDF-GENERIERUNG FUNKTIONEN ***
   const PAGE_MARGIN = 20;
   const CONTENT_START_Y = 30;
-  const PAGE_HEIGHT = 297; // A4 height in mm
-  const LINE_HEIGHT = 7; // Approximate line height
+  const PAGE_HEIGHT = 297; 
+  const LINE_HEIGHT = 7; 
 
   function checkAndAddPage(doc, currentY, spaceNeeded = LINE_HEIGHT * 2) {
       if (currentY + spaceNeeded > PAGE_HEIGHT - PAGE_MARGIN) {
@@ -478,7 +496,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const watermarkTextWidth = doc.getTextWidth(watermarkText);
       doc.text(watermarkText, pageWidth - watermarkTextWidth - 10, pageHeight - 10);
     }
-    doc.setTextColor(0); // Reset text color
+    doc.setTextColor(0); 
   }
 
   function addParagraphTitle(doc, title, y) {
@@ -494,23 +512,23 @@ document.addEventListener('DOMContentLoaded', function() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     let y = CONTENT_START_Y;
-    // y = checkAndAddPage(doc, y, LINE_HEIGHT * (tocEntries.length + 4)); // Removed, ToC is on its own page
 
     doc.text('Inhaltsverzeichnis', doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
     y += LINE_HEIGHT * 2;
 
     doc.setFontSize(11);
     tocEntries.forEach(para => {
-      y = checkAndAddPage(doc, y, LINE_HEIGHT); // Check if new page needed within ToC itself
+      y = checkAndAddPage(doc, y, LINE_HEIGHT); 
       doc.setFont("helvetica", "bold");
       doc.text(para.num, PAGE_MARGIN, y);
       doc.setFont("helvetica", "normal");
-      doc.text(para.title, PAGE_MARGIN + 15, y);
-      doc.text(para.page.toString(), doc.internal.pageSize.getWidth() - PAGE_MARGIN - 10, y, {align: 'right'});
+      doc.text(para.title, PAGE_MARGIN + 15, y); // Ensure enough space for para.num
+      const pageNumStr = para.page > 0 ? para.page.toString() : "-"; // Show '-' if page is 0
+      doc.text(pageNumStr, doc.internal.pageSize.getWidth() - PAGE_MARGIN - doc.getTextWidth(pageNumStr) -2 , y); // Align right
       y += LINE_HEIGHT * 1.2;
     });
-    doc.addPage(); // Add a new page after ToC for the main content
-    return CONTENT_START_Y; // Start Y for the next page (main content)
+    doc.addPage(); 
+    return CONTENT_START_Y; 
   }
 
   function addCoverPage(doc, data) {
@@ -548,20 +566,17 @@ document.addEventListener('DOMContentLoaded', function() {
     y += LINE_HEIGHT;
     doc.text(`PLZ: ${data.influencerZip}, Stadt: ${data.influencerCity}, Land: ${data.influencerCountry}`, PAGE_MARGIN + 5, y);
     
-    doc.addPage(); // Page for Table of Contents
+    doc.addPage(); 
     return CONTENT_START_Y;
   }
 
   function addSignatureFields(doc, city, y) {
-    // Check if enough space, if not, add a new page
     if (y > PAGE_HEIGHT - PAGE_MARGIN - (LINE_HEIGHT * 7)) { 
         doc.addPage();
         y = CONTENT_START_Y;
     } else {
-      // Ensure signatures are not too high if there's a lot of space
       y = Math.max(y, PAGE_HEIGHT - 80); 
     }
-
 
     const today = new Date();
     const formattedDate = today.toLocaleDateString('de-DE');
@@ -571,16 +586,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     doc.setFontSize(10);
 
-    // Ort und Datum für Unternehmen
     doc.text(`Ort: ${city}`, leftColumnX, y);
     doc.text(`Datum: ${formattedDate}`, leftColumnX, y + LINE_HEIGHT);
-    doc.line(leftColumnX, y + LINE_HEIGHT * 2.5, leftColumnX + signatureLineWidth, y + LINE_HEIGHT * 2.5); // Unterschriftslinie
+    doc.line(leftColumnX, y + LINE_HEIGHT * 2.5, leftColumnX + signatureLineWidth, y + LINE_HEIGHT * 2.5); 
     doc.text('[Unterschrift Unternehmen]', leftColumnX, y + LINE_HEIGHT * 3.5);
 
-    // Ort und Datum für Influencer (leer lassen für manuelle Eingabe)
     doc.text("Ort:________________________", rightColumnX, y);
     doc.text("Datum:_______________________", rightColumnX, y + LINE_HEIGHT);
-    doc.line(rightColumnX, y + LINE_HEIGHT * 2.5, rightColumnX + signatureLineWidth, y + LINE_HEIGHT * 2.5); // Unterschriftslinie
+    doc.line(rightColumnX, y + LINE_HEIGHT * 2.5, rightColumnX + signatureLineWidth, y + LINE_HEIGHT * 2.5); 
     doc.text('[Unterschrift Influencer]', rightColumnX, y + LINE_HEIGHT * 3.5);
     return y + LINE_HEIGHT * 4;
   }
@@ -588,39 +601,33 @@ document.addEventListener('DOMContentLoaded', function() {
   function renderCheckbox(doc, isChecked, text, x, y, currentY) {
     const boxSize = 3.5; 
     const textXOffset = boxSize + 2;
-    // currentY = checkAndAddPage(doc, currentY, LINE_HEIGHT); // Check page before rendering anything
 
     doc.setLineWidth(0.2);
-    doc.rect(x, currentY - boxSize + 1 , boxSize, boxSize); // Draw the box
+    doc.rect(x, currentY - boxSize + 1 , boxSize, boxSize); 
     if (isChecked) {
-      // Simple horizontal line for check, easier to render consistently
       doc.line(x + 0.5, currentY - boxSize/2 + 1, x + boxSize - 0.5, currentY - boxSize/2 + 1); 
     }
     const textLines = doc.splitTextToSize(text, doc.internal.pageSize.getWidth() - x - textXOffset - PAGE_MARGIN);
     doc.text(textLines, x + textXOffset, currentY);
-    return currentY + (textLines.length * LINE_HEIGHT * 0.8); // Return new Y position based on text lines
+    return currentY + (textLines.length * LINE_HEIGHT * 0.8); 
 }
 
 
   function generatePDF() {
     console.log('Starting PDF generation');
     try {
-      // Ensure jsPDF is loaded and use the correct constructor for v1.5.3
-      if (typeof window.jsPDF === 'undefined') { // Check for jsPDF (uppercase)
+      if (typeof window.jsPDF === 'undefined') { 
         alert('Die PDF-Bibliothek (jsPDF) konnte nicht geladen werden. Bitte stellen Sie sicher, dass die Bibliothek korrekt eingebunden ist und versuchen Sie es erneut.');
         console.error('jsPDF is not loaded on window');
         return;
       }
-      // For jsPDF v1.5.3, the constructor is typically window.jsPDF
-      const PDFCreator = window.jsPDF; // Assign the constructor
+      const PDFCreator = window.jsPDF; 
       
-      const doc = new PDFCreator(); // Use the assigned constructor
+      const doc = new PDFCreator(); 
       
-      let currentPage = 1; 
       let tocEntries = [];
       let y = CONTENT_START_Y;
 
-      // Helper to get value or default
       const getValue = (id, defaultValue = '') => {
         const el = document.getElementById(id);
         if (el && el.type === 'radio') {
@@ -647,8 +654,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return defaultValue;
       };
 
-
-      // Daten aus dem Formular extrahieren
       const data = {
         contractType: getValue('contract-type'),
         companyName: getValue('company-name', '[Name des Unternehmens]'),
@@ -710,11 +715,8 @@ document.addEventListener('DOMContentLoaded', function() {
         extraInformation: getValue('extra-information', '')
       };
       
-      // Deckblatt hinzufügen (Seite 1)
-      y = addCoverPage(doc, data); // Returns start Y for next page
-      currentPage = 2; 
-
-      // TOC Einträge initialisieren
+      y = addCoverPage(doc, data); 
+      
       tocEntries = [
             { num: "§1", title: "Vertragsgegenstand", page: 0 },
             { num: "§2", title: "Plattformen & Veröffentlichung", page: 0 },
@@ -730,13 +732,13 @@ document.addEventListener('DOMContentLoaded', function() {
             { num: "§12", title: "Schlussbestimmungen & Zus. Infos", page: 0 }
       ];
       
-      // Inhaltsverzeichnis hinzufügen (Seite 2)
+      // Add Table of Contents on page 2
+      // addTableOfContents function itself will call doc.addPage() after drawing the ToC.
+      // So, y returned will be CONTENT_START_Y for the *next* page (page 3).
       y = addTableOfContents(doc, tocEntries); 
-      // currentPage is now 3 (set by addTableOfContents implicitly by adding a page)
 
 
       // Vertragsinhalt - Seite 3 und folgende
-      // §1 Vertragsgegenstand
       tocEntries[0].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§1 Vertragsgegenstand", y);
@@ -754,7 +756,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       y += LINE_HEIGHT; 
 
-      // §2 Plattformen & Veröffentlichung
       tocEntries[1].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§2 Plattformen & Veröffentlichung", y);
@@ -793,7 +794,6 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!additionalAgreed) { doc.text("Keine zusätzlichen Vereinbarungen getroffen.", PAGE_MARGIN + 5, additionalY); additionalY += LINE_HEIGHT;}
       y = additionalY + LINE_HEIGHT; 
       
-      // §3 Nutzung für Werbung (Media Buyout)
       tocEntries[2].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§3 Nutzung für Werbung (Media Buyout)", y);
@@ -802,7 +802,7 @@ document.addEventListener('DOMContentLoaded', function() {
       let buyoutY = y;
       if (data.mediaBuyoutYes) {
         buyoutY = renderCheckbox(doc, true, "Ja", PAGE_MARGIN + 5, buyoutY, buyoutY);
-        buyoutY = checkAndAddPage(doc, buyoutY); // Check page before rendering channels
+        buyoutY = checkAndAddPage(doc, buyoutY); 
         doc.text("– Kanäle:", PAGE_MARGIN + 10, buyoutY); buyoutY += LINE_HEIGHT;
         let channelY = buyoutY;
         if(data.adInstagram) channelY = renderCheckbox(doc, true, "Instagram", PAGE_MARGIN + 15, channelY, channelY);
@@ -828,7 +828,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       y = buyoutY + LINE_HEIGHT;
 
-      // §4 Rechteübertragung
       tocEntries[3].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§4 Rechteübertragung", y);
@@ -842,7 +841,6 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(rightsLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * rightsLines.length + LINE_HEIGHT; 
 
-      // §5 Produktion & Freigabe
       tocEntries[4].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§5 Produktion & Freigabe", y);
@@ -857,7 +855,6 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(`Veröffentlichung: Die Veröffentlichung erfolgt am ${data.publicationDate || '[Datum nicht festgelegt]'}.`, PAGE_MARGIN, y);
       y += LINE_HEIGHT * 1.5;
       
-      // §6 Vergütung
       tocEntries[5].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§6 Vergütung", y);
@@ -875,7 +872,6 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text("Bei Nichterfüllung entfällt die Vergütungspflicht.", PAGE_MARGIN, y);
       y += LINE_HEIGHT * 1.5;
 
-      // §7 Qualität & Upload
       tocEntries[6].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§7 Qualität & Upload", y);
@@ -884,7 +880,6 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(qualityLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * qualityLines.length + LINE_HEIGHT;
 
-      // §8 Rechte Dritter & Musik
       tocEntries[7].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§8 Rechte Dritter & Musik", y);
@@ -893,7 +888,6 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(thirdPartyLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * thirdPartyLines.length + LINE_HEIGHT;
 
-      // §9 Werbekennzeichnung & Exklusivität
       tocEntries[8].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§9 Werbekennzeichnung & Exklusivität", y);
@@ -909,7 +903,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       y += LINE_HEIGHT * 1.5;
       
-      // §10 Verbindlichkeit Briefing & Skript
       tocEntries[9].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§10 Verbindlichkeit Briefing & Skript", y);
@@ -918,7 +911,6 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(briefingLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * briefingLines.length + LINE_HEIGHT;
 
-      // §11 Datenschutz & Vertraulichkeit
       tocEntries[10].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§11 Datenschutz & Vertraulichkeit", y);
@@ -927,7 +919,6 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(privacyLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * privacyLines.length + LINE_HEIGHT;
       
-      // §12 Schlussbestimmungen & Zusätzliche Informationen
       tocEntries[11].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§12 Schlussbestimmungen & Zusätzliche Informationen", y);
@@ -949,23 +940,16 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       y += LINE_HEIGHT;
 
-
-      // Unterschriftsfelder hinzufügen
       y = addSignatureFields(doc, data.companyCity || '[Stadt nicht festgelegt]', y);
 
-      // Inhaltsverzeichnis mit korrekten Seitenzahlen neu erstellen
       const endPage = doc.internal.getNumberOfPages();
       doc.setPage(2); 
       addTableOfContents(doc, tocEntries); 
-      if (endPage > 2) { // Nur zur letzten Seite gehen, wenn mehr als TOC und Cover existieren
+      if (endPage > 2) { 
           doc.setPage(endPage); 
       }
 
-
-      // Wasserzeichen hinzufügen
       addWatermark(doc);
-
-      // PDF speichern
       doc.save('influencer-marketing-vertrag-korrigiert.pdf');
       console.log('PDF saved successfully');
 
@@ -978,10 +962,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Generieren-Button
   const generateButton = document.getElementById('generate-contract');
   if (generateButton) {
     generateButton.addEventListener('click', function() {
+      // Check if jsPDF is loaded before attempting to generate
+      if (typeof window.jsPDF === 'undefined') {
+          alert('Die PDF-Bibliothek (jsPDF) ist nicht geladen. PDF kann nicht generiert werden. Bitte laden Sie die Seite neu oder kontaktieren Sie den Support.');
+          return;
+      }
+
       let firstInvalidStep = -1;
       for (let i = 1; i <= (progressSteps.length || 9) ; i++) {
         const stepSection = document.getElementById(`step-${i}`);
