@@ -494,14 +494,14 @@ document.addEventListener('DOMContentLoaded', function() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     let y = CONTENT_START_Y;
-    y = checkAndAddPage(doc, y, LINE_HEIGHT * (tocEntries.length + 4));
+    // y = checkAndAddPage(doc, y, LINE_HEIGHT * (tocEntries.length + 4)); // Removed, ToC is on its own page
 
     doc.text('Inhaltsverzeichnis', doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
     y += LINE_HEIGHT * 2;
 
     doc.setFontSize(11);
     tocEntries.forEach(para => {
-      y = checkAndAddPage(doc, y, LINE_HEIGHT);
+      y = checkAndAddPage(doc, y, LINE_HEIGHT); // Check if new page needed within ToC itself
       doc.setFont("helvetica", "bold");
       doc.text(para.num, PAGE_MARGIN, y);
       doc.setFont("helvetica", "normal");
@@ -509,8 +509,8 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(para.page.toString(), doc.internal.pageSize.getWidth() - PAGE_MARGIN - 10, y, {align: 'right'});
       y += LINE_HEIGHT * 1.2;
     });
-    // doc.addPage(); // Removed, as the main content will start on this page or a new one if needed
-    return CONTENT_START_Y; // Start Y for the next page (or current if space)
+    doc.addPage(); // Add a new page after ToC for the main content
+    return CONTENT_START_Y; // Start Y for the next page (main content)
   }
 
   function addCoverPage(doc, data) {
@@ -553,12 +553,13 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function addSignatureFields(doc, city, y) {
-    y = checkAndAddPage(doc, y, LINE_HEIGHT * 7); // Ensure enough space for signatures
-    if (y < PAGE_HEIGHT - 80) { 
-        y = PAGE_HEIGHT - 80; // Push to bottom if not enough space, but ensure it's on the page
-    } else if (y > PAGE_HEIGHT - PAGE_MARGIN - LINE_HEIGHT * 7) { // If it would overflow, add new page
+    // Check if enough space, if not, add a new page
+    if (y > PAGE_HEIGHT - PAGE_MARGIN - (LINE_HEIGHT * 7)) { 
         doc.addPage();
         y = CONTENT_START_Y;
+    } else {
+      // Ensure signatures are not too high if there's a lot of space
+      y = Math.max(y, PAGE_HEIGHT - 80); 
     }
 
 
@@ -604,16 +605,18 @@ document.addEventListener('DOMContentLoaded', function() {
   function generatePDF() {
     console.log('Starting PDF generation');
     try {
-      // Ensure jsPDF is loaded
-      if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+      // Ensure jsPDF is loaded and use the correct constructor for v1.5.3
+      if (typeof window.jsPDF === 'undefined') { // Check for jsPDF (uppercase)
         alert('Die PDF-Bibliothek (jsPDF) konnte nicht geladen werden. Bitte stellen Sie sicher, dass die Bibliothek korrekt eingebunden ist und versuchen Sie es erneut.');
-        console.error('jsPDF is not loaded on window.jspdf');
+        console.error('jsPDF is not loaded on window');
         return;
       }
-      const { jsPDF } = window.jspdf;
+      // For jsPDF v1.5.3, the constructor is typically window.jsPDF
+      const PDFCreator = window.jsPDF; // Assign the constructor
       
-      const doc = new jsPDF();
-      let currentPage = 1; // Start with cover page as page 1
+      const doc = new PDFCreator(); // Use the assigned constructor
+      
+      let currentPage = 1; 
       let tocEntries = [];
       let y = CONTENT_START_Y;
 
@@ -630,10 +633,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       const getSelectedRadioValue = (name, defaultValue = '') => {
         const selectedRadio = document.querySelector(`input[name="${name}"]:checked`);
-        // Ensure the value is extracted, not the placeholder from the label
         if (selectedRadio) {
-            // Example: if id is "duration-3", value might be "3 Monate"
-            // This part needs to be robust based on how values are set in HTML
             if (selectedRadio.id.startsWith('duration-')) {
                 const val = selectedRadio.id.split('-')[1];
                 if (val === 'unlimited') return 'Unbegrenzt';
@@ -642,7 +642,7 @@ document.addEventListener('DOMContentLoaded', function() {
              if (selectedRadio.id.startsWith('term-')) {
                 return `${selectedRadio.id.split('-')[1]} Tage`;
             }
-            return selectedRadio.value || defaultValue; // Fallback to element's value attribute
+            return selectedRadio.value || defaultValue; 
         }
         return defaultValue;
       };
@@ -731,10 +731,8 @@ document.addEventListener('DOMContentLoaded', function() {
       ];
       
       // Inhaltsverzeichnis hinzufügen (Seite 2)
-      // Die Funktion addTableOfContents fügt selbst eine neue Seite hinzu, wenn sie aufgerufen wird.
-      // Sie sollte das y für den Start des Inhalts auf der *neuen* Seite zurückgeben.
       y = addTableOfContents(doc, tocEntries); 
-      currentPage = 3; // Inhalt beginnt auf Seite 3
+      // currentPage is now 3 (set by addTableOfContents implicitly by adding a page)
 
 
       // Vertragsinhalt - Seite 3 und folgende
@@ -743,7 +741,7 @@ document.addEventListener('DOMContentLoaded', function() {
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§1 Vertragsgegenstand", y);
       doc.text("Der Influencer verpflichtet sich zur Erstellung und Veröffentlichung werblicher Inhalte zugunsten des Unternehmens bzw. einer vom Unternehmen vertretenen Marke.", PAGE_MARGIN, y, { maxWidth: doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN });
-      y += LINE_HEIGHT * 1.5; // Increased spacing
+      y += LINE_HEIGHT * 1.5; 
       y = checkAndAddPage(doc, y);
       if (data.contractType === 'client') {
         const clientDetails = `Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden: ${data.clientName || '[Kundenname fehlt]'} (${data.clientStreet || '[Straße fehlt]'} ${data.clientNumber || '[Nr. fehlt]'}, ${data.clientZip || '[PLZ fehlt]'} ${data.clientCity || '[Stadt fehlt]'}, ${data.clientCountry || '[Land fehlt]'}). Alle Leistungen erfolgen im Namen und auf Rechnung des Unternehmens.`;
@@ -754,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
         doc.text("Das Unternehmen handelt im eigenen Namen und auf eigene Rechnung.", PAGE_MARGIN, y);
         y += LINE_HEIGHT;
       }
-      y += LINE_HEIGHT; // Extra space
+      y += LINE_HEIGHT; 
 
       // §2 Plattformen & Veröffentlichung
       tocEntries[1].page = doc.internal.getNumberOfPages();
@@ -762,7 +760,7 @@ document.addEventListener('DOMContentLoaded', function() {
       y = addParagraphTitle(doc, "§2 Plattformen & Veröffentlichung", y);
       doc.text("Die Veröffentlichung der Inhalte erfolgt auf folgenden Plattformen:", PAGE_MARGIN, y);
       y += LINE_HEIGHT * 0.8;
-      let platformY = y; // Start Y for this block of checkboxes
+      let platformY = y; 
       if (data.instagramSelected) platformY = renderCheckbox(doc, true, `Instagram - Profil: ${data.instagramUsername || '[nicht angegeben]'}`, PAGE_MARGIN + 5, platformY, platformY);
       if (data.tiktokSelected)    platformY = renderCheckbox(doc, true, `TikTok - Profil: ${data.tiktokUsername || '[nicht angegeben]'}`, PAGE_MARGIN + 5, platformY, platformY);
       if (data.youtubeSelected)   platformY = renderCheckbox(doc, true, `YouTube - Kanal: ${data.youtubeUrl || '[nicht angegeben]'}`, PAGE_MARGIN + 5, platformY, platformY);
@@ -771,7 +769,7 @@ document.addEventListener('DOMContentLoaded', function() {
           doc.text("Keine Plattformen ausgewählt.", PAGE_MARGIN + 5, platformY);
           platformY += LINE_HEIGHT;
       }
-      y = platformY + LINE_HEIGHT * 0.5; // Update main y after checkbox block
+      y = platformY + LINE_HEIGHT * 0.5; 
       
       y = checkAndAddPage(doc, y);
       doc.text("Folgende Inhalte werden erstellt und veröffentlicht:", PAGE_MARGIN, y);
@@ -804,6 +802,7 @@ document.addEventListener('DOMContentLoaded', function() {
       let buyoutY = y;
       if (data.mediaBuyoutYes) {
         buyoutY = renderCheckbox(doc, true, "Ja", PAGE_MARGIN + 5, buyoutY, buyoutY);
+        buyoutY = checkAndAddPage(doc, buyoutY); // Check page before rendering channels
         doc.text("– Kanäle:", PAGE_MARGIN + 10, buyoutY); buyoutY += LINE_HEIGHT;
         let channelY = buyoutY;
         if(data.adInstagram) channelY = renderCheckbox(doc, true, "Instagram", PAGE_MARGIN + 15, channelY, channelY);
@@ -955,11 +954,13 @@ document.addEventListener('DOMContentLoaded', function() {
       y = addSignatureFields(doc, data.companyCity || '[Stadt nicht festgelegt]', y);
 
       // Inhaltsverzeichnis mit korrekten Seitenzahlen neu erstellen
-      // Speichere die aktuelle Seite, gehe zu Seite 2, zeichne TOC, dann zurück
       const endPage = doc.internal.getNumberOfPages();
       doc.setPage(2); 
       addTableOfContents(doc, tocEntries); 
-      doc.setPage(endPage); // Gehe zurück zur letzten Seite, auf der der Inhalt endete
+      if (endPage > 2) { // Nur zur letzten Seite gehen, wenn mehr als TOC und Cover existieren
+          doc.setPage(endPage); 
+      }
+
 
       // Wasserzeichen hinzufügen
       addWatermark(doc);
@@ -1009,7 +1010,6 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('Vertrag wird generiert...');
       try {
         generatePDF();
-        // showSuccessAnimation(); // Animation should be shown after successful PDF generation inside generatePDF
       } catch (error) {
         console.error("Fehler bei der PDF-Generierung:", error);
         alert('Bei der Generierung des Vertrags ist ein Fehler aufgetreten: ' + error.message);
