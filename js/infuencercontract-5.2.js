@@ -277,7 +277,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return el ? el.checked : false;
       };
 
-      // Ensure all preview elements exist before trying to set their textContent/innerHTML
       const setPreviewText = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
@@ -320,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (isChecked('platform-instagram')) platformsHtml += `<p>✓ Instagram (Profil: ${getValue('instagram-username', '[@nutzername]')})</p>`;
       if (isChecked('platform-tiktok')) platformsHtml += `<p>✓ TikTok (Profil: ${getValue('tiktok-username', '[@nutzername]')})</p>`;
       if (isChecked('platform-youtube')) platformsHtml += `<p>✓ YouTube (Kanal: ${getValue('youtube-url', '[URL]')})</p>`;
-      if (isChecked('platform-other')) platformsHtml += `<p>✓ Sonstiges: ${getValue('other-platform', '[Frei eintragen]')}</p>`; // Korrigierter Klammerfehler
+      if (isChecked('platform-other')) platformsHtml += `<p>✓ Sonstiges: ${getValue('other-platform', '[Frei eintragen]')}</p>`;
       setPreviewHTML('preview-platforms', platformsHtml || '<p>Keine Plattformen ausgewählt</p>');
 
       let contentTypesHtml = '';
@@ -367,11 +366,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  const PAGE_MARGIN = 20;
-  const CONTENT_START_Y = 30;
-  const PAGE_HEIGHT = 297; 
-  const LINE_HEIGHT = 6; // Slightly reduced for tighter packing
-  const PARAGRAPH_SPACING = 4;
+  const PAGE_MARGIN = 20; // mm
+  const CONTENT_START_Y = 30; // mm
+  const PAGE_HEIGHT = 297; // mm (A4)
+  const PAGE_WIDTH = 210; // mm (A4)
+  const LINE_HEIGHT = 6; // mm
+  const PARAGRAPH_SPACING = 4; // mm
 
   function checkAndAddPage(doc, currentY, spaceNeeded = LINE_HEIGHT * 2) {
       if (currentY + spaceNeeded > PAGE_HEIGHT - PAGE_MARGIN) {
@@ -388,14 +388,12 @@ document.addEventListener('DOMContentLoaded', function() {
     doc.setTextColor(150); 
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
-      const pageSize = doc.internal.pageSize;
-      const pageWidth = pageSize.width ? pageSize.width : pageSize.getWidth();
-      const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
       const watermarkText = 'Created with creatorjobs.com';
       const watermarkTextWidth = doc.getTextWidth(watermarkText);
-      doc.text(watermarkText, pageWidth - watermarkTextWidth - 10, pageHeight - 10);
+      doc.text(watermarkText, PAGE_WIDTH - watermarkTextWidth - 10, PAGE_HEIGHT - 10);
     }
     doc.setTextColor(0); 
+    doc.setFont('helvetica', 'normal'); // Ensure font is reset
   }
 
   function addParagraphTitle(doc, title, y) {
@@ -411,21 +409,23 @@ document.addEventListener('DOMContentLoaded', function() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     let y = CONTENT_START_Y;
-    doc.text('Inhaltsverzeichnis', doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
+    doc.text('Inhaltsverzeichnis', PAGE_WIDTH / 2, y, { align: 'center' });
     y += LINE_HEIGHT * 2;
-    doc.setFontSize(10); // Slightly smaller for ToC items
+    doc.setFontSize(10); 
     tocEntries.forEach(para => {
       y = checkAndAddPage(doc, y, LINE_HEIGHT); 
-      const numberWidth = doc.getTextWidth(para.num) + 2;
+      const numberWidth = doc.getTextWidth(para.num) + 3; // Increased space for number
       doc.setFont("helvetica", "bold");
-      doc.text(para.num, PAGE_MARGIN, y);
+      doc.text(para.num, PAGE_MARGIN, y, { baseline: 'top' }); // Align text baseline
       doc.setFont("helvetica", "normal");
-      const titleWidth = doc.internal.pageSize.getWidth() - PAGE_MARGIN * 2 - numberWidth - 15; // 15 for page num space
+      const titleWidth = PAGE_WIDTH - (PAGE_MARGIN * 2) - numberWidth - 20; // Space for page number
       const titleLines = doc.splitTextToSize(para.title, titleWidth);
-      doc.text(titleLines, PAGE_MARGIN + numberWidth, y);
+      doc.text(titleLines, PAGE_MARGIN + numberWidth, y, { baseline: 'top' });
       
       const pageNumStr = para.page > 0 ? para.page.toString() : "-"; 
-      doc.text(pageNumStr, doc.internal.pageSize.getWidth() - PAGE_MARGIN - doc.getTextWidth(pageNumStr) - 2 , y);
+      // Ensure page number doesn't get a line through it by careful y-positioning and font reset
+      doc.setFont("helvetica", "normal"); // Reset font before page number
+      doc.text(pageNumStr, PAGE_WIDTH - PAGE_MARGIN - doc.getTextWidth(pageNumStr) , y, { baseline: 'top' });
       y += (LINE_HEIGHT * titleLines.length) + (PARAGRAPH_SPACING / 2);
     });
     doc.addPage(); 
@@ -433,15 +433,15 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function addCoverPage(doc, data) {
-    let y = 70; // Start a bit higher
+    let y = 70; 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
-    doc.text('INFLUENCER-MARKETING-VERTRAG', doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
+    doc.text('INFLUENCER-MARKETING-VERTRAG', PAGE_WIDTH / 2, y, { align: 'center' });
     y += 20;
     doc.setFontSize(14);
-    doc.text('Vertragspartner', doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
+    doc.text('Vertragspartner', PAGE_WIDTH / 2, y, { align: 'center' });
     y += 25;
-    doc.setFontSize(11); // Smaller for details
+    doc.setFontSize(11); 
     doc.setFont("helvetica", "bold");
     doc.text('Unternehmen (Auftraggeber):', PAGE_MARGIN, y);
     y += LINE_HEIGHT * 1.5;
@@ -467,14 +467,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (y > PAGE_HEIGHT - PAGE_MARGIN - signatureBlockHeight) { 
         doc.addPage();
         y = CONTENT_START_Y;
-    } else if (y < PAGE_HEIGHT - 90) { // Don't let signatures float too high
+    } else if (y < PAGE_HEIGHT - 90) { 
       y = PAGE_HEIGHT - 90; 
     }
 
     const today = new Date();
     const formattedDate = today.toLocaleDateString('de-DE');
     const leftColumnX = PAGE_MARGIN;
-    const rightColumnX = doc.internal.pageSize.getWidth() / 2 + 10;
+    const rightColumnX = PAGE_WIDTH / 2 + 10;
     const signatureLineWidth = 70;
 
     doc.setFontSize(10);
@@ -495,22 +495,25 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentY = currentYVal;
     const boxSize = 3.5; 
     const textXOffset = boxSize + 2;
-    const textMaxWidth = doc.internal.pageSize.getWidth() - x - textXOffset - PAGE_MARGIN;
+    const textMaxWidth = PAGE_WIDTH - x - textXOffset - PAGE_MARGIN;
     
     const textLines = doc.splitTextToSize(text, textMaxWidth);
-    const neededHeight = (textLines.length * LINE_HEIGHT * 0.8) + (boxSize > LINE_HEIGHT * 0.8 ? boxSize - (LINE_HEIGHT*0.8) : 0) ; // Estimate height needed for this item
+    // Estimate height needed for this item, considering the box might be taller than a single line of text
+    const neededHeight = Math.max(boxSize, textLines.length * LINE_HEIGHT * 0.8) + PARAGRAPH_SPACING / 2;
 
-    currentY = checkAndAddPage(doc, currentY, neededHeight + PARAGRAPH_SPACING / 2); // Check page with estimated height
+    currentY = checkAndAddPage(doc, currentY, neededHeight); 
 
     doc.setLineWidth(0.2);
-    const boxY = currentY - boxSize + (LINE_HEIGHT * 0.8 / 2); // Center box vertically with first line of text
+    // Adjust boxY to align with the first line of text, or center if box is taller
+    const boxY = currentY + ( (textLines.length * LINE_HEIGHT * 0.8 / 2) - (boxSize / 2) ) ; 
     doc.rect(x, boxY , boxSize, boxSize); 
     if (isChecked) {
-      doc.setFont("zapfdingbats"); // Use a standard symbol font
-      doc.text("4", x + boxSize/2 - 0.7, currentY +0.5 ); // "4" in ZapfDingbats is a checkmark, adjust position
-      doc.setFont("helvetica"); // Reset font
+      doc.setFont("zapfdingbats"); 
+      // Adjust checkmark position to be centered in the box
+      doc.text("4", x + boxSize/2 - doc.getTextWidth("4")/2 , boxY + boxSize/2 + 1 ); // "4" in ZapfDingbats is a checkmark
+      doc.setFont("helvetica"); 
     }
-    doc.text(textLines, x + textXOffset, currentY);
+    doc.text(textLines, x + textXOffset, currentY); // Text starts at currentY (top of its block)
     return currentY + (textLines.length * LINE_HEIGHT * 0.8) + PARAGRAPH_SPACING / 2; 
 }
 
@@ -523,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       const PDFCreator = window.jsPDF; 
-      const doc = new PDFCreator({unit: 'mm', format: 'a4'}); // Use mm for easier A4 calculations
+      const doc = new PDFCreator({unit: 'mm', format: 'a4'}); 
       
       let tocEntries = [];
       let y = CONTENT_START_Y;
@@ -615,39 +618,39 @@ document.addEventListener('DOMContentLoaded', function() {
         extraInformation: getValue('extra-information', '')
       };
       
-      y = addCoverPage(doc, data); // Page 1: Cover, returns start Y for page 2
+      y = addCoverPage(doc, data); 
       
       tocEntries = [
             { num: "§1", title: "Vertragsgegenstand", page: 0 },
             { num: "§2", title: "Plattformen & Veröffentlichung", page: 0 },
             { num: "§3", title: "Nutzung für Werbung (Media Buyout)", page: 0 },
             { num: "§4", title: "Rechteübertragung", page: 0 },
-            { num: "§5", title: "Produktion & Freigabe", page: 0 },
+            // ** Änderung hier: Titel angepasst **
+            { num: "§5", title: "Produktion, Freigabe & Exklusivität", page: 0 },
             { num: "§6", title: "Vergütung", page: 0 },
             { num: "§7", title: "Qualität & Upload", page: 0 },
             { num: "§8", title: "Rechte Dritter & Musik", page: 0 },
-            { num: "§9", title: "Werbekennzeichnung & Exklusivität", page: 0 },
+            // ** Änderung hier: Titel angepasst **
+            { num: "§9", title: "Werbekennzeichnung", page: 0 },
             { num: "§10", title: "Verbindlichkeit Briefing & Skript", page: 0 },
             { num: "§11", title: "Datenschutz & Vertraulichkeit", page: 0 },
             { num: "§12", title: "Schlussbestimmungen & Zus. Infos", page: 0 }
       ];
       
-      // Add Table of Contents on page 2, returns start Y for page 3
       y = addTableOfContents(doc, tocEntries); 
 
-      // Vertragsinhalt - Seite 3 und folgende
+      // §1 Vertragsgegenstand
       tocEntries[0].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§1 Vertragsgegenstand", y);
       const p1Text = "Der Influencer verpflichtet sich zur Erstellung und Veröffentlichung werblicher Inhalte zugunsten des Unternehmens bzw. einer vom Unternehmen vertretenen Marke.";
-      const p1Lines = doc.splitTextToSize(p1Text, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      const p1Lines = doc.splitTextToSize(p1Text, PAGE_WIDTH - 2 * PAGE_MARGIN);
       doc.text(p1Lines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * p1Lines.length + PARAGRAPH_SPACING;
-      
       y = checkAndAddPage(doc, y);
       if (data.contractType === 'client') {
         const clientDetails = `Das Unternehmen handelt dabei als bevollmächtigte Agentur des Kunden: ${data.clientName || '[Kundenname fehlt]'} (${data.clientStreet || '[Straße fehlt]'} ${data.clientNumber || '[Nr. fehlt]'}, ${data.clientZip || '[PLZ fehlt]'} ${data.clientCity || '[Stadt fehlt]'}, ${data.clientCountry || '[Land fehlt]'}). Alle Leistungen erfolgen im Namen und auf Rechnung des Unternehmens.`;
-        const clientLines = doc.splitTextToSize(clientDetails, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+        const clientLines = doc.splitTextToSize(clientDetails, PAGE_WIDTH - 2 * PAGE_MARGIN);
         doc.text(clientLines, PAGE_MARGIN, y);
         y += LINE_HEIGHT * clientLines.length;
       } else {
@@ -656,6 +659,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       y += PARAGRAPH_SPACING * 2; 
 
+      // §2 Plattformen & Veröffentlichung
       tocEntries[1].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§2 Plattformen & Veröffentlichung", y);
@@ -671,7 +675,6 @@ document.addEventListener('DOMContentLoaded', function() {
           platformY += LINE_HEIGHT;
       }
       y = platformY + PARAGRAPH_SPACING;
-      
       y = checkAndAddPage(doc, y);
       doc.text("Folgende Inhalte werden erstellt und veröffentlicht:", PAGE_MARGIN, y);
       y += LINE_HEIGHT;
@@ -683,7 +686,6 @@ document.addEventListener('DOMContentLoaded', function() {
       if (parseInt(data.youtubeVideos) > 0) { doc.text(`• YouTube Video: ${data.youtubeVideos}`, itemIndent, y); y += LINE_HEIGHT; contentSpecified = true;}
       if (!contentSpecified) { doc.text("Keine spezifischen Inhalte vereinbart.", itemIndent, y); y += LINE_HEIGHT;}
       y += PARAGRAPH_SPACING;
-
       y = checkAndAddPage(doc, y);
       doc.text("Zusätzlich wird vereinbart:", PAGE_MARGIN, y);
       y += LINE_HEIGHT;
@@ -695,6 +697,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!additionalAgreed) { doc.text("Keine zusätzlichen Vereinbarungen getroffen.", itemIndent, additionalY); additionalY += LINE_HEIGHT;}
       y = additionalY + PARAGRAPH_SPACING * 2; 
       
+      // §3 Nutzung für Werbung (Media Buyout)
       tocEntries[2].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§3 Nutzung für Werbung (Media Buyout)", y);
@@ -711,15 +714,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if(data.adTiktok) channelY = renderCheckbox(doc, true, "TikTok", PAGE_MARGIN + 15, channelY, channelY);
         if(data.adOther) channelY = renderCheckbox(doc, true, "Sonstiges", PAGE_MARGIN + 15, channelY, channelY);
         buyoutY = channelY; 
-        
         buyoutY = checkAndAddPage(doc, buyoutY);
         doc.text("– Whitelisting (Meta):", PAGE_MARGIN + 10, buyoutY); 
         buyoutY = renderCheckbox(doc, data.whitelisting, "Ja", PAGE_MARGIN + 55, buyoutY, buyoutY); 
-        
         buyoutY = checkAndAddPage(doc, buyoutY);
         doc.text("– Spark Ad (TikTok):", PAGE_MARGIN + 10, buyoutY); 
         buyoutY = renderCheckbox(doc, data.sparkAd, "Ja", PAGE_MARGIN + 55, buyoutY, buyoutY);
-        
         buyoutY = checkAndAddPage(doc, buyoutY);
         doc.text(`– Nutzungsdauer: ${data.usageDuration || '[Nicht spezifiziert]'}`, PAGE_MARGIN + 10, buyoutY); 
         buyoutY += LINE_HEIGHT;
@@ -729,6 +729,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       y = buyoutY + PARAGRAPH_SPACING * 2;
 
+      // §4 Rechteübertragung
       tocEntries[3].page = doc.internal.getNumberOfPages();
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§4 Rechteübertragung", y);
@@ -738,13 +739,14 @@ document.addEventListener('DOMContentLoaded', function() {
       } else {
           rightsText = "Da keine Zustimmung zur Nutzung für Werbung erteilt wurde (§3), erfolgt keine erweiterte Rechteübertragung. Die Inhalte verbleiben beim Influencer.";
       }
-      const rightsLines = doc.splitTextToSize(rightsText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      const rightsLines = doc.splitTextToSize(rightsText, PAGE_WIDTH - 2 * PAGE_MARGIN);
       doc.text(rightsLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * rightsLines.length + PARAGRAPH_SPACING * 2; 
 
-      tocEntries[4].page = doc.internal.getNumberOfPages();
+      // §5 Produktion, Freigabe & Exklusivität
+      tocEntries[4].page = doc.internal.getNumberOfPages(); // Index 4 for §5
       y = checkAndAddPage(doc, y);
-      y = addParagraphTitle(doc, "§5 Produktion & Freigabe", y);
+      y = addParagraphTitle(doc, "§5 Produktion, Freigabe & Exklusivität", y); // ** Titel angepasst **
       doc.text(`Briefing: Das Briefing wird vom Unternehmen bis ${data.briefingDate || '[Datum nicht festgelegt]'} bereitgestellt.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
       y = checkAndAddPage(doc,y);
       doc.text(`Skript: Sofern vereinbart, erstellt der Influencer ein Skript und übermittelt es zur Freigabe bis ${data.scriptDate || '[Datum nicht festgelegt]'} / ${data.scriptTime || '[Uhrzeit nicht festgelegt]'}.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
@@ -754,9 +756,24 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(`Lieferung: Die Lieferung der finalen Inhalte erfolgt bis ${data.deliveryDate || '[Datum nicht festgelegt]'} / ${data.deliveryTime || '[Uhrzeit nicht festgelegt]'}.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
       y = checkAndAddPage(doc,y);
       doc.text(`Veröffentlichung: Die Veröffentlichung erfolgt am ${data.publicationDate || '[Datum nicht festgelegt]'}.`, PAGE_MARGIN, y);
+      y += LINE_HEIGHT; // Space before exclusivity
+      // ** NEU: Exklusivität hier eingefügt **
+      y = checkAndAddPage(doc,y);
+      if (data.exclusivity) {
+        doc.setFont("helvetica", "bold"); // Make title bold
+        doc.text("Exklusivität:", PAGE_MARGIN, y); y += LINE_HEIGHT;
+        doc.setFont("helvetica", "normal");
+        const exclusivityLines = doc.splitTextToSize(data.exclusivity, PAGE_WIDTH - 2 * PAGE_MARGIN - 5); // Indent text slightly
+        doc.text(exclusivityLines, PAGE_MARGIN + 5, y);
+        y += LINE_HEIGHT * exclusivityLines.length;
+      } else {
+        doc.text("Es wurde keine spezifische Exklusivitätsvereinbarung getroffen.", PAGE_MARGIN, y);
+        y += LINE_HEIGHT;
+      }
       y += PARAGRAPH_SPACING * 2;
       
-      tocEntries[5].page = doc.internal.getNumberOfPages();
+      // §6 Vergütung
+      tocEntries[5].page = doc.internal.getNumberOfPages(); // Index 5 for §6
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§6 Vergütung", y);
       doc.text(`Die Nettovergütung beträgt ${data.compensation || '[Betrag nicht festgelegt]'} €.`, PAGE_MARGIN, y); y += LINE_HEIGHT;
@@ -773,58 +790,58 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text("Bei Nichterfüllung entfällt die Vergütungspflicht.", PAGE_MARGIN, y);
       y += PARAGRAPH_SPACING * 2;
 
-      tocEntries[6].page = doc.internal.getNumberOfPages();
+      // §7 Qualität & Upload
+      tocEntries[6].page = doc.internal.getNumberOfPages(); // Index 6 for §7
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§7 Qualität & Upload", y);
       const qualityText = "Die Inhalte sind in hochwertiger Bild- und Tonqualität zu erstellen. Untertitel und Grafiken sind korrekt zu platzieren. Der Upload erfolgt ausschließlich via Drive, WeTransfer oder E-Mail (kein Messenger). Dateibenennung: [Unternehmen_Creator_VideoX_VersionY]";
-      const qualityLines = doc.splitTextToSize(qualityText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      const qualityLines = doc.splitTextToSize(qualityText, PAGE_WIDTH - 2 * PAGE_MARGIN);
       doc.text(qualityLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * qualityLines.length + PARAGRAPH_SPACING * 2;
 
-      tocEntries[7].page = doc.internal.getNumberOfPages();
+      // §8 Rechte Dritter & Musik
+      tocEntries[7].page = doc.internal.getNumberOfPages(); // Index 7 for §8
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§8 Rechte Dritter & Musik", y);
       const thirdPartyText = "Der Influencer darf keine fremden Marken, Logos oder Namen ohne Zustimmung verwenden. Persönlichkeitsrechte Dritter dürfen nicht verletzt werden. Bei Nutzung lizenzfreier Musik ist die Quelle anzugeben. Für alle Verstöße haftet der Influencer.";
-      const thirdPartyLines = doc.splitTextToSize(thirdPartyText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      const thirdPartyLines = doc.splitTextToSize(thirdPartyText, PAGE_WIDTH - 2 * PAGE_MARGIN);
       doc.text(thirdPartyLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * thirdPartyLines.length + PARAGRAPH_SPACING * 2;
 
-      tocEntries[8].page = doc.internal.getNumberOfPages();
+      // §9 Werbekennzeichnung
+      tocEntries[8].page = doc.internal.getNumberOfPages(); // Index 8 for §9
       y = checkAndAddPage(doc, y);
-      y = addParagraphTitle(doc, "§9 Werbekennzeichnung & Exklusivität", y);
+      y = addParagraphTitle(doc, "§9 Werbekennzeichnung", y); // ** Titel angepasst **
       const adText = 'Der Influencer verpflichtet sich zur ordnungsgemäßen Werbekennzeichnung ("Werbung" / "Anzeige"). Bei einem Verstoß dagegen, haftet der Influencer für die entstandenen Schäden.';
-      const adLines = doc.splitTextToSize(adText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      const adLines = doc.splitTextToSize(adText, PAGE_WIDTH - 2 * PAGE_MARGIN);
       doc.text(adLines, PAGE_MARGIN, y);
-      y += LINE_HEIGHT * adLines.length + PARAGRAPH_SPACING;
-      y = checkAndAddPage(doc,y);
-      if (data.exclusivity) {
-        doc.text(`Exklusivität: ${data.exclusivity}`, PAGE_MARGIN, y);
-      } else {
-        doc.text("Es wurde keine spezifische Exklusivitätsvereinbarung getroffen.", PAGE_MARGIN, y);
-      }
-      y += PARAGRAPH_SPACING * 2;
+      // ** Exklusivität wurde hier entfernt **
+      y += LINE_HEIGHT * adLines.length + PARAGRAPH_SPACING * 2;
       
-      tocEntries[9].page = doc.internal.getNumberOfPages();
+      // §10 Verbindlichkeit Briefing & Skript
+      tocEntries[9].page = doc.internal.getNumberOfPages(); // Index 9 for §10
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§10 Verbindlichkeit Briefing & Skript", y);
       const briefingText = "Der Influencer verpflichtet sich, die im Briefing festgelegten Do's and Don'ts sowie alle sonstigen schriftlichen Vorgaben und das ggf. freigegebene Skript vollständig einzuhalten. Bei Verstoß kann das Unternehmen: 1. Nachbesserung verlangen, 2. eine Neuproduktion auf eigene Kosten fordern, 3. bei wiederholtem Verstoß vom Vertrag zurücktreten. Vergütung entfällt bei Nichterfüllung.";
-      const briefingLines = doc.splitTextToSize(briefingText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      const briefingLines = doc.splitTextToSize(briefingText, PAGE_WIDTH - 2 * PAGE_MARGIN);
       doc.text(briefingLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * briefingLines.length + PARAGRAPH_SPACING * 2;
 
-      tocEntries[10].page = doc.internal.getNumberOfPages();
+      // §11 Datenschutz & Vertraulichkeit
+      tocEntries[10].page = doc.internal.getNumberOfPages(); // Index 10 for §11
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§11 Datenschutz & Vertraulichkeit", y);
       const privacyText = "Beide Parteien verpflichten sich zur Einhaltung der DSGVO. Daten werden ausschließlich zur Vertragserfüllung genutzt. Vertraulichkeit gilt auch über das Vertragsende hinaus.";
-      const privacyLines = doc.splitTextToSize(privacyText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      const privacyLines = doc.splitTextToSize(privacyText, PAGE_WIDTH - 2 * PAGE_MARGIN);
       doc.text(privacyLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * privacyLines.length + PARAGRAPH_SPACING * 2;
       
-      tocEntries[11].page = doc.internal.getNumberOfPages();
+      // §12 Schlussbestimmungen & Zusätzliche Informationen
+      tocEntries[11].page = doc.internal.getNumberOfPages(); // Index 11 for §12
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§12 Schlussbestimmungen & Zusätzliche Informationen", y);
       const finalClauseText = `Änderungen bedürfen der Schriftform. Gerichtsstand ist ${data.companyCity || '[Stadt nicht festgelegt]'}. Es gilt das Recht der Bundesrepublik Deutschland. Sollte eine Bestimmung unwirksam sein, bleibt der Vertrag im Übrigen wirksam.`;
-      const finalClauseLines = doc.splitTextToSize(finalClauseText, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+      const finalClauseLines = doc.splitTextToSize(finalClauseText, PAGE_WIDTH - 2 * PAGE_MARGIN);
       doc.text(finalClauseLines, PAGE_MARGIN, y);
       y += LINE_HEIGHT * finalClauseLines.length + PARAGRAPH_SPACING;
       
@@ -835,7 +852,7 @@ document.addEventListener('DOMContentLoaded', function() {
         doc.text("Zusätzliche Informationen:", PAGE_MARGIN, y);
         y += LINE_HEIGHT;
         doc.setFont("helvetica", "normal");
-        const extraInfoLines = doc.splitTextToSize(data.extraInformation, doc.internal.pageSize.getWidth() - 2 * PAGE_MARGIN);
+        const extraInfoLines = doc.splitTextToSize(data.extraInformation, PAGE_WIDTH - 2 * PAGE_MARGIN);
         doc.text(extraInfoLines, PAGE_MARGIN, y);
         y += LINE_HEIGHT * extraInfoLines.length;
       }
@@ -844,17 +861,11 @@ document.addEventListener('DOMContentLoaded', function() {
       y = addSignatureFields(doc, data.companyCity || '[Stadt nicht festgelegt]', y);
 
       const endPage = doc.internal.getNumberOfPages();
-      doc.setPage(2); // Go to ToC page
-      addTableOfContents(doc, tocEntries); // Redraw ToC with correct page numbers
-      
-      // Go to the last page of content if it exists beyond ToC's new page
-      if (endPage >=3) { // If content started on page 3 or later
+      doc.setPage(2); 
+      addTableOfContents(doc, tocEntries); 
+      if (endPage >=3) { 
         doc.setPage(endPage);
-      } else { // if content was short and ended on page 2 (unlikely with ToC adding a page)
-        // Potentially add a new page if signature fields were pushed to a new page after ToC redraw
-        // This logic might need refinement based on exact addTableOfContents behavior
       }
-
 
       addWatermark(doc);
       doc.save('influencer-marketing-vertrag-final.pdf');
