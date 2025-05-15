@@ -232,8 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (progressText) progressText.textContent = `${percentage}% ausgefüllt`;
     updateProgressMessage(currentStep);
 
-    // Update preview only if on the last step or if a dedicated preview step exists
-    if (currentStep === totalSteps) { // Assuming last step is the review/preview step
+    if (currentStep === totalSteps) { 
         updatePreview();
     }
   }
@@ -245,27 +244,23 @@ document.addEventListener('DOMContentLoaded', function() {
       "Gut gemacht! Wer sind die Vertragspartner?", // Step 2
       "Perfekt! Auf welchen Plattformen wird veröffentlicht?", // Step 3
       "Super! Welche Inhalte sollen erstellt werden?", // Step 4
-      "Prima! Gibt es zusätzliche Vereinbarungen?", // Step 5 (Exklusivität, etc.)
+      "Prima! Gibt es zusätzliche Vereinbarungen?", // Step 5
       "Sehr gut! Klären wir die Rechte und Nutzung (Media Buyout).", // Step 6
       "Fast geschafft! Wie sieht der Zeitplan aus?", // Step 7
       "Letzte Details zur Vergütung.", // Step 8
-      "Alles klar! Überprüfe den Vertrag und generiere ihn." // Step 9 (Preview & Generate)
+      "Alles klar! Überprüfe den Vertrag und generiere ihn." // Step 9
     ];
     progressMessage.textContent = messages[stepNumber - 1] || "Weiter geht's!";
   }
 
   function calculateRealProgress() {
     const allRequiredFields = document.querySelectorAll('.form-section [required]');
-    if (allRequiredFields.length === 0) return 100; // Or 0 if no fields means no progress
+    if (allRequiredFields.length === 0) return 100; 
 
     let filledRequiredFields = 0;
     allRequiredFields.forEach(field => {
-        // Check if the field is visible (i.e., its section is not hidden OR it's in a step before current OR it's the final step)
         const section = field.closest('.form-section');
         const sectionStep = section ? parseInt(section.id.split('-')[1]) : 0;
-
-        // Consider a field for progress if its section is currently visible, or it's in a past step,
-        // or we are on the final review step (where all fields should be considered).
         const isFinalStep = currentStep === (progressSteps.length || 9);
         if (section && (!section.classList.contains('hidden') || sectionStep < currentStep || isFinalStep)) {
             if ((field.type === 'checkbox' || field.type === 'radio') ? field.checked : field.value.trim()) {
@@ -292,12 +287,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
       };
-      const setPreviewHTML = (id, value) => { // Use this for HTML content
+      const setPreviewHTML = (id, value) => { 
         const el = document.getElementById(id);
         if (el) el.innerHTML = value;
       };
 
-      // Vertragspartner - Unternehmen
       setPreviewText('preview-company-name', getValue('company-name', '[Name des Unternehmens]'));
       setPreviewText('preview-company-contact', getValue('company-contact', '[Ansprechpartner]'));
       setPreviewText('preview-company-street', getValue('company-street', '[Straße]'));
@@ -306,7 +300,6 @@ document.addEventListener('DOMContentLoaded', function() {
       setPreviewText('preview-company-city', getValue('company-city', '[Stadt]'));
       setPreviewText('preview-company-country', getValue('company-country', '[Land]'));
 
-      // Vertragspartner - Influencer
       setPreviewText('preview-influencer-name', getValue('influencer-name', '[Name des Influencers]'));
       setPreviewText('preview-influencer-street', getValue('influencer-street', '[Straße]'));
       setPreviewText('preview-influencer-number', getValue('influencer-number', '[Hausnummer]'));
@@ -314,7 +307,6 @@ document.addEventListener('DOMContentLoaded', function() {
       setPreviewText('preview-influencer-city', getValue('influencer-city', '[Stadt]'));
       setPreviewText('preview-influencer-country', getValue('influencer-country', '[Land]'));
 
-      // Kunde (falls Agenturvertrag)
       const isClientContract = getValue('contract-type') === 'client';
       const previewClientSection = document.getElementById('preview-client-section');
       if (previewClientSection) {
@@ -329,7 +321,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      // Plattformen
       let platformsHtml = '';
       if (isChecked('platform-instagram')) platformsHtml += `<p>✓ Instagram (Profil: ${getValue('instagram-username', '[@nutzername]')})</p>`;
       if (isChecked('platform-tiktok')) platformsHtml += `<p>✓ TikTok (Profil: ${getValue('tiktok-username', '[@nutzername]')})</p>`;
@@ -337,8 +328,6 @@ document.addEventListener('DOMContentLoaded', function() {
       if (isChecked('platform-other')) platformsHtml += `<p>✓ Sonstiges: ${getValue('other-platform', '[Frei eintragen]')}</p>`;
       setPreviewHTML('preview-platforms', platformsHtml || '<p>Keine Plattformen ausgewählt</p>');
 
-
-      // Inhalte
       let contentTypesHtml = '';
       const storySlidesVal = getValue('story-slides', '0');
       const reelsTiktokVal = getValue('reels-tiktok', '0');
@@ -351,131 +340,114 @@ document.addEventListener('DOMContentLoaded', function() {
       if (parseInt(youtubeVideosVal) > 0) contentTypesHtml += `<li>YouTube Videos: ${youtubeVideosVal}</li>`;
       setPreviewHTML('preview-content-types', contentTypesHtml || '<li>Keine Inhalte spezifiziert</li>');
 
-      // Exklusivität
-      const exclusivityValue = getValue('exklusiv'); // Assuming 'exklusiv' is the ID of the input/select
+      const exclusivityValue = getValue('exklusiv'); 
       const previewExclusivityEl = document.getElementById('preview-exclusivity');
       if (previewExclusivityEl) {
           previewExclusivityEl.innerHTML = exclusivityValue ? `<p>Exklusivität: <strong>${exclusivityValue}</strong></p>` : '<p>Keine Exklusivität ausgewählt</p>';
       }
 
-      // Zusätzliche Informationen
       const extraInformationValue = getValue('extra-information');
       const previewExtraInfoEl = document.getElementById('preview-extra-information');
       if (previewExtraInfoEl) {
           previewExtraInfoEl.innerHTML = extraInformationValue ? `<p>Zusätzliche Informationen: <br><em>${extraInformationValue.replace(/\n/g, '<br>')}</em></p>` : '<p>Keine zusätzlichen Informationen</p>';
       }
       
-      // Update real progress based on filled fields when preview is shown
       const realProgress = calculateRealProgress();
       if (progressFill) progressFill.style.width = `${realProgress}%`;
       if (progressText) progressText.textContent = `${realProgress}% ausgefüllt`;
 
     } catch (error) {
       console.error("Fehler bei der Aktualisierung der Vorschau:", error);
-      // Optionally, display a user-friendly message in the preview area
-      // For example: setPreviewText('preview-error-message', 'Vorschau konnte nicht geladen werden.');
     }
   }
 
-  // Helper function to format date strings
   function formatDate(dateString) {
-    if (!dateString) return ''; // Return empty if no date provided
+    if (!dateString) return ''; 
     try {
         const date = new Date(dateString);
-        // Check if date is valid
         if (isNaN(date.getTime())) {
-            return dateString; // Return original string if date is invalid
+            return dateString; 
         }
-        return date.toLocaleDateString('de-DE'); // Format for German locale
+        return date.toLocaleDateString('de-DE'); 
     } catch (e) {
-        return dateString; // Return original string in case of error
+        return dateString; 
     }
   }
   
-  // PDF Generation Constants
-  const PAGE_MARGIN = 20; // mm
-  const CONTENT_START_Y = 30; // mm, initial Y position for content after header/title
-  const PAGE_HEIGHT = 297; // mm (A4 height)
-  const PAGE_WIDTH = 210; // mm (A4 width)
-  const LINE_HEIGHT = 6; // mm, base line height for text
-  const PARAGRAPH_SPACING = 4; // mm, space after a paragraph block
+  const PAGE_MARGIN = 20; 
+  const CONTENT_START_Y = 30; 
+  const PAGE_HEIGHT = 297; 
+  const PAGE_WIDTH = 210; 
+  const LINE_HEIGHT = 6; 
+  const PARAGRAPH_SPACING = 4; 
 
-  // Helper function to add a new page if content exceeds page height
   function checkAndAddPage(doc, currentY, spaceNeeded = LINE_HEIGHT * 2) {
-      if (currentY + spaceNeeded > PAGE_HEIGHT - PAGE_MARGIN) { // Check if space needed exceeds available page space
+      if (currentY + spaceNeeded > PAGE_HEIGHT - PAGE_MARGIN) { 
           doc.addPage();
-          return CONTENT_START_Y; // Reset Y to top content start for new page
+          return CONTENT_START_Y; 
       }
-      return currentY; // Return current Y if no new page is needed
+      return currentY; 
   }
 
-  // Helper function to add watermark to all pages
   function addWatermark(doc) {
     const totalPages = doc.internal.getNumberOfPages();
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7); // Small font size for watermark
-    doc.setTextColor(150); // Light grey color for watermark
+    doc.setFontSize(7); 
+    doc.setTextColor(150); 
 
     for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i); // Set current page
+        doc.setPage(i); 
         const watermarkText = 'Created with creatorjobs.com';
         const watermarkTextWidth = doc.getTextWidth(watermarkText);
-        // Position watermark at the bottom right
         doc.text(watermarkText, PAGE_WIDTH - watermarkTextWidth - 10, PAGE_HEIGHT - 10);
     }
-    doc.setTextColor(0); // Reset text color to black
-    doc.setFont('helvetica', 'normal'); // Ensure font is reset
+    doc.setTextColor(0); 
+    doc.setFont('helvetica', 'normal'); 
   }
 
-
-  // Helper function to add a paragraph title
   function addParagraphTitle(doc, title, y) {
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(12); // Font size for titles
+      doc.setFontSize(12); 
       doc.text(title, PAGE_MARGIN, y);
-      doc.setFont("helvetica", "normal"); // Reset to normal for subsequent text
-      doc.setFontSize(10); // Reset to default text font size
-      return y + LINE_HEIGHT + PARAGRAPH_SPACING; // Return new Y position after title and spacing
+      doc.setFont("helvetica", "normal"); 
+      doc.setFontSize(10); 
+      return y + LINE_HEIGHT + PARAGRAPH_SPACING; 
   }
 
-  // Function to add Table of Contents
+  // Function to add Table of Contents - MODIFIED: Does not add a page at the end
   function addTableOfContents(doc, tocEntries) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       let y = CONTENT_START_Y;
       doc.text('Inhaltsverzeichnis', PAGE_WIDTH / 2, y, { align: 'center' });
-      y += LINE_HEIGHT * 2; // Space after main title
+      y += LINE_HEIGHT * 2; 
       
       doc.setFontSize(10);
-      doc.setLineWidth(0.1); // Ensure thin line width for any potential artifacts
+      doc.setLineWidth(0.1); 
 
       tocEntries.forEach(para => {
-          y = checkAndAddPage(doc, y, LINE_HEIGHT); // Check for new page before each entry
+          y = checkAndAddPage(doc, y, LINE_HEIGHT); 
           
-          const numberWidth = doc.getTextWidth(para.num) + 3; // Width for section number
+          const numberWidth = doc.getTextWidth(para.num) + 3; 
           doc.setFont("helvetica", "bold");
-          // FIX: Added small y-offset (0.2mm) to prevent line above "§"
           doc.text(para.num, PAGE_MARGIN, y + 0.2, { baseline: 'top' }); 
           doc.setFont("helvetica", "normal");
 
-          const titleWidth = PAGE_WIDTH - (PAGE_MARGIN * 2) - numberWidth - 20; // Available width for title
+          const titleWidth = PAGE_WIDTH - (PAGE_MARGIN * 2) - numberWidth - 20; 
           const titleLines = doc.splitTextToSize(para.title, titleWidth);
           doc.text(titleLines, PAGE_MARGIN + numberWidth, y, { baseline: 'top' });
           
-          // Page number
           const pageNumStr = para.page > 0 ? para.page.toString() : "-"; 
-          doc.setFont("helvetica", "normal"); // Ensure font is normal for page number
+          doc.setFont("helvetica", "normal"); 
           doc.text(pageNumStr, PAGE_WIDTH - PAGE_MARGIN - doc.getTextWidth(pageNumStr), y, { baseline: 'top' });
 
-          y += (LINE_HEIGHT * titleLines.length) + (PARAGRAPH_SPACING / 2); // Increment Y
+          y += (LINE_HEIGHT * titleLines.length) + (PARAGRAPH_SPACING / 2); 
       });
-      doc.addPage(); // Add a new page after ToC
-      return CONTENT_START_Y; // Reset Y for the next section
+      // REMOVED: doc.addPage(); 
   }
 
-  // Function to add the Cover Page
   function addCoverPage(doc, data) {
-      let y = 70; // Start Y for cover page content
+      let y = 70; 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
       doc.text('INFLUENCER-MARKETING-VERTRAG', PAGE_WIDTH / 2, y, { align: 'center' });
@@ -485,7 +457,6 @@ document.addEventListener('DOMContentLoaded', function() {
       y += 25;
 
       doc.setFontSize(11); 
-      // Unternehmen
       doc.setFont("helvetica", "bold");
       doc.text('Unternehmen (Auftraggeber):', PAGE_MARGIN, y);
       y += LINE_HEIGHT * 1.5;
@@ -496,7 +467,6 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(`PLZ: ${data.companyZip}, Stadt: ${data.companyCity}, Land: ${data.companyCountry}`, PAGE_MARGIN + 5, y);
       y += LINE_HEIGHT * 2.5;
 
-      // Influencer
       doc.setFont("helvetica", "bold");
       doc.text('Influencer (Creator):', PAGE_MARGIN, y);
       y += LINE_HEIGHT * 1.5;
@@ -505,75 +475,63 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(`Straße: ${data.influencerStreet} Nr.: ${data.influencerNumber}`, PAGE_MARGIN + 5, y); y += LINE_HEIGHT;
       doc.text(`PLZ: ${data.influencerZip}, Stadt: ${data.influencerCity}, Land: ${data.influencerCountry}`, PAGE_MARGIN + 5, y);
       
-      doc.addPage(); // New page after cover
-      return CONTENT_START_Y; // Reset Y for next content
+      doc.addPage(); 
+      return CONTENT_START_Y; 
   }
 
-  // Function to add Signature Fields
   function addSignatureFields(doc, city, y) {
-      const signatureBlockHeight = LINE_HEIGHT * 7; // Estimated height for signature block
-      // Check if signature block fits, if not, add new page or move to bottom
+      const signatureBlockHeight = LINE_HEIGHT * 7; 
       if (y > PAGE_HEIGHT - PAGE_MARGIN - signatureBlockHeight) { 
           doc.addPage();
           y = CONTENT_START_Y;
-      } else if (y < PAGE_HEIGHT - 90) { // If there's a lot of space, move to a fixed position from bottom
+      } else if (y < PAGE_HEIGHT - 90) { 
         y = PAGE_HEIGHT - 90; 
       }
 
       const today = new Date();
       const formattedDate = today.toLocaleDateString('de-DE');
       const leftColumnX = PAGE_MARGIN;
-      const rightColumnX = PAGE_WIDTH / 2 + 10; // Start of right column for signatures
-      const signatureLineWidth = 70; // Width of the signature line
+      const rightColumnX = PAGE_WIDTH / 2 + 10; 
+      const signatureLineWidth = 70; 
 
       doc.setFontSize(10);
-      // Unternehmen Signature
       doc.text(`Ort: ${city}`, leftColumnX, y);
       doc.text(`Datum: ${formattedDate}`, leftColumnX, y + LINE_HEIGHT);
-      doc.setLineWidth(0.3); // Line for signature
+      doc.setLineWidth(0.3); 
       doc.line(leftColumnX, y + LINE_HEIGHT * 2.5, leftColumnX + signatureLineWidth, y + LINE_HEIGHT * 2.5); 
       doc.text('(Unterschrift Unternehmen)', leftColumnX, y + LINE_HEIGHT * 3.5);
 
-      // Influencer Signature
-      doc.text("Ort:________________________", rightColumnX, y); // Placeholder for influencer's location
-      doc.text("Datum:_______________________", rightColumnX, y + LINE_HEIGHT); // Placeholder for influencer's date
+      doc.text("Ort:________________________", rightColumnX, y); 
+      doc.text("Datum:_______________________", rightColumnX, y + LINE_HEIGHT); 
       doc.line(rightColumnX, y + LINE_HEIGHT * 2.5, rightColumnX + signatureLineWidth, y + LINE_HEIGHT * 2.5); 
       doc.text('(Unterschrift Influencer)', rightColumnX, y + LINE_HEIGHT * 3.5);
       
-      return y + LINE_HEIGHT * 4; // New Y after signature block
+      return y + LINE_HEIGHT * 4; 
   }
 
-  // Function to render a checkbox with text
   function renderCheckbox(doc, isChecked, text, x, yN, currentYVal) {
-      let currentY = currentYVal; // Use currentYVal as the starting Y for this item
-      const boxSize = 3.5; // mm
-      const textXOffset = boxSize + 2; // Space between checkbox and text
+      let currentY = currentYVal; 
+      const boxSize = 3.5; 
+      const textXOffset = boxSize + 2; 
       const textMaxWidth = PAGE_WIDTH - x - textXOffset - PAGE_MARGIN;
       
       const textLines = doc.splitTextToSize(text, textMaxWidth);
-      // Calculate height needed for this checkbox item (box or text, whichever is taller)
-      const textBlockHeight = textLines.length * LINE_HEIGHT * 0.9; // Adjusted line height for text block
+      const textBlockHeight = textLines.length * LINE_HEIGHT * 0.9; 
       const neededHeight = Math.max(boxSize, textBlockHeight) + PARAGRAPH_SPACING / 2;
 
       currentY = checkAndAddPage(doc, currentY, neededHeight); 
 
       doc.setLineWidth(0.2);
-      // FIX: Align top of box with top of text (currentY)
       const boxTopY = currentY;
       doc.rect(x, boxTopY, boxSize, boxSize); 
       
       if (isChecked) {
           doc.setFont("zapfdingbats"); 
-          // Center checkmark in the box
-          // The +1 is an empirical adjustment for vertical centering of the checkmark glyph
           doc.text("4", x + boxSize/2 - doc.getTextWidth("4")/2 , boxTopY + boxSize/2 + 1 ); 
           doc.setFont("helvetica"); 
       }
       
-      // FIX: Draw text with baseline 'top' aligned with currentY
       doc.text(textLines, x + textXOffset, currentY, { baseline: 'top' }); 
-      
-      // Return new Y position after this checkbox item
       return currentY + textBlockHeight + PARAGRAPH_SPACING / 2; 
   }
 
@@ -590,12 +548,11 @@ document.addEventListener('DOMContentLoaded', function() {
       const doc = new PDFCreator({unit: 'mm', format: 'a4'}); 
       
       let tocEntries = [];
-      let y = CONTENT_START_Y; // Initial Y position for content
+      let y = CONTENT_START_Y; 
 
-      // Helper to get form values
       const getValue = (id, defaultValue = '') => {
         const el = document.getElementById(id);
-        if (el && el.type === 'radio') { // Handle radio button groups
+        if (el && el.type === 'radio') { 
             const radioGroup = document.querySelectorAll(`input[name="${el.name}"]:checked`);
             return radioGroup.length > 0 ? radioGroup[0].value : defaultValue;
         }
@@ -603,16 +560,15 @@ document.addEventListener('DOMContentLoaded', function() {
       };
       const isChecked = (id) => document.getElementById(id) ? document.getElementById(id).checked : false;
       
-      // Helper to get selected radio button value, with specific logic for duration/term
       const getSelectedRadioValue = (name, defaultValue = '') => {
         const selectedRadio = document.querySelector(`input[name="${name}"]:checked`);
         if (selectedRadio) {
-            if (selectedRadio.id.startsWith('duration-')) { // For usage duration
+            if (selectedRadio.id.startsWith('duration-')) { 
                 const val = selectedRadio.id.split('-')[1];
                 if (val === 'unlimited') return 'Unbegrenzt';
                 return `${val} Monate`;
             }
-            if (selectedRadio.id.startsWith('term-')) { // For payment term
+            if (selectedRadio.id.startsWith('term-')) { 
                 return `${selectedRadio.id.split('-')[1]} Tage`;
             }
             return selectedRadio.value || defaultValue; 
@@ -620,7 +576,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return defaultValue;
       };
 
-      // Collect all data from the form
       const data = {
         contractType: getValue('contract-type'),
         companyName: getValue('company-name', '[Name des Unternehmens]'),
@@ -656,15 +611,16 @@ document.addEventListener('DOMContentLoaded', function() {
         youtubeVideos: getValue('youtube-videos', '0'),
         collabPost: isChecked('collab-post'),
         companyPublication: isChecked('company-publication'),
-        noCompanyPublication: isChecked('no-company-publication'), // Assuming this is a valid ID
+        noCompanyPublication: isChecked('no-company-publication'), 
         mediaBuyoutYes: isChecked('media-buyout-yes'),
         adInstagram: isChecked('ad-instagram'),
         adFacebook: isChecked('ad-facebook'),
         adTiktok: isChecked('ad-tiktok'),
-        adOther: isChecked('ad-other'), // Assuming this is a valid ID
+        adOther: isChecked('ad-other'), 
         whitelisting: isChecked('whitelisting'),
         sparkAd: isChecked('spark-ad'),
-        usageDuration: getSelectedRadioValue('duration', '[Dauer nicht festgelegt]'), 
+        // KORREKTUR HIER: 'duration' zu 'usage-duration' geändert
+        usageDuration: getSelectedRadioValue('usage-duration', '[Dauer nicht festgelegt]'), 
         briefingDate: formatDate(getValue('briefing-date', '[Datum]')),
         scriptDate: formatDate(getValue('script-date', '[Datum]')),
         scriptTime: getValue('script-time', '12:00'),
@@ -678,14 +634,12 @@ document.addEventListener('DOMContentLoaded', function() {
         paymentTerm: getSelectedRadioValue('payment_term', '[Zahlungsziel nicht festgelegt]'), 
         additionalCompYes: isChecked('additional-yes'),
         additionalCompText: getValue('additional-comp-text', '[Textfeld falls ja]'),
-        exclusivity: getValue('exklusiv', ''), // ID for exclusivity input
-        extraInformation: getValue('extra-information', '') // ID for extra information textarea
+        exclusivity: getValue('exklusiv', ''), 
+        extraInformation: getValue('extra-information', '') 
       };
       
-      // Add Cover Page
-      y = addCoverPage(doc, data); 
+      y = addCoverPage(doc, data); // Deckblatt auf Seite 1, fügt Seite 2 hinzu. y ist CONTENT_START_Y für Seite 2.
       
-      // Define Table of Contents Entries (page numbers will be updated later)
       tocEntries = [
             { num: "§1", title: "Vertragsgegenstand", page: 0 },
             { num: "§2", title: "Plattformen & Veröffentlichung", page: 0 },
@@ -700,17 +654,10 @@ document.addEventListener('DOMContentLoaded', function() {
             { num: "§11", title: "Datenschutz & Vertraulichkeit", page: 0 },
             { num: "§12", title: "Schlussbestimmungen & Zus. Infos", page: 0 }
       ];
-      
-      // Add placeholder ToC (will be re-rendered with page numbers later)
-      // This reserves space and allows us to get correct page numbers for content
-      const tocPageNumber = doc.internal.getNumberOfPages() + 1; // ToC will be on the next page
-      addTableOfContents(doc, tocEntries); // This adds a page, so content starts on page 3 if cover is 1 page
 
-      // Reset Y for content after ToC
-      y = CONTENT_START_Y;
-
+      // Alle Inhalte hinzufügen und Seitenzahlen für ToC sammeln
       // §1 Vertragsgegenstand
-      tocEntries[0].page = doc.internal.getNumberOfPages(); // Current page number for this section
+      tocEntries[0].page = doc.internal.getNumberOfPages(); 
       y = checkAndAddPage(doc, y);
       y = addParagraphTitle(doc, "§1 Vertragsgegenstand", y);
       const p1Text = "Der Influencer verpflichtet sich zur Erstellung und Veröffentlichung werblicher Inhalte zugunsten des Unternehmens bzw. einer vom Unternehmen vertretenen Marke.";
@@ -778,11 +725,11 @@ document.addEventListener('DOMContentLoaded', function() {
         buyoutY = renderCheckbox(doc, true, "Ja", itemIndent, buyoutY, buyoutY);
         buyoutY = checkAndAddPage(doc, buyoutY); 
         doc.text("– Kanäle:", PAGE_MARGIN + 10, buyoutY, {baseline: 'top'}); buyoutY += LINE_HEIGHT;
-        let channelY = buyoutY; // Y for channels list
+        let channelY = buyoutY; 
         if(data.adInstagram) channelY = renderCheckbox(doc, true, "Instagram", PAGE_MARGIN + 15, channelY, channelY);
         if(data.adFacebook) channelY = renderCheckbox(doc, true, "Facebook", PAGE_MARGIN + 15, channelY, channelY);
         if(data.adTiktok) channelY = renderCheckbox(doc, true, "TikTok", PAGE_MARGIN + 15, channelY, channelY);
-        if(data.adOther) channelY = renderCheckbox(doc, true, `Sonstiges: ${getValue('ad-other-text', '[nicht spezifiziert]')}`, PAGE_MARGIN + 15, channelY, channelY); // Assuming ad-other-text ID for details
+        if(data.adOther) channelY = renderCheckbox(doc, true, `Sonstiges: ${getValue('ad-other-text', '[nicht spezifiziert]')}`, PAGE_MARGIN + 15, channelY, channelY); 
         buyoutY = channelY; 
         buyoutY = checkAndAddPage(doc, buyoutY);
         doc.text("– Whitelisting (Meta):", PAGE_MARGIN + 10, buyoutY, {baseline: 'top'}); 
@@ -794,7 +741,7 @@ document.addEventListener('DOMContentLoaded', function() {
         doc.text(`– Nutzungsdauer: ${data.usageDuration || '[Nicht spezifiziert]'}`, PAGE_MARGIN + 10, buyoutY, {baseline: 'top'}); 
         buyoutY += LINE_HEIGHT;
       } else {
-        buyoutY = renderCheckbox(doc, false, "Ja", itemIndent, buyoutY, buyoutY); // Show "Ja" as unchecked
+        buyoutY = renderCheckbox(doc, false, "Ja", itemIndent, buyoutY, buyoutY); 
         buyoutY = renderCheckbox(doc, true, "Nein. Inhalte verbleiben ausschließlich beim Influencer und dürfen nicht für Werbung genutzt werden.", itemIndent, buyoutY, buyoutY);
       }
       y = buyoutY + PARAGRAPH_SPACING * 2;
@@ -913,9 +860,9 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(finalClauseLines, PAGE_MARGIN, y, {baseline: 'top'});
       y += LINE_HEIGHT * finalClauseLines.length + PARAGRAPH_SPACING;
       
-      y = checkAndAddPage(doc,y); // Check before adding extra info
+      y = checkAndAddPage(doc,y); 
       if (data.extraInformation) {
-        y = checkAndAddPage(doc, y, LINE_HEIGHT * 2); // Ensure space for title + content
+        y = checkAndAddPage(doc, y, LINE_HEIGHT * 2); 
         doc.setFont("helvetica", "bold");
         doc.text("Zusätzliche Informationen:", PAGE_MARGIN, y, {baseline: 'top'});
         y += LINE_HEIGHT;
@@ -926,32 +873,34 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       y += PARAGRAPH_SPACING * 2;
 
-      // Add Signature Fields
       y = addSignatureFields(doc, data.companyCity || '[Stadt nicht festgelegt]', y);
 
-      // Re-render ToC with correct page numbers
-      const currentPageBeforeFinalToc = doc.internal.getNumberOfPages();
-      doc.setPage(tocPageNumber); // Go to the ToC page (e.g., page 2)
-      addTableOfContents(doc, tocEntries); // Re-draw ToC, this will add a new page after it.
-      
-      // Ensure we are on the last content page if ToC added a page and content followed
-      // If ToC was on page 2, and it added page 3, and content ended on page `N`,
-      // we need to go to page `N` (which is `currentPageBeforeFinalToc` if ToC didn't push it,
-      // or `currentPageBeforeFinalToc + 1` if ToC added a page in between).
-      // The logic in addTableOfContents already adds a page.
-      // So, if original ToC was page 2, content started page 3.
-      // New ToC on page 2, adds page 3. Content is now effectively shifted.
-      // This needs careful handling. The current `addTableOfContents` adds a page *after* drawing.
-      // A simpler way: delete the placeholder ToC page and insert a new one.
-      // For now, let's assume the page shifting is acceptable or handled by going to the *last* page.
-      doc.setPage(doc.internal.getNumberOfPages()); // Go to the very last page to ensure watermark is on all.
+      // KORREKTUR: Inhaltsverzeichnis Logik
+      // 1. Seitenzahlen in tocEntries anpassen, da ToC auf Seite 2 eingefügt wird
+      tocEntries.forEach(entry => {
+        if (entry.page > 0) { // Nur gültige Seitenzahlen anpassen
+            entry.page += 1; 
+        }
+      });
 
-      // Add Watermark to all pages
-      addWatermark(doc);
+      // 2. Neue Seite für ToC an Position 2 einfügen
+      const tocTargetPage = 2;
+      const totalPagesAfterContent = doc.internal.getNumberOfPages();
+      doc.addPage(); // Fügt eine Seite am Ende hinzu
+      doc.movePage(doc.internal.getNumberOfPages(), tocTargetPage); // Verschiebt die neue letzte Seite an Position 2
+
+      // 3. Gehe zu Seite 2 und zeichne das ToC
+      doc.setPage(tocTargetPage);
+      addTableOfContents(doc, tocEntries); // Diese Funktion fügt KEINE Seite mehr hinzu
+
+      // 4. Gehe zur letzten Seite des Dokuments für den Wasserzeichen-Loop
+      // Die Gesamtseitenzahl ist jetzt totalPagesAfterContent + 1
+      doc.setPage(totalPagesAfterContent + 1); 
+      addWatermark(doc); // Wasserzeichen auf allen Seiten hinzufügen
+
       doc.save('influencer-marketing-vertrag-final.pdf');
       console.log('PDF saved successfully');
 
-      // Show success animation
       const successAnimation = document.getElementById('success-animation');
       if (successAnimation) successAnimation.classList.remove('hidden');
 
@@ -968,15 +917,11 @@ document.addEventListener('DOMContentLoaded', function() {
           alert('Die PDF-Bibliothek (jsPDF) ist nicht geladen. PDF kann nicht generiert werden. Bitte laden Sie die Seite neu oder kontaktieren Sie den Support.');
           return;
       }
-      // Validate all steps before generating PDF
       let firstInvalidStep = -1;
-      // Iterate from 1 up to the total number of steps.
-      // progressSteps.length should give the correct count if steps are defined.
-      // Fallback to 9 if progressSteps is not available for some reason.
       const totalStepsToValidate = progressSteps.length || 9; 
       for (let i = 1; i <= totalStepsToValidate ; i++) { 
         const stepSection = document.getElementById(`step-${i}`);
-        if (stepSection) { // Check if section exists
+        if (stepSection) { 
           const requiredFields = stepSection.querySelectorAll('[required]');
           let stepIsValid = true;
           requiredFields.forEach(field => {
@@ -986,16 +931,16 @@ document.addEventListener('DOMContentLoaded', function() {
           });
           if (!stepIsValid) {
             firstInvalidStep = i;
-            break; // Exit loop on first invalid step
+            break; 
           }
         }
       }
 
       if (firstInvalidStep !== -1) {
-        goToStep(firstInvalidStep); // Navigate to the invalid step
-        markInvalidFieldsInCurrentStep(); // Mark fields in that step
+        goToStep(firstInvalidStep); 
+        markInvalidFieldsInCurrentStep(); 
         showValidationError(`Bitte fülle alle Pflichtfelder in Schritt ${firstInvalidStep} aus, um den Vertrag zu generieren.`);
-        return; // Stop PDF generation
+        return; 
       }
 
       console.log('Vertrag wird generiert...');
@@ -1008,64 +953,56 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Function to show success animation (if you have one)
   function showSuccessAnimation() {
     const successAnimation = document.getElementById('success-animation');
     if (successAnimation) {
       successAnimation.classList.remove('hidden');
-      // Optional: Add a button or auto-hide for the success message
     }
   }
 
-  // Event listener for the download button in the success animation
   const downloadButton = document.getElementById('download-button');
   if (downloadButton) {
     downloadButton.addEventListener('click', function() {
       const successAnimation = document.getElementById('success-animation');
       if (successAnimation) {
-        successAnimation.classList.add('hidden'); // Hide animation on click
+        successAnimation.classList.add('hidden'); 
       }
     });
   }
   
-  // Add event listeners to all relevant fields for live validation and progress update
   document.querySelectorAll('[required], input, select, textarea').forEach(field => {
     const eventType = (field.type === 'checkbox' || field.type === 'radio' || field.tagName === 'SELECT') ? 'change' : 'input';
     field.addEventListener(eventType, function() {
-      // Remove error styling if a required field is filled
       if (this.hasAttribute('required') && this.value.trim()) {
         this.classList.remove('error');
-        this.style.borderColor = ''; // Reset border color
+        this.style.borderColor = ''; 
       }
-      validateCurrentStep(); // Validate current step to update button states
-      updateProgress(); // Update progress bar and preview if on last step
+      validateCurrentStep(); 
+      updateProgress(); 
     });
   });
 
-  // Dynamic layout adjustment for sidebar (if .container and .sidebar are not in HTML)
-  // This part seems to be for creating a two-column layout dynamically.
-  // Ensure your HTML structure matches what this code expects or adjust as needed.
   const form = document.querySelector('.db-contact-generator-wrapper');
-  if (form && !document.querySelector('.container')) { // Only run if .container doesn't exist
+  if (form && !document.querySelector('.container')) { 
     const parentElement = form.parentElement;
     const container = document.createElement('div');
-    container.className = 'container'; // Matches CSS for layout
+    container.className = 'container'; 
     parentElement.appendChild(container);
 
     const sidebar = document.createElement('div');
-    sidebar.className = 'sidebar'; // Matches CSS for layout
+    sidebar.className = 'sidebar'; 
     container.appendChild(sidebar);
 
     const progressBar = document.querySelector('.progress-bar-container'); 
     if (progressBar) {
-      sidebar.appendChild(progressBar); // Move progress bar to sidebar
+      sidebar.appendChild(progressBar); 
     }
 
     const mainContent = document.createElement('div');
-    mainContent.className = 'main-content'; // Matches CSS for layout
+    mainContent.className = 'main-content'; 
     container.appendChild(mainContent);
-    mainContent.appendChild(form); // Move form to main content area
+    mainContent.appendChild(form); 
   }
 
-  goToStep(1); // Initialize to the first step
+  goToStep(1); 
 });
