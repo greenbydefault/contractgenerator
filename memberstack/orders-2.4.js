@@ -120,44 +120,16 @@ function renderJobs(jobsFieldDataArray, containerId) {
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
 
-        // Bild des Jobs
+        // Bild des Jobs (nach deiner ursprünglichen Vorgabe)
         const jobImage = document.createElement("img");
         jobImage.classList.add("db-table-img", "is-margin-right-12");
-        
-        const jobNameForLog = jobData["name"] || "Unbekannter Job";
-        // console.log(`[Job: ${jobNameForLog}] Rohdaten für job-image:`, jobData["job-image"]); // Für Debugging beibehalten
-
-        const imageUrlFromData = jobData["job-image"]?.url; // Korrekter Zugriff auf die URL eines Bildfeldes
-        const originalPlaceholderUrl = "https://via.placeholder.com/100"; // Platzhalter aus dem Originalskript
-        const errorPlaceholderUrl = "https://via.placeholder.com/100?text=Error"; // Fehler-Platzhalter
-
-        let currentSrcToTry;
-
-        if (imageUrlFromData) {
-            currentSrcToTry = imageUrlFromData;
-            console.log(`[Job: ${jobNameForLog}] Versuche Bild von Datenquelle zu laden: ${currentSrcToTry}`);
-        } else {
-            currentSrcToTry = originalPlaceholderUrl;
-            console.log(`[Job: ${jobNameForLog}] Keine Bild-URL in Daten. Versuche originalen Platzhalter: ${currentSrcToTry}`);
-        }
-        
-        jobImage.src = currentSrcToTry;
+        // Hier wird jobData["job-image"] direkt verwendet oder der Platzhalter.
+        // Dies geht davon aus, dass jobData["job-image"] entweder eine URL-Zeichenkette ist
+        // oder null/undefined, damit der Platzhalter greift.
+        jobImage.src = jobData["job-image"] || "https://via.placeholder.com/100";
         jobImage.alt = jobData["name"] || "Job Bild";
-        jobImage.style.maxWidth = "100px"; // Stil aus dem Originalskript
-        jobImage.style.height = "auto";    // Um das Seitenverhältnis bei maxWidth beizubehalten
-
-        jobImage.onerror = () => {
-            const failedSrc = jobImage.src; // Die src, die gerade fehlgeschlagen ist
-            console.error(`[Job: ${jobNameForLog}] FEHLER beim Laden von Bild: ${failedSrc}.`);
-            // Verhindert eine Endlosschleife, falls der Fehler-Platzhalter auch fehlschlägt.
-            if (failedSrc !== errorPlaceholderUrl) {
-                console.log(`[Job: ${jobNameForLog}] Setze auf Error-Fallback: ${errorPlaceholderUrl}`);
-                jobImage.src = errorPlaceholderUrl;
-            } else {
-                // Dieser Fall sollte selten eintreten, es sei denn, via.placeholder.com hat generelle Probleme
-                console.warn(`[Job: ${jobNameForLog}] Error-Fallback ${errorPlaceholderUrl} ist bereits fehlgeschlagen oder wurde versucht und schlug fehl.`);
-            }
-        };
+        jobImage.style.maxWidth = "100px";
+        // jobImage.style.height = "auto"; // Kann optional hinzugefügt werden, um das Seitenverhältnis bei maxWidth zu erhalten
         jobInfoDiv.appendChild(jobImage);
 
         const jobNameSpan = document.createElement("span");
