@@ -2,16 +2,17 @@
 
 // 🔧 Konfiguration
 const API_BASE_URL = "https://api.webflow.com/v2/collections";
-const WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url="; // Dein Worker-URL
-const JOB_COLLECTION_ID = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
-const USER_COLLECTION_ID = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID
+const WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url=";
+const JOB_COLLECTION_ID = "6448faf9c5a8a17455c05525";
+const USER_COLLECTION_ID = "6448faf9c5a8a15f6cc05526";
 const JOBS_PER_PAGE = 15;
 
 let currentPage = 1;
-let allJobResults = []; // Speichert alle jemals geladenen Jobergebnisse
-let currentWebflowMemberId = null; // Hier wird die eingeloggte Member-ID gespeichert
+let allJobResults = [];
+let currentWebflowMemberId = null;
+let activeSortKey = null; // Speichert den aktiven Sortierschlüssel (z.B. 'deadline', 'content', 'budget')
 
-// 🛠️ Hilfsfunktionen
+// 🛠️ Hilfsfunktionen (bleiben unverändert)
 function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
@@ -19,13 +20,9 @@ function buildWorkerUrl(apiUrl) {
 async function fetchCollectionItem(collectionId, memberId) {
     const apiUrl = `${API_BASE_URL}/${collectionId}/items/${memberId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
-
     try {
         const response = await fetch(workerUrl);
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
-        }
+        if (!response.ok) throw new Error(`API-Fehler: ${response.status} - ${await response.text()}`);
         return await response.json();
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen der Collection: ${error.message}`);
@@ -36,13 +33,9 @@ async function fetchCollectionItem(collectionId, memberId) {
 async function fetchJobData(jobId) {
     const apiUrl = `${API_BASE_URL}/${JOB_COLLECTION_ID}/items/${jobId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
-
     try {
         const response = await fetch(workerUrl);
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
-        }
+        if (!response.ok) throw new Error(`API-Fehler: ${response.status} - ${await response.text()}`);
         const jobData = await response.json();
         return jobData?.fieldData || {};
     } catch (error) {
@@ -51,72 +44,54 @@ async function fetchJobData(jobId) {
     }
 }
 
-// ⏳ Countdown-Berechnung
 function calculateDeadlineCountdown(endDate) {
     const now = new Date();
     const deadline = new Date(endDate);
     const diff = deadline - now;
-
     if (diff <= 0) return "Abgelaufen";
-
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-
     if (days > 0) return `Endet in ${days} Tag(en)`;
     if (hours > 0) return `Endet in ${hours} Stunde(n)`;
     return `Endet in ${minutes} Minute(n)`;
 }
 
-// Funktion zur Bestimmung des Bewerbungsstatus für die Filterung
 function getApplicationStatusForFilter(jobData, memberId) {
-    if (!jobData) return "Ausstehend"; // Fallback
-
+    if (!jobData) return "Ausstehend";
     const bookedCreators = jobData["booked-creators"] || [];
     const rejectedCreators = jobData["rejected-creators"] || [];
     const endDateApp = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
     const now = new Date();
-
-    if (memberId && bookedCreators.includes(memberId)) {
-        return "Angenommen";
-    } else if (memberId && (rejectedCreators.includes(memberId) || (endDateApp && endDateApp < now && !bookedCreators.includes(memberId)))) {
-        return "Abgelehnt";
-    }
+    if (memberId && bookedCreators.includes(memberId)) return "Angenommen";
+    if (memberId && (rejectedCreators.includes(memberId) || (endDateApp && endDateApp < now && !bookedCreators.includes(memberId)))) return "Abgelehnt";
     return "Ausstehend";
 }
 
-// 💀 Skeleton Loader rendern
+// 💀 Skeleton Loader rendern (bleibt größtenteils unverändert)
 function renderSkeletonLoader(container, count) {
-    container.innerHTML = ""; // Vorherigen Inhalt (z.B. "Lade...") entfernen
-
+    container.innerHTML = ""; 
     const fieldSkeletons = [
         { type: "text", classModifier: "skeleton-text-short" }, 
         { type: "text", classModifier: "skeleton-text-medium" }, 
         { type: "text", classModifier: "skeleton-text-medium" }, 
-        { type: "tag" }, 
-        { type: "tag" }  
+        { type: "tag" }, { type: "tag" }  
     ];
-
     for (let i = 0; i < count; i++) {
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-bewerbungen", "skeleton-row");
-
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left", "job-info-container");
-
         const skeletonImage = document.createElement("div");
         skeletonImage.classList.add("db-table-img", "is-margin-right-12", "skeleton-element", "skeleton-image");
         jobInfoDiv.appendChild(skeletonImage);
-
         const skeletonName = document.createElement("div");
         skeletonName.classList.add("truncate", "job-title", "skeleton-element", "skeleton-text", "skeleton-text-title");
         jobInfoDiv.appendChild(skeletonName);
         jobDiv.appendChild(jobInfoDiv);
-
         fieldSkeletons.forEach(skelType => {
             const fieldDiv = document.createElement("div");
             fieldDiv.classList.add("db-table-row-item");
-            
             if (skelType.type === "tag") {
                  const skeletonTag = document.createElement("div");
                  skeletonTag.classList.add("job-tag", "skeleton-element", "skeleton-tag-box");
@@ -131,12 +106,13 @@ function renderSkeletonLoader(container, count) {
         container.appendChild(jobDiv);
     }
     /*
-    CSS-Styling für Skeleton-Elemente (Beispiel - in deiner CSS-Datei hinzufügen):
+    WICHTIG: FÜGE DIESE CSS-REGELN ZU DEINER CSS-DATEI HINZU, DAMIT SKELETON UND TRANSITION FUNKTIONIEREN!
+
     .skeleton-row { opacity: 0.7; }
     .skeleton-element {
-        background-color: #e0e0e0; // Helles Grau für Skeleton-Elemente
-        border-radius: 4px;       // Abgerundete Ecken
-        animation: pulse 1.5s infinite ease-in-out; // Pulsierende Animation
+        background-color: #e0e0e0; 
+        border-radius: 4px;       
+        animation: pulse 1.5s infinite ease-in-out; 
     }
     .skeleton-image { width: 80px; height: 80px; } 
     .skeleton-text { height: 20px; margin-bottom: 8px; }
@@ -145,23 +121,21 @@ function renderSkeletonLoader(container, count) {
     .skeleton-text-medium { width: 50%; }
     .skeleton-tag-box { width: 80px; height: 24px; }
 
-    @keyframes pulse { // Keyframes für die Puls-Animation
+    @keyframes pulse { 
         0% { background-color: #e0e0e0; }
-        50% { background-color: #d0d0d0; } // Etwas dunkler in der Mitte der Animation
+        50% { background-color: #d0d0d0; } 
         100% { background-color: #e0e0e0; }
     }
 
-    CSS-Styling für den Fade-In-Effekt der Job-Einträge (NEU - in deiner CSS-Datei hinzufügen):
     .job-entry {
         opacity: 0;
-        transition: opacity 0.4s ease-in-out; // Dauer und Timing-Funktion für den Fade-In
+        transition: opacity 0.4s ease-in-out !important; // !important als Test, falls andere Regeln stören
     }
     .job-entry.visible {
         opacity: 1;
     }
     */
 }
-
 
 // 🖨️ Jobs rendern
 function renderJobs(jobsToProcess, webflowMemberId) {
@@ -171,7 +145,7 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         return;
     }
 
-    // Filterlogik (bleibt unverändert)
+    // Filterlogik
     const showJobActiveFilter = document.getElementById("job-status-active-filter")?.checked;
     const showJobClosedFilter = document.getElementById("job-status-closed-filter")?.checked;
     const showAppPendingFilter = document.getElementById("application-status-pending-filter")?.checked;
@@ -183,46 +157,67 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         const jobEndDate = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
         const now = new Date();
         const isJobCurrentlyActive = jobEndDate && jobEndDate >= now;
-        let jobStatusPasses = false;
-        if ((!showJobActiveFilter && !showJobClosedFilter) || (showJobActiveFilter && showJobClosedFilter)) {
-            jobStatusPasses = true; 
-        } else if (showJobActiveFilter && isJobCurrentlyActive) {
-            jobStatusPasses = true;
-        } else if (showJobClosedFilter && !isJobCurrentlyActive) {
-            jobStatusPasses = true;
-        }
-        if (!jobEndDate && (showJobActiveFilter || showJobClosedFilter)) { 
+        let jobStatusPasses = (!showJobActiveFilter && !showJobClosedFilter) || (showJobActiveFilter && showJobClosedFilter) ||
+                              (showJobActiveFilter && isJobCurrentlyActive) || (showJobClosedFilter && !isJobCurrentlyActive);
+        if (!jobEndDate && (showJobActiveFilter || showJobClosedFilter)) {
              if (showJobActiveFilter && !showJobClosedFilter) jobStatusPasses = false; 
              else if (showJobClosedFilter && !showJobActiveFilter) jobStatusPasses = true; 
         }
 
         const currentApplicationStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
-        let applicationStatusPasses = false;
-        const noAppStatusFiltersChecked = !showAppPendingFilter && !showAppAcceptedFilter && !showAppRejectedFilter;
-        if (noAppStatusFiltersChecked) {
-            applicationStatusPasses = true; 
-        } else {
-            if (showAppPendingFilter && currentApplicationStatus === "Ausstehend") applicationStatusPasses = true;
-            if (showAppAcceptedFilter && currentApplicationStatus === "Angenommen") applicationStatusPasses = true;
-            if (showAppRejectedFilter && currentApplicationStatus === "Abgelehnt") applicationStatusPasses = true;
-        }
+        let applicationStatusPasses = !showAppPendingFilter && !showAppAcceptedFilter && !showAppRejectedFilter ||
+                                      (showAppPendingFilter && currentApplicationStatus === "Ausstehend") ||
+                                      (showAppAcceptedFilter && currentApplicationStatus === "Angenommen") ||
+                                      (showAppRejectedFilter && currentApplicationStatus === "Abgelehnt");
         return jobStatusPasses && applicationStatusPasses;
     });
     
+    // Sortierlogik ANWENDEN
+    let sortedJobs = [...filteredJobs]; // Kopie für die Sortierung
+    if (activeSortKey) {
+        sortedJobs.sort((a, b) => {
+            const jobDataA = a.jobData;
+            const jobDataB = b.jobData;
+            if (!jobDataA || !jobDataB) return 0;
+
+            let valA, valB;
+
+            switch (activeSortKey) {
+                case 'deadline':
+                    valA = jobDataA['job-date-end'] ? new Date(jobDataA['job-date-end']) : new Date(0); // Frühes Datum für null
+                    valB = jobDataB['job-date-end'] ? new Date(jobDataB['job-date-end']) : new Date(0);
+                    break;
+                case 'content':
+                    valA = jobDataA['fertigstellung-content'] ? new Date(jobDataA['fertigstellung-content']) : new Date(0);
+                    valB = jobDataB['fertigstellung-content'] ? new Date(jobDataB['fertigstellung-content']) : new Date(0);
+                    break;
+                case 'budget':
+                    valA = parseFloat(String(jobDataA['job-payment']).replace(/[^0-9.-]+/g,""));
+                    valB = parseFloat(String(jobDataB['job-payment']).replace(/[^0-9.-]+/g,""));
+                    if (isNaN(valA)) valA = -Infinity; // Behandle NaN als sehr kleinen Wert
+                    if (isNaN(valB)) valB = -Infinity;
+                    break;
+                default: return 0;
+            }
+            // Aufsteigende Sortierung
+            if (valA < valB) return -1;
+            if (valA > valB) return 1;
+            return 0;
+        });
+    }
+
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
     const endIndex = startIndex + JOBS_PER_PAGE;
-    const jobsToShowOnPage = filteredJobs.slice(startIndex, endIndex);
+    const jobsToShowOnPage = sortedJobs.slice(startIndex, endIndex); // Sortierte Liste verwenden
 
     if (currentPage === 1) {
-        appContainer.innerHTML = ""; // Skeletons oder alte Inhalte entfernen
+        appContainer.innerHTML = ""; 
         if (jobsToShowOnPage.length === 0) {
             const noJobsMessage = document.createElement('p');
-            noJobsMessage.textContent = "ℹ️ Keine Jobs entsprechen den aktuellen Filterkriterien.";
-            noJobsMessage.classList.add('job-entry'); // Für Fade-In
+            noJobsMessage.textContent = "ℹ️ Keine Jobs entsprechen den aktuellen Filter- und Sortierkriterien.";
+            noJobsMessage.classList.add('job-entry'); 
             appContainer.appendChild(noJobsMessage);
-            requestAnimationFrame(() => { // Stellt sicher, dass das Element im DOM ist, bevor die Klasse geändert wird
-                noJobsMessage.classList.add('visible');
-            });
+            requestAnimationFrame(() => { noJobsMessage.classList.add('visible'); });
         } else {
             const fragment = document.createDocumentFragment();
             jobsToShowOnPage.forEach(({ jobData }) => { 
@@ -231,36 +226,27 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                 jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug || ''}`;
                 jobLink.target = "_blank";
                 jobLink.style.textDecoration = "none";
-                jobLink.classList.add("job-listing-link", "job-entry"); // NEU: job-entry Klasse für Fade-In
+                jobLink.classList.add("job-listing-link", "job-entry"); 
 
-                // ... (Restlicher Code zum Erstellen des jobDiv und seiner Inhalte bleibt gleich)
                 const jobDiv = document.createElement("div");
                 jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
-        
                 const jobInfoDiv = document.createElement("div");
                 jobInfoDiv.classList.add("db-table-row-item", "justify-left", "job-info-container");
-        
                 const jobImage = document.createElement("img");
                 jobImage.classList.add("db-table-img", "is-margin-right-12");
                 jobImage.src = jobData["job-image"]?.url || jobData["job-image"] || "https://via.placeholder.com/80x80?text=Job";
                 jobImage.alt = jobData["name"] || "Job Bild";
                 jobInfoDiv.appendChild(jobImage);
-        
                 const jobName = document.createElement("span");
                 jobName.classList.add("truncate", "job-title");
                 jobName.textContent = jobData["name"] || "Unbekannter Job";
                 jobInfoDiv.appendChild(jobName);
-        
                 jobDiv.appendChild(jobInfoDiv);
-        
                 const fields = [
-                    { key: "job-payment", label: "Bezahlung" },
-                    { key: "job-date-end", label: "Bewerbungsfrist" },
-                    { key: "fertigstellung-content", label: "Contentdeadline" },
-                    { key: "job-status", label: "Job Status" },
+                    { key: "job-payment", label: "Bezahlung" }, { key: "job-date-end", label: "Bewerbungsfrist" },
+                    { key: "fertigstellung-content", label: "Contentdeadline" }, { key: "job-status", label: "Job Status" },
                     { key: "application-status", label: "Bewerbungsstatus" }
                 ];
-        
                 fields.forEach(field => {
                     const value = jobData[field.key];
                     const fieldDiv = document.createElement("div");
@@ -279,46 +265,26 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                     } else if (field.key === "job-status") {
                         const endDateJob = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
                         const now = new Date();
-                        const statusDiv = document.createElement("div");
-                        statusDiv.classList.add("job-tag");
+                        const statusDiv = document.createElement("div"); statusDiv.classList.add("job-tag");
                         const statusTextInner = document.createElement("span");
-                        if (endDateJob && endDateJob < now) {
-                            statusDiv.classList.add("is-bg-light-red");
-                            statusTextInner.textContent = "Beendet";
-                        } else if (endDateJob) {
-                            statusDiv.classList.add("is-bg-light-green");
-                            statusTextInner.textContent = "Aktiv";
-                        } else {
-                            statusDiv.classList.add("is-bg-light-grey");
-                            statusTextInner.textContent = "Unbekannt";
-                        }
-                        statusDiv.appendChild(statusTextInner);
-                        fieldDiv.appendChild(statusDiv);
+                        if (endDateJob && endDateJob < now) { statusDiv.classList.add("is-bg-light-red"); statusTextInner.textContent = "Beendet"; }
+                        else if (endDateJob) { statusDiv.classList.add("is-bg-light-green"); statusTextInner.textContent = "Aktiv"; }
+                        else { statusDiv.classList.add("is-bg-light-grey"); statusTextInner.textContent = "Unbekannt"; }
+                        statusDiv.appendChild(statusTextInner); fieldDiv.appendChild(statusDiv);
                     } else if (field.key === "application-status") {
-                        const statusDiv = document.createElement("div");
-                        statusDiv.classList.add("job-tag");
+                        const statusDiv = document.createElement("div"); statusDiv.classList.add("job-tag");
                         const statusTextInner = document.createElement("span");
                         const appStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
-                        if (appStatus === "Angenommen") {
-                            statusDiv.classList.add("is-bg-light-green");
-                            statusTextInner.textContent = "Angenommen";
-                        } else if (appStatus === "Abgelehnt") {
-                            statusDiv.classList.add("is-bg-light-red");
-                            statusTextInner.textContent = "Abgelehnt";
-                        } else { 
-                            statusDiv.classList.add("is-bg-light-blue");
-                            statusTextInner.textContent = "Ausstehend";
-                        }
-                        statusDiv.appendChild(statusTextInner);
-                        fieldDiv.appendChild(statusDiv);
+                        if (appStatus === "Angenommen") { statusDiv.classList.add("is-bg-light-green"); statusTextInner.textContent = "Angenommen"; }
+                        else if (appStatus === "Abgelehnt") { statusDiv.classList.add("is-bg-light-red"); statusTextInner.textContent = "Abgelehnt"; }
+                        else { statusDiv.classList.add("is-bg-light-blue"); statusTextInner.textContent = "Ausstehend"; }
+                        statusDiv.appendChild(statusTextInner); fieldDiv.appendChild(statusDiv);
                     } else {
                         fieldText.classList.add("db-job-tag-txt"); 
                         fieldText.textContent = value || "Nicht verfügbar";
                     }
                     if (field.key !== "job-status" && field.key !== "application-status") {
-                         if(fieldText.textContent || fieldText.classList.contains("db-job-tag-txt")){ 
-                            fieldDiv.appendChild(fieldText);
-                         }
+                         if(fieldText.textContent || fieldText.classList.contains("db-job-tag-txt")){ fieldDiv.appendChild(fieldText); }
                     }
                     jobDiv.appendChild(fieldDiv);
                 });
@@ -326,107 +292,65 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                 fragment.appendChild(jobLink); 
             });
             appContainer.appendChild(fragment);
-            requestAnimationFrame(() => { // Stellt sicher, dass alle Elemente im DOM sind
+            requestAnimationFrame(() => { 
                 const newEntries = appContainer.querySelectorAll('.job-entry');
                 newEntries.forEach(entry => entry.classList.add('visible'));
             });
         }
-    } else if (jobsToShowOnPage.length > 0) { // Für "Mehr laden" (currentPage > 1)
-        // Bestehende Logik zum Anhängen ohne Fade-In, da dies inkrementell geschieht
+    } else if (jobsToShowOnPage.length > 0) { 
         jobsToShowOnPage.forEach(({ jobData }) => { 
             if (!jobData) return;
             const jobLink = document.createElement("a");
             jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug || ''}`;
             jobLink.target = "_blank";
             jobLink.style.textDecoration = "none";
-            jobLink.classList.add("job-listing-link"); // Keine job-entry Klasse hier, da kein Fade-In für "Mehr laden"
-            
-            // ... (Restlicher Code zum Erstellen des jobDiv und seiner Inhalte bleibt gleich)
+            jobLink.classList.add("job-listing-link"); 
             const jobDiv = document.createElement("div");
             jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
-    
             const jobInfoDiv = document.createElement("div");
             jobInfoDiv.classList.add("db-table-row-item", "justify-left", "job-info-container");
-    
             const jobImage = document.createElement("img");
             jobImage.classList.add("db-table-img", "is-margin-right-12");
             jobImage.src = jobData["job-image"]?.url || jobData["job-image"] || "https://via.placeholder.com/80x80?text=Job";
             jobImage.alt = jobData["name"] || "Job Bild";
             jobInfoDiv.appendChild(jobImage);
-    
             const jobName = document.createElement("span");
             jobName.classList.add("truncate", "job-title");
             jobName.textContent = jobData["name"] || "Unbekannter Job";
             jobInfoDiv.appendChild(jobName);
-    
             jobDiv.appendChild(jobInfoDiv);
-    
             const fields = [
-                { key: "job-payment", label: "Bezahlung" },
-                { key: "job-date-end", label: "Bewerbungsfrist" },
-                { key: "fertigstellung-content", label: "Contentdeadline" },
-                { key: "job-status", label: "Job Status" },
+                { key: "job-payment", label: "Bezahlung" }, { key: "job-date-end", label: "Bewerbungsfrist" },
+                { key: "fertigstellung-content", label: "Contentdeadline" }, { key: "job-status", label: "Job Status" },
                 { key: "application-status", label: "Bewerbungsstatus" }
             ];
-    
             fields.forEach(field => {
                 const value = jobData[field.key];
                 const fieldDiv = document.createElement("div");
                 fieldDiv.classList.add("db-table-row-item", `item-${field.key}`);
                 const fieldText = document.createElement("span");
-                if (field.key === "job-payment") {
-                    fieldText.classList.add("db-job-tag-txt"); 
-                    fieldText.textContent = value ? `${value} €` : "N/A";
-                } else if (field.key === "job-date-end") {
-                    fieldText.classList.add("db-job-tag-txt"); 
-                    fieldText.textContent = value ? calculateDeadlineCountdown(value) : "N/A";
-                } else if (field.key === "fertigstellung-content" && value) {
-                    fieldText.classList.add("db-job-tag-txt"); 
-                    const date = new Date(value);
+                if (field.key === "job-payment") { fieldText.classList.add("db-job-tag-txt"); fieldText.textContent = value ? `${value} €` : "N/A"; }
+                else if (field.key === "job-date-end") { fieldText.classList.add("db-job-tag-txt"); fieldText.textContent = value ? calculateDeadlineCountdown(value) : "N/A"; }
+                else if (field.key === "fertigstellung-content" && value) {
+                    fieldText.classList.add("db-job-tag-txt"); const date = new Date(value);
                     fieldText.textContent = !isNaN(date.getTime()) ? `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}` : "N/A";
                 } else if (field.key === "job-status") {
-                    const endDateJob = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
-                    const now = new Date();
-                    const statusDiv = document.createElement("div");
-                    statusDiv.classList.add("job-tag");
-                    const statusTextInner = document.createElement("span");
-                    if (endDateJob && endDateJob < now) {
-                        statusDiv.classList.add("is-bg-light-red");
-                        statusTextInner.textContent = "Beendet";
-                    } else if (endDateJob) {
-                        statusDiv.classList.add("is-bg-light-green");
-                        statusTextInner.textContent = "Aktiv";
-                    } else {
-                        statusDiv.classList.add("is-bg-light-grey");
-                        statusTextInner.textContent = "Unbekannt";
-                    }
-                    statusDiv.appendChild(statusTextInner);
-                    fieldDiv.appendChild(statusDiv);
+                    const endDateJob = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null; const now = new Date();
+                    const statusDiv = document.createElement("div"); statusDiv.classList.add("job-tag"); const statusTextInner = document.createElement("span");
+                    if (endDateJob && endDateJob < now) { statusDiv.classList.add("is-bg-light-red"); statusTextInner.textContent = "Beendet"; }
+                    else if (endDateJob) { statusDiv.classList.add("is-bg-light-green"); statusTextInner.textContent = "Aktiv"; }
+                    else { statusDiv.classList.add("is-bg-light-grey"); statusTextInner.textContent = "Unbekannt"; }
+                    statusDiv.appendChild(statusTextInner); fieldDiv.appendChild(statusDiv);
                 } else if (field.key === "application-status") {
-                    const statusDiv = document.createElement("div");
-                    statusDiv.classList.add("job-tag");
-                    const statusTextInner = document.createElement("span");
+                    const statusDiv = document.createElement("div"); statusDiv.classList.add("job-tag"); const statusTextInner = document.createElement("span");
                     const appStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
-                    if (appStatus === "Angenommen") {
-                        statusDiv.classList.add("is-bg-light-green");
-                        statusTextInner.textContent = "Angenommen";
-                    } else if (appStatus === "Abgelehnt") {
-                        statusDiv.classList.add("is-bg-light-red");
-                        statusTextInner.textContent = "Abgelehnt";
-                    } else { 
-                        statusDiv.classList.add("is-bg-light-blue");
-                        statusTextInner.textContent = "Ausstehend";
-                    }
-                    statusDiv.appendChild(statusTextInner);
-                    fieldDiv.appendChild(statusDiv);
-                } else {
-                    fieldText.classList.add("db-job-tag-txt"); 
-                    fieldText.textContent = value || "Nicht verfügbar";
-                }
+                    if (appStatus === "Angenommen") { statusDiv.classList.add("is-bg-light-green"); statusTextInner.textContent = "Angenommen"; }
+                    else if (appStatus === "Abgelehnt") { statusDiv.classList.add("is-bg-light-red"); statusTextInner.textContent = "Abgelehnt"; }
+                    else { statusDiv.classList.add("is-bg-light-blue"); statusTextInner.textContent = "Ausstehend"; }
+                    statusDiv.appendChild(statusTextInner); fieldDiv.appendChild(statusDiv);
+                } else { fieldText.classList.add("db-job-tag-txt"); fieldText.textContent = value || "Nicht verfügbar"; }
                 if (field.key !== "job-status" && field.key !== "application-status") {
-                     if(fieldText.textContent || fieldText.classList.contains("db-job-tag-txt")){ 
-                        fieldDiv.appendChild(fieldText);
-                     }
+                     if(fieldText.textContent || fieldText.classList.contains("db-job-tag-txt")){ fieldDiv.appendChild(fieldText); }
                 }
                 jobDiv.appendChild(fieldDiv);
             });
@@ -435,14 +359,10 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         });
     }
 
-    // Load More Button (Logik bleibt unverändert)
     const loadMoreContainer = document.getElementById("load-more-container");
-    if (!loadMoreContainer) {
-        console.error("❌ Element 'load-more-container' nicht gefunden.");
-        return;
-    }
+    if (!loadMoreContainer) { console.error("❌ Element 'load-more-container' nicht gefunden."); return; }
     loadMoreContainer.innerHTML = ""; 
-    if (endIndex < filteredJobs.length) {
+    if (endIndex < sortedJobs.length) { // Gegen sortierte Liste prüfen
         const loadMoreButton = document.createElement("button");
         loadMoreButton.textContent = "Mehr laden";
         loadMoreButton.classList.add("load-more-btn"); 
@@ -454,14 +374,10 @@ function renderJobs(jobsToProcess, webflowMemberId) {
     }
 }
 
-
 // Initialisierungsfunktion
 async function initializeUserApplications() {
     const appContainer = document.getElementById("application-list");
-    if (!appContainer) {
-        console.error("FEHLER: App-Container 'application-list' nicht im DOM gefunden.");
-        return;
-    }
+    if (!appContainer) { console.error("FEHLER: App-Container 'application-list' nicht im DOM gefunden."); return; }
     renderSkeletonLoader(appContainer, JOBS_PER_PAGE); 
 
     try {
@@ -469,9 +385,7 @@ async function initializeUserApplications() {
             const member = await window.$memberstackDom.getCurrentMember();
             currentWebflowMemberId = member?.data?.customFields?.['webflow-member-id'];
             if (!currentWebflowMemberId) console.warn("⚠️ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
-        } else {
-            console.warn("⚠️ MemberStack (window.$memberstackDom.getCurrentMember) ist nicht verfügbar.");
-        }
+        } else { console.warn("⚠️ MemberStack (window.$memberstackDom.getCurrentMember) ist nicht verfügbar."); }
 
         let applications = [];
         if (currentWebflowMemberId) {
@@ -483,63 +397,80 @@ async function initializeUserApplications() {
             const jobPromises = applications.map(appId => fetchJobData(appId).then(jobData => ({ appId, jobData })));
             allJobResults = await Promise.all(jobPromises);
             allJobResults = allJobResults.filter(job => job.jobData && Object.keys(job.jobData).length > 0);
-            
             currentPage = 1; 
             renderJobs(allJobResults, currentWebflowMemberId);
         } else {
-            appContainer.innerHTML = ""; // Skeletons entfernen
+            appContainer.innerHTML = ""; 
             const noJobsMessage = document.createElement('p');
             noJobsMessage.textContent = "Keine abgeschlossenen Bewerbungen gefunden oder keine Jobs zum Anzeigen.";
-            noJobsMessage.classList.add('job-entry'); // Für Fade-In
+            noJobsMessage.classList.add('job-entry'); 
             appContainer.appendChild(noJobsMessage);
-            requestAnimationFrame(() => {
-                noJobsMessage.classList.add('visible');
-            });
-
+            requestAnimationFrame(() => { noJobsMessage.classList.add('visible'); });
             const loadMoreContainer = document.getElementById("load-more-container");
             if (loadMoreContainer) loadMoreContainer.innerHTML = ""; 
         }
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler beim Laden der Bewerbungen:", error);
-        appContainer.innerHTML = ""; // Skeletons entfernen
+        appContainer.innerHTML = ""; 
         const errorMessage = document.createElement('p');
         errorMessage.innerHTML = `❌ Es ist ein Fehler aufgetreten: ${error.message}. Bitte versuchen Sie es später erneut.`;
-        errorMessage.classList.add('job-entry'); // Für Fade-In
+        errorMessage.classList.add('job-entry'); 
         appContainer.appendChild(errorMessage);
-        requestAnimationFrame(() => {
-            errorMessage.classList.add('visible');
-        });
+        requestAnimationFrame(() => { errorMessage.classList.add('visible'); });
     }
 }
 
-// Event Listener für Filter-Checkboxen
-function setupFilterListeners() {
-    const filterCheckboxesIds = [
+// Event Listener für Filter- UND Sortier-Checkboxen
+function setupEventListeners() {
+    const filterCheckboxIds = [
         "job-status-active-filter", "job-status-closed-filter",
         "application-status-pending-filter", "application-status-accepted-filter", "application-status-rejected-filter"
     ];
+    const sortCheckboxIds = ["job-sort-deadline", "job-sort-content", "job-sort-budget"];
 
-    const handleFilterChange = () => {
+    const allFilterCheckboxes = filterCheckboxIds.map(id => document.getElementById(id)).filter(cb => cb !== null);
+    const allSortCheckboxes = sortCheckboxIds.map(id => document.getElementById(id)).filter(cb => cb !== null);
+
+    function handleInteraction() {
         currentPage = 1; 
-        // Optional: Skeleton Loader hier kurz anzeigen, wenn Filterung länger dauert
-        // renderSkeletonLoader(document.getElementById("application-list"), JOBS_PER_PAGE);
-        // setTimeout(() => renderJobs(allJobResults, currentWebflowMemberId), 50); // Kleine Verzögerung für Skeleton
-        renderJobs(allJobResults, currentWebflowMemberId); // Direkter Render für schnellere Filterung
-    };
+        renderJobs(allJobResults, currentWebflowMemberId);
+    }
 
-    filterCheckboxesIds.forEach(id => {
-        const checkbox = document.getElementById(id);
-        if (checkbox) {
-            checkbox.addEventListener("change", handleFilterChange);
-        } else {
-            console.warn(`⚠️ Checkbox '${id}' nicht gefunden.`);
+    allFilterCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener("change", handleInteraction);
+    });
+
+    allSortCheckboxes.forEach(checkbox => {
+        // Füge data-sort-key="deadline", data-sort-key="content", data-sort-key="budget"
+        // zu deinen HTML Sortier-Checkboxen hinzu!
+        checkbox.addEventListener('change', (event) => {
+            if (event.target.checked) {
+                activeSortKey = event.target.dataset.sortKey;
+                allSortCheckboxes.forEach(otherCb => {
+                    if (otherCb !== event.target) {
+                        otherCb.checked = false;
+                    }
+                });
+            } else {
+                // Wenn die aktive Sortierung abgewählt wird, Sortierung aufheben
+                if (activeSortKey === event.target.dataset.sortKey) {
+                    activeSortKey = null;
+                }
+            }
+            handleInteraction();
+        });
+    });
+
+    // Warnungen für fehlende Checkboxen
+    [...filterCheckboxIds, ...sortCheckboxIds].forEach(id => {
+        if (!document.getElementById(id)) {
+            console.warn(`⚠️ Checkbox '${id}' nicht im DOM gefunden.`);
         }
     });
 }
 
-
-// Start der Anwendung, sobald das DOM vollständig geladen ist
+// Start der Anwendung
 window.addEventListener("DOMContentLoaded", () => {
     initializeUserApplications();
-    setupFilterListeners();
+    setupEventListeners(); // Umbenannt von setupFilterListeners
 });
