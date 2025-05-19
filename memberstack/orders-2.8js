@@ -29,17 +29,15 @@ function calculateCountdown(endDate) {
     const totalMinutes = Math.floor(diff / (1000 * 60));
     const totalHours = Math.floor(totalMinutes / 60);
     const days = Math.floor(totalHours / 24);
-    // const hours = totalHours % 24; // Verbleibende Stunden nach Abzug der vollen Tage
-    // const minutes = totalMinutes % 60; // Verbleibende Minuten nach Abzug der vollen Stunden
 
     let text = "";
     let tagClass = "job-tag"; // Standard-Klasse
 
     if (days > 0) {
         text = `${days} ${days === 1 ? "Tag" : "Tage"}`;
-        if (days <= 4) { // Zwischen 1 und 4 Tagen
+        if (days <= 4) { 
             tagClass = "job-tag is-bg-light-red";
-        } else if (days <= 10) { // Zwischen 5 und 10 Tagen
+        } else if (days <= 10) { 
             tagClass = "job-tag is-bg-light-yellow";
         }
     } else if (totalHours > 0) { 
@@ -91,12 +89,10 @@ function renderBookedJobsSkeletonLoader(container, count) {
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
 
-        // Skeleton für Creator Profilbild (NEU)
         const skeletonCreatorImage = document.createElement("div");
-        skeletonCreatorImage.classList.add("db-table-img", "is-margin-right-12", "skeleton-element", "skeleton-image", "skeleton-creator-profile"); // Eigene Klasse für ggf. spezifisches Styling
+        skeletonCreatorImage.classList.add("db-table-img", "is-margin-right-12", "skeleton-element", "skeleton-image", "skeleton-creator-profile"); 
         jobInfoDiv.appendChild(skeletonCreatorImage);
 
-        // Skeleton für Job Bild
         const skeletonJobImage = document.createElement("div");
         skeletonJobImage.classList.add("db-table-img", "is-margin-right-12", "skeleton-element", "skeleton-image");
         jobInfoDiv.appendChild(skeletonJobImage);
@@ -110,9 +106,8 @@ function renderBookedJobsSkeletonLoader(container, count) {
             const fieldDiv = document.createElement("div");
             fieldDiv.classList.add("db-table-row-item");
             
-            if (index === 0) { // Speziell für Brand Name, der jetzt ein Tag ist
+            if (index === 0) { 
                  const skeletonTag = document.createElement("div");
-                 // Klassen für Skeleton-Tags, plus 'customer' für Konsistenz, falls es gestylt wird
                  skeletonTag.classList.add("job-tag", "customer", "skeleton-element", "skeleton-tag-box"); 
                  fieldDiv.appendChild(skeletonTag);
             } else if (skelConfig.type === "tag") {
@@ -128,7 +123,11 @@ function renderBookedJobsSkeletonLoader(container, count) {
         });
         container.appendChild(jobDiv);
     }
-    
+    // HINWEIS: Die CSS-Regeln für .skeleton-row, .skeleton-element, .skeleton-image, 
+    // .skeleton-creator-profile, .skeleton-text, .skeleton-text-title, .skeleton-text-short, 
+    // .skeleton-text-medium, .skeleton-tag-box, @keyframes pulse, .job-entry, .job-entry.visible,
+    // .no-jobs-message.job-entry, .error-message.job-entry, und .job-tag.customer
+    // MÜSSEN in deiner separaten CSS-Datei definiert sein.
 }
 
 // 🖨️ Jobs rendern
@@ -261,28 +260,24 @@ function renderJobs() {
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
 
-        // Creator Profilbild (NEU)
         const creatorImage = document.createElement("img");
-        creatorImage.classList.add("db-table-img", "is-margin-right-12"); // Standardklasse für Bilder
-        // Annahme: Das Feld für das Profilbild des Creators heißt 'creator-profile-img'
-        // Du musst ggf. den Feldnamen an deine Webflow Collection anpassen.
-        creatorImage.src = jobData["creator-profile-img"]?.url || jobData["creator-profile-img"] || "https://via.placeholder.com/60x60/cccccc/000000?text=C"; // Platzhalter
+        creatorImage.classList.add("db-table-img", "is-margin-right-12"); 
+        creatorImage.src = jobData["creator-profile-img"]?.url || jobData["creator-profile-img"] || "https://via.placeholder.com/60x60/cccccc/000000?text=C"; 
         creatorImage.alt = "Creator Profilbild";
-        creatorImage.style.width = "60px"; // Beispielgröße, anpassen
-        creatorImage.style.height = "60px"; // Beispielgröße, anpassen
-        creatorImage.style.borderRadius = "50%"; // Für runde Profilbilder
+        creatorImage.style.width = "60px"; 
+        creatorImage.style.height = "60px"; 
+        creatorImage.style.borderRadius = "50%"; 
         creatorImage.style.objectFit = "cover";
         jobInfoDiv.appendChild(creatorImage);
 
-        // Job Bild
         const jobImage = document.createElement("img");
         jobImage.classList.add("db-table-img", "is-margin-right-12");
         jobImage.src = jobData["job-image"]?.url || jobData["job-image"] || "https://via.placeholder.com/100x60?text=Job"; 
         jobImage.alt = jobData["name"] || "Job Bild";
         jobImage.style.maxWidth = "100px"; 
-        jobImage.style.height = "60px"; // Konsistente Höhe für Job-Bilder
+        jobImage.style.height = "60px"; 
         jobImage.style.objectFit = "cover";
-        jobImage.style.borderRadius = "8px"; // Abgerundete Ecken für Job-Bilder
+        jobImage.style.borderRadius = "8px"; 
         jobInfoDiv.appendChild(jobImage);
         
         const jobNameSpan = document.createElement("span");
@@ -291,11 +286,10 @@ function renderJobs() {
         jobInfoDiv.appendChild(jobNameSpan);
         jobDiv.appendChild(jobInfoDiv);
 
-        // Brand Name (Kunde) - jetzt mit job-tag und customer Klasse
         const brandNameDiv = document.createElement("div");
-        brandNameDiv.classList.add("db-table-row-item"); // Behält die Basisklasse für die Spalte
-        const brandTag = document.createElement("div"); // Inneres Div für das Tag-Styling
-        brandTag.classList.add("job-tag", "customer"); // NEUE KLASSEN
+        brandNameDiv.classList.add("db-table-row-item"); 
+        const brandTag = document.createElement("div"); 
+        brandTag.classList.add("job-tag", "customer"); 
         brandTag.textContent = jobData["brand-name"] || "K.A."; 
         brandNameDiv.appendChild(brandTag);
         jobDiv.appendChild(brandNameDiv);
@@ -380,7 +374,6 @@ function setupBookedJobsEventListeners() {
         console.warn("⚠️ Suchfeld 'filter-search' für gebuchte Jobs nicht im DOM gefunden.");
     }
 
-    // Event Listener für Content Deadline Filter
     if (contentDeadlineDoneCheckbox) {
         contentDeadlineDoneCheckbox.addEventListener("change", handleInteraction);
     } else {
@@ -392,7 +385,6 @@ function setupBookedJobsEventListeners() {
         console.warn("⚠️ Filter-Checkbox 'content-deadline-active' nicht im DOM gefunden.");
     }
 
-    // Event Listener für Script Deadline Filter
     if (scriptDeadlineDoneCheckbox) {
         scriptDeadlineDoneCheckbox.addEventListener("change", handleInteraction);
     } else {
