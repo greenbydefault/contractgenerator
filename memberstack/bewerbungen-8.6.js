@@ -10,7 +10,8 @@ const JOBS_PER_PAGE = 15;
 let currentPage = 1;
 let allJobResults = [];
 let currentWebflowMemberId = null;
-let activeSortKey = null; // Speichert den aktiven Sortierschlüssel (z.B. 'deadline', 'content', 'budget')
+// Speichert das aktive Sortierobjekt, z.B. { key: 'deadline', direction: 'asc' }
+let activeSortCriteria = null; 
 
 // 🛠️ Hilfsfunktionen (bleiben unverändert)
 function buildWorkerUrl(apiUrl) {
@@ -129,7 +130,7 @@ function renderSkeletonLoader(container, count) {
 
     .job-entry {
         opacity: 0;
-        transition: opacity 0.4s ease-in-out !important; // !important als Test, falls andere Regeln stören
+        transition: opacity 0.4s ease-in-out !important; 
     }
     .job-entry.visible {
         opacity: 1;
@@ -173,8 +174,8 @@ function renderJobs(jobsToProcess, webflowMemberId) {
     });
     
     // Sortierlogik ANWENDEN
-    let sortedJobs = [...filteredJobs]; // Kopie für die Sortierung
-    if (activeSortKey) {
+    let sortedJobs = [...filteredJobs]; 
+    if (activeSortCriteria && activeSortCriteria.key) {
         sortedJobs.sort((a, b) => {
             const jobDataA = a.jobData;
             const jobDataB = b.jobData;
@@ -182,33 +183,35 @@ function renderJobs(jobsToProcess, webflowMemberId) {
 
             let valA, valB;
 
-            switch (activeSortKey) {
-                case 'deadline':
-                    valA = jobDataA['job-date-end'] ? new Date(jobDataA['job-date-end']) : new Date(0); // Frühes Datum für null
+            switch (activeSortCriteria.key) {
+                case 'deadline': // Bezieht sich auf 'job-date-end'
+                    valA = jobDataA['job-date-end'] ? new Date(jobDataA['job-date-end']) : new Date(0); 
                     valB = jobDataB['job-date-end'] ? new Date(jobDataB['job-date-end']) : new Date(0);
                     break;
-                case 'content':
+                case 'content': // Bezieht sich auf 'fertigstellung-content'
                     valA = jobDataA['fertigstellung-content'] ? new Date(jobDataA['fertigstellung-content']) : new Date(0);
                     valB = jobDataB['fertigstellung-content'] ? new Date(jobDataB['fertigstellung-content']) : new Date(0);
                     break;
-                case 'budget':
+                case 'budget': // Bezieht sich auf 'job-payment'
                     valA = parseFloat(String(jobDataA['job-payment']).replace(/[^0-9.-]+/g,""));
                     valB = parseFloat(String(jobDataB['job-payment']).replace(/[^0-9.-]+/g,""));
-                    if (isNaN(valA)) valA = -Infinity; // Behandle NaN als sehr kleinen Wert
-                    if (isNaN(valB)) valB = -Infinity;
+                    if (isNaN(valA)) valA = activeSortCriteria.direction === 'asc' ? Infinity : -Infinity; // NaN ans Ende bei ASC, Anfang bei DESC
+                    if (isNaN(valB)) valB = activeSortCriteria.direction === 'asc' ? Infinity : -Infinity;
                     break;
                 default: return 0;
             }
-            // Aufsteigende Sortierung
-            if (valA < valB) return -1;
-            if (valA > valB) return 1;
-            return 0;
+            
+            let comparison = 0;
+            if (valA < valB) comparison = -1;
+            if (valA > valB) comparison = 1;
+            
+            return activeSortCriteria.direction === 'desc' ? comparison * -1 : comparison;
         });
     }
 
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
     const endIndex = startIndex + JOBS_PER_PAGE;
-    const jobsToShowOnPage = sortedJobs.slice(startIndex, endIndex); // Sortierte Liste verwenden
+    const jobsToShowOnPage = sortedJobs.slice(startIndex, endIndex); 
 
     if (currentPage === 1) {
         appContainer.innerHTML = ""; 
@@ -362,7 +365,7 @@ function renderJobs(jobsToProcess, webflowMemberId) {
     const loadMoreContainer = document.getElementById("load-more-container");
     if (!loadMoreContainer) { console.error("❌ Element 'load-more-container' nicht gefunden."); return; }
     loadMoreContainer.innerHTML = ""; 
-    if (endIndex < sortedJobs.length) { // Gegen sortierte Liste prüfen
+    if (endIndex < sortedJobs.length) { 
         const loadMoreButton = document.createElement("button");
         loadMoreButton.textContent = "Mehr laden";
         loadMoreButton.classList.add("load-more-btn"); 
@@ -426,10 +429,27 @@ function setupEventListeners() {
         "job-status-active-filter", "job-status-closed-filter",
         "application-status-pending-filter", "application-status-accepted-filter", "application-status-rejected-filter"
     ];
-    const sortCheckboxIds = ["job-sort-deadline", "job-sort-content", "job-sort-budget"];
+    // IDs für die Sortier-Checkboxen anpassen
+    const sortCheckboxDefinitions = [
+        { id: "job-sort-deadline-asc", key: "deadline", direction: "asc" },
+        { id: "job-sort-deadline-desc", key: "deadline", direction: "desc" },
+        { id: "job-sort-content-asc", key: "content", direction: "asc" }, // Behalte 'asc' für andere, oder erweitere später
+        // { id: "job-sort-content-desc", key: "content", direction: "desc" }, // Beispiel für Erweiterung
+        { id: "job-sort-budget-asc", key: "budget", direction: "asc" },
+        // { id: "job-sort-budget-desc", key: "budget", direction: "desc" } // Beispiel für Erweiterung
+    ];
 
     const allFilterCheckboxes = filterCheckboxIds.map(id => document.getElementById(id)).filter(cb => cb !== null);
-    const allSortCheckboxes = sortCheckboxIds.map(id => document.getElementById(id)).filter(cb => cb !== null);
+    const allSortCheckboxes = sortCheckboxDefinitions.map(def => {
+        const cb = document.getElementById(def.id);
+        if (cb) {
+            // Speichere die Sortierkriterien direkt auf dem Checkbox-Element
+            cb.dataset.sortKey = def.key;
+            cb.dataset.sortDirection = def.direction;
+        }
+        return cb;
+    }).filter(cb => cb !== null);
+
 
     function handleInteraction() {
         currentPage = 1; 
@@ -441,20 +461,25 @@ function setupEventListeners() {
     });
 
     allSortCheckboxes.forEach(checkbox => {
-        // Füge data-sort-key="deadline", data-sort-key="content", data-sort-key="budget"
-        // zu deinen HTML Sortier-Checkboxen hinzu!
         checkbox.addEventListener('change', (event) => {
-            if (event.target.checked) {
-                activeSortKey = event.target.dataset.sortKey;
+            const targetCheckbox = event.target;
+            if (targetCheckbox.checked) {
+                activeSortCriteria = { 
+                    key: targetCheckbox.dataset.sortKey, 
+                    direction: targetCheckbox.dataset.sortDirection 
+                };
+                // Alle anderen Sortier-Checkboxen deaktivieren
                 allSortCheckboxes.forEach(otherCb => {
-                    if (otherCb !== event.target) {
+                    if (otherCb !== targetCheckbox) {
                         otherCb.checked = false;
                     }
                 });
             } else {
-                // Wenn die aktive Sortierung abgewählt wird, Sortierung aufheben
-                if (activeSortKey === event.target.dataset.sortKey) {
-                    activeSortKey = null;
+                // Wenn die gerade aktive Sortierung abgewählt wird
+                if (activeSortCriteria && 
+                    activeSortCriteria.key === targetCheckbox.dataset.sortKey &&
+                    activeSortCriteria.direction === targetCheckbox.dataset.sortDirection) {
+                    activeSortCriteria = null; // Sortierung aufheben
                 }
             }
             handleInteraction();
@@ -462,15 +487,16 @@ function setupEventListeners() {
     });
 
     // Warnungen für fehlende Checkboxen
-    [...filterCheckboxIds, ...sortCheckboxIds].forEach(id => {
-        if (!document.getElementById(id)) {
-            console.warn(`⚠️ Checkbox '${id}' nicht im DOM gefunden.`);
-        }
+    filterCheckboxIds.forEach(id => {
+        if (!document.getElementById(id)) console.warn(`⚠️ Filter-Checkbox '${id}' nicht im DOM gefunden.`);
+    });
+    sortCheckboxDefinitions.forEach(def => {
+        if (!document.getElementById(def.id)) console.warn(`⚠️ Sortier-Checkbox '${def.id}' nicht im DOM gefunden.`);
     });
 }
 
 // Start der Anwendung
 window.addEventListener("DOMContentLoaded", () => {
     initializeUserApplications();
-    setupEventListeners(); // Umbenannt von setupFilterListeners
+    setupEventListeners();
 });
