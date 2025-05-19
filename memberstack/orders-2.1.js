@@ -43,9 +43,10 @@ function calculateCountdown(endDate) {
 
 /**
  * Ruft ein einzelnes Item aus einer Webflow Collection ab.
+ * Die API gibt das Item-Objekt direkt zurück.
  * @param {string} collectionId - Die ID der Webflow Collection.
  * @param {string} itemId - Die ID des Items in der Collection.
- * @returns {Promise<object|null>} Die Daten des Collection Items oder null bei einem Fehler.
+ * @returns {Promise<object|null>} Das Item-Objekt (inkl. fieldData) oder null bei einem Fehler.
  */
 async function fetchCollectionItem(collectionId, itemId) {
     const apiUrl = `${API_BASE_URL}/${collectionId}/items/${itemId}/live`;
@@ -59,8 +60,8 @@ async function fetchCollectionItem(collectionId, itemId) {
             throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
         }
 
-        const item = await response.json();
-        return item; // Gibt das gesamte Item-Objekt zurück (inkl. fieldData etc.)
+        const item = await response.json(); // Das ist das Item-Objekt direkt
+        return item;
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen des Collection Items (${collectionId}/${itemId}): ${error.message}`);
         return null;
@@ -68,23 +69,24 @@ async function fetchCollectionItem(collectionId, itemId) {
 }
 
 /**
- * Ruft die spezifischen Job-Daten aus der Webflow Collection ab.
+ * Ruft die spezifischen Job-Daten (fieldData) aus der Webflow Collection ab.
  * @param {string} jobId - Die ID des Jobs.
  * @returns {Promise<object>} Die fieldData des Jobs oder ein leeres Objekt bei einem Fehler.
  */
 async function fetchJobData(jobId) {
     const jobItem = await fetchCollectionItem(JOB_COLLECTION_ID, jobId);
-    return jobItem?.items?.[0]?.fieldData || {}; // Sicherstellen, dass fieldData existiert und zurückgegeben wird
+    // Greift direkt auf fieldData des Job-Items zu
+    return jobItem?.fieldData || {};
 }
 
 // 🖨️ Jobs rendern
 
 /**
  * Rendert die Job-Liste im angegebenen Container.
- * @param {Array<object>} jobs - Ein Array von Job-Daten Objekten.
+ * @param {Array<object>} jobsFieldDataArray - Ein Array von Job fieldData Objekten.
  * @param {string} containerId - Die ID des HTML-Containers, in dem die Jobs gerendert werden sollen.
  */
-function renderJobs(jobs, containerId) {
+function renderJobs(jobsFieldDataArray, containerId) {
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`❌ Container mit ID '${containerId}' nicht gefunden.`);
@@ -92,7 +94,7 @@ function renderJobs(jobs, containerId) {
     }
     container.innerHTML = ""; // Bestehenden Inhalt leeren
 
-    if (jobs.length === 0) {
+    if (jobsFieldDataArray.length === 0) {
         const noJobsMessage = document.createElement("p");
         noJobsMessage.textContent = "Es sieht so aus, als wäre aktuell noch kein Auftrag für dich bestätigt worden.";
         noJobsMessage.classList.add("no-jobs-message"); // Klasse für Styling hinzufügen
@@ -100,15 +102,16 @@ function renderJobs(jobs, containerId) {
         return;
     }
 
-    jobs.forEach(jobData => {
+    jobsFieldDataArray.forEach(jobData => { // jobData ist hier das fieldData Objekt
         if (!jobData || Object.keys(jobData).length === 0) {
-            console.warn("⚠️ Leere Job-Daten übersprungen.");
+            console.warn("⚠️ Leere Job-Daten (fieldData) übersprungen.");
             return; // Überspringe leere Job-Daten
         }
 
         // Link-Element für den gesamten Job-Eintrag
         const jobLink = document.createElement("a");
-        jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`; // Dynamischer Link basierend auf dem Slug
+        // 'slug' ist ein Feld innerhalb von fieldData
+        jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
         jobLink.target = "_blank"; // Link in neuem Tab öffnen
         jobLink.style.textDecoration = "none"; // Standard-Unterstreichung entfernen
         jobLink.style.color = "#040e1a"; // Textfarbe setzen
@@ -124,8 +127,9 @@ function renderJobs(jobs, containerId) {
         // Bild des Jobs
         const jobImage = document.createElement("img");
         jobImage.classList.add("db-table-img", "is-margin-right-12");
-        jobImage.src = jobData["job-image"]?.url || "https://via.placeholder.com/60x60?text=Job"; // Fallback-Bild und Zugriff auf URL
-        jobImage.alt = jobData["name"] || "Job Bild";
+        // 'job-image' ist ein Feld innerhalb von fieldData und hat ggf. eine 'url' Eigenschaft
+        jobImage.src = jobData["job-image"]?.url || "https://via.placeholder.com/60x60?text=Job";
+        jobImage.alt = jobData["name"] || "Job Bild"; // 'name' ist ein Feld innerhalb von fieldData
         jobImage.style.width = "60px"; // Feste Breite für Konsistenz
         jobImage.style.height = "60px"; // Feste Höhe für Konsistenz
         jobImage.style.objectFit = "cover"; // Bild zuschneiden, um den Bereich zu füllen
@@ -149,7 +153,7 @@ function renderJobs(jobs, containerId) {
         // Budget
         const jobBudget = document.createElement("div");
         jobBudget.classList.add("db-table-row-item");
-        jobBudget.textContent = jobData["job-payment"] ? `${jobData["job-payment"]} €` : "K.A."; // Währungssymbol hinzufügen
+        jobBudget.textContent = jobData["job-payment"] ? `${jobData["job-payment"]} €` : "K.A.";
         jobDiv.appendChild(jobBudget);
 
         // Industrie-Kategorie
@@ -159,34 +163,30 @@ function renderJobs(jobs, containerId) {
         jobDiv.appendChild(jobCategory);
 
         // Deadlines mit farbigen Tags
-        // Content Deadline
         const contentDeadline = calculateCountdown(jobData["fertigstellung-content"]);
         const contentDeadlineDiv = document.createElement("div");
         contentDeadlineDiv.classList.add("db-table-row-item");
         const contentTag = document.createElement("div");
-        contentTag.classList.add(...contentDeadline.class.split(" ")); // Klassen für das Tag setzen
+        contentTag.classList.add(...contentDeadline.class.split(" "));
         const contentText = document.createElement("span");
-        // contentText.classList.add("db-job-tag-txt"); // Diese Zeile wurde entfernt
         contentText.textContent = contentDeadline.text;
         contentTag.appendChild(contentText);
         contentDeadlineDiv.appendChild(contentTag);
         jobDiv.appendChild(contentDeadlineDiv);
 
-        // Script Deadline
         const scriptDeadline = calculateCountdown(jobData["job-scriptdeadline"]);
         const scriptDeadlineDiv = document.createElement("div");
         scriptDeadlineDiv.classList.add("db-table-row-item");
         const scriptTag = document.createElement("div");
-        scriptTag.classList.add(...scriptDeadline.class.split(" ")); // Klassen für das Tag setzen
+        scriptTag.classList.add(...scriptDeadline.class.split(" "));
         const scriptText = document.createElement("span");
-        // scriptText.classList.add("db-job-tag-txt"); // Diese Zeile wurde entfernt
         scriptText.textContent = scriptDeadline.text;
         scriptTag.appendChild(scriptText);
         scriptDeadlineDiv.appendChild(scriptTag);
         jobDiv.appendChild(scriptDeadlineDiv);
 
-        jobLink.appendChild(jobDiv); // Job-Div dem Link hinzufügen
-        container.appendChild(jobLink); // Job-Link dem Container hinzufügen
+        jobLink.appendChild(jobDiv);
+        container.appendChild(jobLink);
     });
 }
 
@@ -213,22 +213,31 @@ async function displayUserJobs() {
 
         if (!currentWebflowMemberId) {
             console.error("❌ Kein 'webflow-member-id' im Memberstack-Profil gefunden. Stelle sicher, dass das Feld existiert und gefüllt ist.");
-            document.getElementById(containerId).innerHTML = "<p class='error-message'>Benutzerdaten konnten nicht geladen werden. Bitte überprüfe dein Profil.</p>";
+            const container = document.getElementById(containerId);
+            if (container) {
+                 container.innerHTML = "<p class='error-message'>Benutzerdaten konnten nicht geladen werden. Bitte überprüfe dein Profil.</p>";
+            }
             return;
         }
 
         console.log(`✅ Webflow Member ID gefunden: ${currentWebflowMemberId}`);
 
+        // userItem ist das gesamte Item-Objekt von Webflow
         const userItem = await fetchCollectionItem(USER_COLLECTION_ID, currentWebflowMemberId);
         
-        if (!userItem || !userItem.items || userItem.items.length === 0) {
-            console.error(`❌ Benutzerdaten für ID ${currentWebflowMemberId} nicht gefunden oder leer.`);
-            document.getElementById(containerId).innerHTML = "<p class='error-message'>Benutzerdaten nicht gefunden.</p>";
+        // KORRIGIERTE PRÜFUNG: Überprüfe, ob userItem und userItem.fieldData existieren
+        if (!userItem || !userItem.fieldData) {
+            console.error(`❌ Benutzerdaten (Item oder fieldData) für ID ${currentWebflowMemberId} nicht gefunden oder leer.`);
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = "<p class='error-message'>Benutzerdaten nicht gefunden oder unvollständig. Das Item existiert möglicherweise nicht oder hat keine Felder.</p>";
+            }
             return;
         }
         
-        const userData = userItem.items[0].fieldData; // Direkter Zugriff auf fieldData
-        const bookedJobIds = userData?.["booked-jobs"] || []; // Array der gebuchten Job-IDs
+        // KORRIGIERTER ZUGRIFF: userData ist jetzt direkt userItem.fieldData
+        const userData = userItem.fieldData; 
+        const bookedJobIds = userData["booked-jobs"] || []; // Array der gebuchten Job-IDs aus fieldData
 
         console.log(`📚 Gefundene gebuchte Job-IDs: ${bookedJobIds.join(', ')}`);
 
@@ -237,16 +246,16 @@ async function displayUserJobs() {
             return;
         }
 
-        // Alle Job-Daten parallel abrufen
-        const bookedJobsPromises = bookedJobIds.map(jobId => fetchJobData(jobId));
-        const bookedJobsResults = await Promise.all(bookedJobsPromises);
+        // Alle Job-Daten (fieldData) parallel abrufen
+        const bookedJobsFieldDataPromises = bookedJobIds.map(jobId => fetchJobData(jobId)); // fetchJobData gibt fieldData zurück
+        const bookedJobsFieldDataResults = await Promise.all(bookedJobsFieldDataPromises);
         
-        // Filtere alle null oder leeren Ergebnisse heraus, die von fetchJobData kommen könnten
-        const validBookedJobs = bookedJobsResults.filter(job => job && Object.keys(job).length > 0);
+        // Filtere alle null oder leeren fieldData-Objekte heraus
+        const validBookedJobsFieldData = bookedJobsFieldDataResults.filter(fieldData => fieldData && Object.keys(fieldData).length > 0);
 
-        console.log(`📊 ${validBookedJobs.length} valide Jobs zum Rendern.`);
+        console.log(`📊 ${validBookedJobsFieldData.length} valide Job-fieldData zum Rendern.`);
 
-        renderJobs(validBookedJobs, containerId);
+        renderJobs(validBookedJobsFieldData, containerId); // Übergibt Array von fieldData-Objekten
 
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler beim Laden der Jobs:", error);
