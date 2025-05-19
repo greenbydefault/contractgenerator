@@ -76,20 +76,18 @@ async function fetchJobData(jobId) {
 // 💀 Skeleton Loader für gebuchte Jobs rendern
 function renderBookedJobsSkeletonLoader(container, count) {
     container.innerHTML = ""; 
-    // Konfiguration für die Spalten-Skeletons NACH der ersten Spalte (Job Info)
     const fieldSkeletonsConfig = [
-        { type: "brandWithImage" }, // Spezieller Typ für Brand Name mit Bild
-        { classModifier: "skeleton-text-short" },  // Budget
-        { classModifier: "skeleton-text-medium" }, // Category
-        { type: "tag" },                           // Content Deadline Tag
-        { type: "tag" }                            // Script Deadline Tag
+        { type: "brandTagOnly" }, 
+        { classModifier: "skeleton-text-short" },  
+        { classModifier: "skeleton-text-medium" }, 
+        { type: "tag" },                           
+        { type: "tag" }                            
     ];
 
     for (let i = 0; i < count; i++) {
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-booked", "skeleton-row"); 
         
-        // Erste Spalte: Job Bild und Job Name
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
         const skeletonJobImage = document.createElement("div");
@@ -100,26 +98,14 @@ function renderBookedJobsSkeletonLoader(container, count) {
         jobInfoDiv.appendChild(skeletonJobName);
         jobDiv.appendChild(jobInfoDiv);
 
-        // Weitere Spalten
         fieldSkeletonsConfig.forEach(skelConfig => {
             const fieldDiv = document.createElement("div");
             fieldDiv.classList.add("db-table-row-item");
             
-            if (skelConfig.type === "brandWithImage") {
-                 // Container für Bild und Text des Brands
-                 const brandSkeletonContainer = document.createElement("div");
-                 brandSkeletonContainer.style.display = "flex"; // Für nebeneinander
-                 brandSkeletonContainer.style.alignItems = "center";
-
-                 const skeletonCreatorImage = document.createElement("div");
-                 skeletonCreatorImage.classList.add("db-table-img", "is-margin-right-12", "skeleton-element", "skeleton-image", "skeleton-creator-profile"); 
-                 brandSkeletonContainer.appendChild(skeletonCreatorImage);
-
-                 const skeletonBrandText = document.createElement("div");
-                 skeletonBrandText.classList.add("skeleton-element", "skeleton-text", "skeleton-text-medium"); // Text für Brand
-                 brandSkeletonContainer.appendChild(skeletonBrandText);
-                 fieldDiv.appendChild(brandSkeletonContainer);
-
+            if (skelConfig.type === "brandTagOnly") { 
+                 const skeletonTag = document.createElement("div");
+                 skeletonTag.classList.add("job-tag", "customer", "skeleton-element", "skeleton-tag-box"); 
+                 fieldDiv.appendChild(skeletonTag);
             } else if (skelConfig.type === "tag") {
                  const skeletonTag = document.createElement("div");
                  skeletonTag.classList.add("job-tag", "skeleton-element", "skeleton-tag-box");
@@ -134,7 +120,7 @@ function renderBookedJobsSkeletonLoader(container, count) {
         container.appendChild(jobDiv);
     }
     // HINWEIS: Die CSS-Regeln für .skeleton-row, .skeleton-element, .skeleton-image, 
-    // .skeleton-creator-profile, .skeleton-text, .skeleton-text-title, .skeleton-text-short, 
+    // .skeleton-text, .skeleton-text-title, .skeleton-text-short, 
     // .skeleton-text-medium, .skeleton-tag-box, @keyframes pulse, .job-entry, .job-entry.visible,
     // .no-jobs-message.job-entry, .error-message.job-entry, und .job-tag.customer
     // MÜSSEN in deiner separaten CSS-Datei definiert sein.
@@ -274,10 +260,11 @@ function renderJobs() {
         jobImage.classList.add("db-table-img", "is-margin-right-12");
         jobImage.src = jobData["job-image"]?.url || jobData["job-image"] || "https://via.placeholder.com/100x60?text=Job"; 
         jobImage.alt = jobData["name"] || "Job Bild";
-        jobImage.style.maxWidth = "100px"; 
-        jobImage.style.height = "60px"; 
-        jobImage.style.objectFit = "cover";
-        jobImage.style.borderRadius = "8px"; 
+        // Entferntes manuelles Styling:
+        // jobImage.style.maxWidth = "100px"; 
+        // jobImage.style.height = "60px"; 
+        // jobImage.style.objectFit = "cover";
+        // jobImage.style.borderRadius = "8px"; 
         jobInfoDiv.appendChild(jobImage);
         const jobNameSpan = document.createElement("span");
         jobNameSpan.classList.add("truncate");
@@ -285,28 +272,14 @@ function renderJobs() {
         jobInfoDiv.appendChild(jobNameSpan);
         jobDiv.appendChild(jobInfoDiv);
 
-        // Zweite Spalte: Brand (Kunde) mit Creator-Profilbild
+        // Zweite Spalte: Brand (Kunde) - NUR als Tag
         const brandNameDiv = document.createElement("div");
         brandNameDiv.classList.add("db-table-row-item"); 
-        brandNameDiv.style.display = "flex"; // Für nebeneinander von Bild und Text
-        brandNameDiv.style.alignItems = "center";
-
-        const creatorImage = document.createElement("img");
-        creatorImage.classList.add("db-table-img", "is-margin-right-12"); 
-        // Annahme: Das Feld für das Profilbild des Creators heißt 'creator-profile-img'
-        // Du musst ggf. den Feldnamen an deine Webflow Collection anpassen.
-        creatorImage.src = jobData["creator-profile-img"]?.url || jobData["creator-profile-img"] || "https://via.placeholder.com/40x40/cccccc/000000?text=C"; // Kleinerer Platzhalter
-        creatorImage.alt = "Creator Profilbild";
-        creatorImage.style.width = "40px"; 
-        creatorImage.style.height = "40px"; 
-        creatorImage.style.borderRadius = "50%"; 
-        creatorImage.style.objectFit = "cover";
-        brandNameDiv.appendChild(creatorImage);
-
-        const brandTextSpan = document.createElement("span"); // Span für den Text, um Styling zu ermöglichen
-        brandTextSpan.classList.add("job-tag", "customer"); // Klassen für das Tag-Styling
-        brandTextSpan.textContent = jobData["brand-name"] || "K.A."; 
-        brandNameDiv.appendChild(brandTextSpan);
+        
+        const brandTag = document.createElement("div"); 
+        brandTag.classList.add("job-tag", "customer"); 
+        brandTag.textContent = jobData["brand-name"] || "K.A."; 
+        brandNameDiv.appendChild(brandTag);
         jobDiv.appendChild(brandNameDiv);
         
         const jobBudget = document.createElement("div");
