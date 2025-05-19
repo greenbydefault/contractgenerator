@@ -19,15 +19,39 @@ function buildWorkerUrl(apiUrl) {
 
 function calculateCountdown(endDate) {
     if (!endDate) return { text: "K.A.", class: "job-tag" }; 
+
     const now = new Date();
     const deadline = new Date(endDate);
-    const diff = deadline - now; 
+    const diff = deadline - now; // Differenz in Millisekunden
+
     if (diff <= 0) return { text: "Abgelaufen", class: "job-tag is-bg-light-red" }; 
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24)); 
-    if (days > 10) return { text: `${days} Tag(e)`, class: "job-tag" };
-    if (days > 4) return { text: `${days} Tag(e)`, class: "job-tag is-bg-light-yellow" };
-    return { text: `${days} Tag(e)`, class: "job-tag is-bg-light-red" };
+
+    const totalMinutes = Math.floor(diff / (1000 * 60));
+    const totalHours = Math.floor(totalMinutes / 60);
+    const days = Math.floor(totalHours / 24);
+    // const hours = totalHours % 24; // Verbleibende Stunden nach Abzug der vollen Tage
+    // const minutes = totalMinutes % 60; // Verbleibende Minuten nach Abzug der vollen Stunden
+
+    let text = "";
+    let tagClass = "job-tag"; // Standard-Klasse
+
+    if (days > 0) {
+        text = `${days} ${days === 1 ? "Tag" : "Tage"}`;
+        if (days <= 4) { // Zwischen 1 und 4 Tagen
+            tagClass = "job-tag is-bg-light-red";
+        } else if (days <= 10) { // Zwischen 5 und 10 Tagen
+            tagClass = "job-tag is-bg-light-yellow";
+        }
+    } else if (totalHours > 0) { 
+        text = `${totalHours} ${totalHours === 1 ? "Std." : "Std."}`; 
+        tagClass = "job-tag is-bg-light-red"; 
+    } else { 
+        text = `${totalMinutes} ${totalMinutes === 1 ? "Min." : "Min."}`; 
+        tagClass = "job-tag is-bg-light-red"; 
+    }
+    return { text: text, class: tagClass };
 }
+
 
 async function fetchCollectionItem(collectionId, itemId) {
     const apiUrl = `${API_BASE_URL}/${collectionId}/items/${itemId}/live`;
@@ -55,7 +79,7 @@ async function fetchJobData(jobId) {
 function renderBookedJobsSkeletonLoader(container, count) {
     container.innerHTML = ""; 
     const fieldSkeletonsConfig = [
-        { classModifier: "skeleton-text-medium" }, 
+        { classModifier: "skeleton-text-medium" }, // Brand Name (wird jetzt ein Tag)
         { classModifier: "skeleton-text-short" },  
         { classModifier: "skeleton-text-medium" }, 
         { type: "tag" },                           
@@ -66,17 +90,32 @@ function renderBookedJobsSkeletonLoader(container, count) {
         jobDiv.classList.add("db-table-row", "db-table-booked", "skeleton-row"); 
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
-        const skeletonImage = document.createElement("div");
-        skeletonImage.classList.add("db-table-img", "is-margin-right-12", "skeleton-element", "skeleton-image");
-        jobInfoDiv.appendChild(skeletonImage);
+
+        // Skeleton für Creator Profilbild (NEU)
+        const skeletonCreatorImage = document.createElement("div");
+        skeletonCreatorImage.classList.add("db-table-img", "is-margin-right-12", "skeleton-element", "skeleton-image", "skeleton-creator-profile"); // Eigene Klasse für ggf. spezifisches Styling
+        jobInfoDiv.appendChild(skeletonCreatorImage);
+
+        // Skeleton für Job Bild
+        const skeletonJobImage = document.createElement("div");
+        skeletonJobImage.classList.add("db-table-img", "is-margin-right-12", "skeleton-element", "skeleton-image");
+        jobInfoDiv.appendChild(skeletonJobImage);
+        
         const skeletonName = document.createElement("div");
         skeletonName.classList.add("truncate", "skeleton-element", "skeleton-text", "skeleton-text-title"); 
         jobInfoDiv.appendChild(skeletonName);
         jobDiv.appendChild(jobInfoDiv);
-        fieldSkeletonsConfig.forEach(skelConfig => {
+
+        fieldSkeletonsConfig.forEach((skelConfig, index) => {
             const fieldDiv = document.createElement("div");
             fieldDiv.classList.add("db-table-row-item");
-            if (skelConfig.type === "tag") {
+            
+            if (index === 0) { // Speziell für Brand Name, der jetzt ein Tag ist
+                 const skeletonTag = document.createElement("div");
+                 // Klassen für Skeleton-Tags, plus 'customer' für Konsistenz, falls es gestylt wird
+                 skeletonTag.classList.add("job-tag", "customer", "skeleton-element", "skeleton-tag-box"); 
+                 fieldDiv.appendChild(skeletonTag);
+            } else if (skelConfig.type === "tag") {
                  const skeletonTag = document.createElement("div");
                  skeletonTag.classList.add("job-tag", "skeleton-element", "skeleton-tag-box");
                  fieldDiv.appendChild(skeletonTag);
@@ -92,15 +131,22 @@ function renderBookedJobsSkeletonLoader(container, count) {
     /* CSS (in deiner CSS-Datei einfügen):
     .skeleton-row { opacity: 0.7; }
     .skeleton-element { background-color: #e0e0e0; border-radius: 4px; animation: pulse 1.5s infinite ease-in-out; }
-    .skeleton-image { width: 100px; height: 60px; } 
+    .skeleton-image { width: 60px; height: 60px; border-radius: 8px; } /* Beispielmaße, anpassen an db-table-img */
+    .skeleton-creator-profile { border-radius: 50%; } /* Runde Ecken für Profilbild-Skeleton */
     .skeleton-text { height: 1em; margin-bottom: 0.5em; }
-    .skeleton-text-title { width: 70%; } .skeleton-text-short { width: 40%; } .skeleton-text-medium { width: 60%; }
-    .skeleton-tag-box { width: 70px; height: 24px; }
+    .skeleton-text-title { width: 60%; margin-left: 8px; } /* Ggf. kleinerer Titel wegen Profilbild */
+    .skeleton-text-short { width: 40%; } .skeleton-text-medium { width: 60%; }
+    .skeleton-tag-box { width: 80px; height: 24px; } /* Für normale Tags und den Brand-Tag-Skeleton */
     @keyframes pulse { 0% { background-color: #e0e0e0; } 50% { background-color: #d0d0d0; } 100% { background-color: #e0e0e0; } }
+    
     .job-entry { opacity: 0; transition: opacity 0.4s ease-in-out; }
     .job-entry.visible { opacity: 1; }
     .no-jobs-message.job-entry, .error-message.job-entry { opacity: 0; transition: opacity 0.4s ease-in-out;}
     .no-jobs-message.job-entry.visible, .error-message.job-entry.visible { opacity: 1;}
+
+    .job-tag.customer { /* Dein spezifisches Styling für den Kunden-Tag */
+        /* z.B. background-color: #f0f0f0; color: #333; border: 1px solid #ccc; */
+    }
     */
 }
 
@@ -115,8 +161,8 @@ function renderJobs() {
     const searchTermNormalized = currentBookedJobsSearchTerm.toLowerCase().trim();
     const showContentDeadlineDone = document.getElementById("content-deadline-done")?.checked;
     const showContentDeadlineActive = document.getElementById("content-deadline-active")?.checked;
-    const showScriptDeadlineDone = document.getElementById("script-deadline-done")?.checked; // NEU
-    const showScriptDeadlineActive = document.getElementById("script-deadline-active")?.checked; // NEU
+    const showScriptDeadlineDone = document.getElementById("script-deadline-done")?.checked; 
+    const showScriptDeadlineActive = document.getElementById("script-deadline-active")?.checked; 
 
     let processedJobs = allBookedJobsDataGlobal;
 
@@ -151,10 +197,10 @@ function renderJobs() {
         });
     }
 
-    // 3. Nach Script Deadline Status filtern (NEU)
+    // 3. Nach Script Deadline Status filtern
     if (showScriptDeadlineDone || showScriptDeadlineActive) {
         processedJobs = processedJobs.filter(jobData => {
-            if (!jobData || !jobData["job-scriptdeadline"]) { // Beachte den Feldnamen 'job-scriptdeadline'
+            if (!jobData || !jobData["job-scriptdeadline"]) { 
                 return false;
             }
             const scriptDeadline = new Date(jobData["job-scriptdeadline"]);
@@ -185,6 +231,12 @@ function renderJobs() {
                     valB = jobDataB['job-scriptdeadline'] ? new Date(jobDataB['job-scriptdeadline']) : null;
                     if (valA === null) valA = activeBookedJobsSortCriteria.direction === 'asc' ? new Date(8640000000000000) : new Date(-8640000000000000);
                     if (valB === null) valB = activeBookedJobsSortCriteria.direction === 'asc' ? new Date(8640000000000000) : new Date(-8640000000000000);
+                    break;
+                case 'budget': 
+                    valA = parseFloat(String(jobDataA['job-payment']).replace(/[^0-9.-]+/g,""));
+                    valB = parseFloat(String(jobDataB['job-payment']).replace(/[^0-9.-]+/g,""));
+                    if (isNaN(valA)) valA = activeBookedJobsSortCriteria.direction === 'asc' ? Infinity : -Infinity; 
+                    if (isNaN(valB)) valB = activeBookedJobsSortCriteria.direction === 'asc' ? Infinity : -Infinity;
                     break;
                 default: 
                     console.warn(`Unbekannter Sortierschlüssel: ${activeBookedJobsSortCriteria.key}`);
@@ -224,28 +276,54 @@ function renderJobs() {
 
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-booked");
+        
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
+
+        // Creator Profilbild (NEU)
+        const creatorImage = document.createElement("img");
+        creatorImage.classList.add("db-table-img", "is-margin-right-12"); // Standardklasse für Bilder
+        // Annahme: Das Feld für das Profilbild des Creators heißt 'creator-profile-img'
+        // Du musst ggf. den Feldnamen an deine Webflow Collection anpassen.
+        creatorImage.src = jobData["creator-profile-img"]?.url || jobData["creator-profile-img"] || "https://via.placeholder.com/60x60/cccccc/000000?text=C"; // Platzhalter
+        creatorImage.alt = "Creator Profilbild";
+        creatorImage.style.width = "60px"; // Beispielgröße, anpassen
+        creatorImage.style.height = "60px"; // Beispielgröße, anpassen
+        creatorImage.style.borderRadius = "50%"; // Für runde Profilbilder
+        creatorImage.style.objectFit = "cover";
+        jobInfoDiv.appendChild(creatorImage);
+
+        // Job Bild
         const jobImage = document.createElement("img");
         jobImage.classList.add("db-table-img", "is-margin-right-12");
         jobImage.src = jobData["job-image"]?.url || jobData["job-image"] || "https://via.placeholder.com/100x60?text=Job"; 
         jobImage.alt = jobData["name"] || "Job Bild";
         jobImage.style.maxWidth = "100px"; 
+        jobImage.style.height = "60px"; // Konsistente Höhe für Job-Bilder
+        jobImage.style.objectFit = "cover";
+        jobImage.style.borderRadius = "8px"; // Abgerundete Ecken für Job-Bilder
         jobInfoDiv.appendChild(jobImage);
+        
         const jobNameSpan = document.createElement("span");
         jobNameSpan.classList.add("truncate");
         jobNameSpan.textContent = jobData["name"] || "Unbekannter Job";
         jobInfoDiv.appendChild(jobNameSpan);
         jobDiv.appendChild(jobInfoDiv);
 
+        // Brand Name (Kunde) - jetzt mit job-tag und customer Klasse
         const brandNameDiv = document.createElement("div");
-        brandNameDiv.classList.add("db-table-row-item");
-        brandNameDiv.textContent = jobData["brand-name"] || "K.A."; 
+        brandNameDiv.classList.add("db-table-row-item"); // Behält die Basisklasse für die Spalte
+        const brandTag = document.createElement("div"); // Inneres Div für das Tag-Styling
+        brandTag.classList.add("job-tag", "customer"); // NEUE KLASSEN
+        brandTag.textContent = jobData["brand-name"] || "K.A."; 
+        brandNameDiv.appendChild(brandTag);
         jobDiv.appendChild(brandNameDiv);
+        
         const jobBudget = document.createElement("div");
         jobBudget.classList.add("db-table-row-item");
         jobBudget.textContent = jobData["job-payment"] ? `${jobData["job-payment"]} €` : "K.A.";
         jobDiv.appendChild(jobBudget);
+        
         const jobCategory = document.createElement("div");
         jobCategory.classList.add("db-table-row-item");
         jobCategory.textContent = jobData["industrie-kategorie"] || "K.A.";
@@ -262,7 +340,7 @@ function renderJobs() {
         contentDeadlineDiv.appendChild(contentTag);
         jobDiv.appendChild(contentDeadlineDiv);
 
-        const scriptDeadline = calculateCountdown(jobData["job-scriptdeadline"]); // Feldname hier 'job-scriptdeadline'
+        const scriptDeadline = calculateCountdown(jobData["job-scriptdeadline"]); 
         const scriptDeadlineDiv = document.createElement("div");
         scriptDeadlineDiv.classList.add("db-table-row-item");
         const scriptTag = document.createElement("div");
@@ -288,13 +366,15 @@ function setupBookedJobsEventListeners() {
     const searchInput = document.getElementById("filter-search"); 
     const contentDeadlineDoneCheckbox = document.getElementById("content-deadline-done");
     const contentDeadlineActiveCheckbox = document.getElementById("content-deadline-active");
-    const scriptDeadlineDoneCheckbox = document.getElementById("script-deadline-done"); // NEU
-    const scriptDeadlineActiveCheckbox = document.getElementById("script-deadline-active"); // NEU
+    const scriptDeadlineDoneCheckbox = document.getElementById("script-deadline-done"); 
+    const scriptDeadlineActiveCheckbox = document.getElementById("script-deadline-active"); 
 
 
     const sortCheckboxDefinitions = [ 
         { id: "job-sort-script-asc", key: "scriptdeadline", direction: "asc" },
         { id: "job-sort-script-desc", key: "scriptdeadline", direction: "desc" },
+        { id: "job-sort-budget-asc", key: "budget", direction: "asc" },   
+        { id: "job-sort-budget-desc", key: "budget", direction: "desc" }  
     ];
 
     const allSortCheckboxes = sortCheckboxDefinitions.map(def => {
@@ -331,7 +411,7 @@ function setupBookedJobsEventListeners() {
         console.warn("⚠️ Filter-Checkbox 'content-deadline-active' nicht im DOM gefunden.");
     }
 
-    // Event Listener für Script Deadline Filter (NEU)
+    // Event Listener für Script Deadline Filter
     if (scriptDeadlineDoneCheckbox) {
         scriptDeadlineDoneCheckbox.addEventListener("change", handleInteraction);
     } else {
