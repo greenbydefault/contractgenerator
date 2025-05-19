@@ -208,6 +208,12 @@ function renderJobs() {
                     if (valA === null) valA = activeBookedJobsSortCriteria.direction === 'asc' ? new Date(8640000000000000) : new Date(-8640000000000000);
                     if (valB === null) valB = activeBookedJobsSortCriteria.direction === 'asc' ? new Date(8640000000000000) : new Date(-8640000000000000);
                     break;
+                case 'contentdeadline': // NEU: Sortierung nach Content Deadline
+                    valA = jobDataA['fertigstellung-content'] ? new Date(jobDataA['fertigstellung-content']) : null;
+                    valB = jobDataB['fertigstellung-content'] ? new Date(jobDataB['fertigstellung-content']) : null;
+                    if (valA === null) valA = activeBookedJobsSortCriteria.direction === 'asc' ? new Date(8640000000000000) : new Date(-8640000000000000);
+                    if (valB === null) valB = activeBookedJobsSortCriteria.direction === 'asc' ? new Date(8640000000000000) : new Date(-8640000000000000);
+                    break;
                 case 'budget': 
                     valA = parseFloat(String(jobDataA['job-payment']).replace(/[^0-9.-]+/g,""));
                     valB = parseFloat(String(jobDataB['job-payment']).replace(/[^0-9.-]+/g,""));
@@ -253,18 +259,12 @@ function renderJobs() {
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-booked");
         
-        // Erste Spalte: Job-Bild und Job-Name
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
         const jobImage = document.createElement("img");
         jobImage.classList.add("db-table-img", "is-margin-right-12");
         jobImage.src = jobData["job-image"]?.url || jobData["job-image"] || "https://via.placeholder.com/100x60?text=Job"; 
         jobImage.alt = jobData["name"] || "Job Bild";
-        // Entferntes manuelles Styling:
-        // jobImage.style.maxWidth = "100px"; 
-        // jobImage.style.height = "60px"; 
-        // jobImage.style.objectFit = "cover";
-        // jobImage.style.borderRadius = "8px"; 
         jobInfoDiv.appendChild(jobImage);
         const jobNameSpan = document.createElement("span");
         jobNameSpan.classList.add("truncate");
@@ -272,10 +272,8 @@ function renderJobs() {
         jobInfoDiv.appendChild(jobNameSpan);
         jobDiv.appendChild(jobInfoDiv);
 
-        // Zweite Spalte: Brand (Kunde) - NUR als Tag
         const brandNameDiv = document.createElement("div");
         brandNameDiv.classList.add("db-table-row-item"); 
-        
         const brandTag = document.createElement("div"); 
         brandTag.classList.add("job-tag", "customer"); 
         brandTag.textContent = jobData["brand-name"] || "K.A."; 
@@ -336,6 +334,8 @@ function setupBookedJobsEventListeners() {
     const sortCheckboxDefinitions = [ 
         { id: "job-sort-script-asc", key: "scriptdeadline", direction: "asc" },
         { id: "job-sort-script-desc", key: "scriptdeadline", direction: "desc" },
+        { id: "job-sort-content-asc", key: "contentdeadline", direction: "asc" }, // NEU
+        { id: "job-sort-content-desc", key: "contentdeadline", direction: "desc" },// NEU
         { id: "job-sort-budget-asc", key: "budget", direction: "asc" },   
         { id: "job-sort-budget-desc", key: "budget", direction: "desc" }  
     ];
