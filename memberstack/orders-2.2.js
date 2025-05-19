@@ -110,59 +110,63 @@ function renderJobs(jobsFieldDataArray, containerId) {
 
         // Link-Element für den gesamten Job-Eintrag
         const jobLink = document.createElement("a");
-        // 'slug' ist ein Feld innerhalb von fieldData
         jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
-        jobLink.target = "_blank"; // Link in neuem Tab öffnen
-        jobLink.style.textDecoration = "none"; // Standard-Unterstreichung entfernen
-        jobLink.style.color = "#040e1a"; // Textfarbe setzen
+        jobLink.target = "_blank";
+        jobLink.style.textDecoration = "none";
+        jobLink.style.color = "#040e1a";
 
-        // Haupt-Div für einen Job-Eintrag
         const jobDiv = document.createElement("div");
-        jobDiv.classList.add("db-table-row", "db-table-booked"); // Styling-Klassen
+        jobDiv.classList.add("db-table-row", "db-table-booked");
 
-        // Info-Bereich (Bild und Name)
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left");
 
         // Bild des Jobs
         const jobImage = document.createElement("img");
         jobImage.classList.add("db-table-img", "is-margin-right-12");
-        // 'job-image' ist ein Feld innerhalb von fieldData und hat ggf. eine 'url' Eigenschaft
-        jobImage.src = jobData["job-image"]?.url || "https://via.placeholder.com/60x60?text=Job";
-        jobImage.alt = jobData["name"] || "Job Bild"; // 'name' ist ein Feld innerhalb von fieldData
-        jobImage.style.width = "60px"; // Feste Breite für Konsistenz
-        jobImage.style.height = "60px"; // Feste Höhe für Konsistenz
-        jobImage.style.objectFit = "cover"; // Bild zuschneiden, um den Bereich zu füllen
-        jobImage.onerror = () => { jobImage.src = "https://via.placeholder.com/60x60?text=Error"; }; // Fallback bei Ladefehler
+        
+        const jobNameForLog = jobData["name"] || "Unbekannter Job";
+        console.log(`[Job: ${jobNameForLog}] Rohdaten für job-image:`, jobData["job-image"]);
+
+        const imageUrl = jobData["job-image"]?.url;
+        const finalImageUrl = imageUrl || "https://via.placeholder.com/60x60?text=Job";
+        
+        console.log(`[Job: ${jobNameForLog}] Versuche Bild zu laden: ${finalImageUrl}`);
+        jobImage.src = finalImageUrl;
+        
+        jobImage.alt = jobData["name"] || "Job Bild";
+        jobImage.style.width = "60px";
+        jobImage.style.height = "60px";
+        jobImage.style.objectFit = "cover";
+        
+        jobImage.onerror = () => {
+            console.error(`[Job: ${jobNameForLog}] FEHLER beim Laden von Bild: ${finalImageUrl}. Setze auf Error-Fallback.`);
+            jobImage.src = "https://via.placeholder.com/60x60?text=Error"; 
+        };
         jobInfoDiv.appendChild(jobImage);
 
-        // Name des Jobs
-        const jobName = document.createElement("span");
-        jobName.classList.add("truncate"); // Klasse für Textabschneidung (falls benötigt)
-        jobName.textContent = jobData["name"] || "Unbekannter Job";
-        jobInfoDiv.appendChild(jobName);
+        const jobNameSpan = document.createElement("span");
+        jobNameSpan.classList.add("truncate");
+        jobNameSpan.textContent = jobData["name"] || "Unbekannter Job";
+        jobInfoDiv.appendChild(jobNameSpan);
 
         jobDiv.appendChild(jobInfoDiv);
 
-        // Markenname
         const brandNameDiv = document.createElement("div");
         brandNameDiv.classList.add("db-table-row-item");
         brandNameDiv.textContent = jobData["brand-name"] || "Keine Marke";
         jobDiv.appendChild(brandNameDiv);
 
-        // Budget
         const jobBudget = document.createElement("div");
         jobBudget.classList.add("db-table-row-item");
         jobBudget.textContent = jobData["job-payment"] ? `${jobData["job-payment"]} €` : "K.A.";
         jobDiv.appendChild(jobBudget);
 
-        // Industrie-Kategorie
         const jobCategory = document.createElement("div");
         jobCategory.classList.add("db-table-row-item");
         jobCategory.textContent = jobData["industrie-kategorie"] || "K.A.";
         jobDiv.appendChild(jobCategory);
 
-        // Deadlines mit farbigen Tags
         const contentDeadline = calculateCountdown(jobData["fertigstellung-content"]);
         const contentDeadlineDiv = document.createElement("div");
         contentDeadlineDiv.classList.add("db-table-row-item");
@@ -192,10 +196,9 @@ function renderJobs(jobsFieldDataArray, containerId) {
 
 // 🌟 Hauptfunktion
 async function displayUserJobs() {
-    const containerId = "booked-jobs-list"; // ID des Containers für gebuchte Jobs
+    const containerId = "booked-jobs-list"; 
 
     try {
-        // Auf Memberstack warten, falls es noch nicht geladen ist
         if (typeof window.$memberstackDom === 'undefined') {
             console.log("Memberstack noch nicht geladen, warte...");
             await new Promise(resolve => {
@@ -212,7 +215,7 @@ async function displayUserJobs() {
         currentWebflowMemberId = member?.data?.customFields?.['webflow-member-id'];
 
         if (!currentWebflowMemberId) {
-            console.error("❌ Kein 'webflow-member-id' im Memberstack-Profil gefunden. Stelle sicher, dass das Feld existiert und gefüllt ist.");
+            console.error("❌ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
             const container = document.getElementById(containerId);
             if (container) {
                  container.innerHTML = "<p class='error-message'>Benutzerdaten konnten nicht geladen werden. Bitte überprüfe dein Profil.</p>";
@@ -222,10 +225,8 @@ async function displayUserJobs() {
 
         console.log(`✅ Webflow Member ID gefunden: ${currentWebflowMemberId}`);
 
-        // userItem ist das gesamte Item-Objekt von Webflow
         const userItem = await fetchCollectionItem(USER_COLLECTION_ID, currentWebflowMemberId);
         
-        // KORRIGIERTE PRÜFUNG: Überprüfe, ob userItem und userItem.fieldData existieren
         if (!userItem || !userItem.fieldData) {
             console.error(`❌ Benutzerdaten (Item oder fieldData) für ID ${currentWebflowMemberId} nicht gefunden oder leer.`);
             const container = document.getElementById(containerId);
@@ -235,27 +236,24 @@ async function displayUserJobs() {
             return;
         }
         
-        // KORRIGIERTER ZUGRIFF: userData ist jetzt direkt userItem.fieldData
         const userData = userItem.fieldData; 
-        const bookedJobIds = userData["booked-jobs"] || []; // Array der gebuchten Job-IDs aus fieldData
+        const bookedJobIds = userData["booked-jobs"] || [];
 
         console.log(`📚 Gefundene gebuchte Job-IDs: ${bookedJobIds.join(', ')}`);
 
         if (bookedJobIds.length === 0) {
-            renderJobs([], containerId); // Leeres Array rendern, um "Keine Jobs"-Nachricht anzuzeigen
+            renderJobs([], containerId); 
             return;
         }
 
-        // Alle Job-Daten (fieldData) parallel abrufen
-        const bookedJobsFieldDataPromises = bookedJobIds.map(jobId => fetchJobData(jobId)); // fetchJobData gibt fieldData zurück
+        const bookedJobsFieldDataPromises = bookedJobIds.map(jobId => fetchJobData(jobId)); 
         const bookedJobsFieldDataResults = await Promise.all(bookedJobsFieldDataPromises);
         
-        // Filtere alle null oder leeren fieldData-Objekte heraus
         const validBookedJobsFieldData = bookedJobsFieldDataResults.filter(fieldData => fieldData && Object.keys(fieldData).length > 0);
 
         console.log(`📊 ${validBookedJobsFieldData.length} valide Job-fieldData zum Rendern.`);
 
-        renderJobs(validBookedJobsFieldData, containerId); // Übergibt Array von fieldData-Objekten
+        renderJobs(validBookedJobsFieldData, containerId);
 
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler beim Laden der Jobs:", error);
@@ -266,5 +264,4 @@ async function displayUserJobs() {
     }
 }
 
-// Start der Anwendung, sobald das DOM vollständig geladen ist
 window.addEventListener("DOMContentLoaded", displayUserJobs);
