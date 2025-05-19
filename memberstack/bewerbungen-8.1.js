@@ -180,9 +180,6 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         jobImage.classList.add("db-table-img", "is-margin-right-12");
         jobImage.src = jobData["job-image"]?.url || jobData["job-image"] || "https://via.placeholder.com/80x80?text=Job";
         jobImage.alt = jobData["name"] || "Job Bild";
-        // jobImage.style.width = "80px"; // Entfernt
-        // jobImage.style.height = "80px"; // Entfernt
-        // jobImage.style.objectFit = "cover"; // Entfernt
         jobInfoDiv.appendChild(jobImage);
 
         // Name
@@ -208,13 +205,17 @@ function renderJobs(jobsToProcess, webflowMemberId) {
             fieldDiv.classList.add("db-table-row-item", `item-${field.key}`);
 
             const fieldText = document.createElement("span");
-            fieldText.classList.add("db-job-tag-txt");
+            // Die Klasse "db-job-tag-txt" wird hier nicht mehr standardmäßig hinzugefügt,
+            // sondern nur noch für die Felder, die keine Tags sind.
 
             if (field.key === "job-payment") {
+                fieldText.classList.add("db-job-tag-txt"); // Hier bleibt es, da es kein Tag-Element ist
                 fieldText.textContent = value ? `${value} €` : "N/A";
             } else if (field.key === "job-date-end") {
+                fieldText.classList.add("db-job-tag-txt"); // Hier bleibt es
                 fieldText.textContent = value ? calculateDeadlineCountdown(value) : "N/A";
             } else if (field.key === "fertigstellung-content" && value) {
+                fieldText.classList.add("db-job-tag-txt"); // Hier bleibt es
                 const date = new Date(value);
                 fieldText.textContent = !isNaN(date.getTime()) ? `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}` : "N/A";
             } else if (field.key === "job-status") {
@@ -223,8 +224,8 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                 const statusDiv = document.createElement("div");
                 statusDiv.classList.add("job-tag");
                 const statusTextInner = document.createElement("span");
-                statusTextInner.classList.add("db-job-tag-txt");
-
+                // statusTextInner.classList.add("db-job-tag-txt"); // ENTFERNT
+                
                 if (endDateJob && endDateJob < now) {
                     statusDiv.classList.add("is-bg-light-red");
                     statusTextInner.textContent = "Beendet";
@@ -241,7 +242,7 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                 const statusDiv = document.createElement("div");
                 statusDiv.classList.add("job-tag");
                 const statusTextInner = document.createElement("span");
-                statusTextInner.classList.add("db-job-tag-txt");
+                // statusTextInner.classList.add("db-job-tag-txt"); // ENTFERNT
 
                 const appStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
 
@@ -258,11 +259,16 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                 statusDiv.appendChild(statusTextInner);
                 fieldDiv.appendChild(statusDiv);
             } else {
+                fieldText.classList.add("db-job-tag-txt"); // Hier bleibt es für andere generische Felder
                 fieldText.textContent = value || "Nicht verfügbar";
             }
 
+            // Nur fieldText hinzufügen, wenn es nicht schon durch eine komplexere Logik (wie Status-Tags) gehandhabt wurde
+            // und wenn es Textinhalt hat (um leere Spans zu vermeiden, falls die Klasse db-job-tag-txt nicht hinzugefügt wurde)
             if (field.key !== "job-status" && field.key !== "application-status") {
-                fieldDiv.appendChild(fieldText);
+                 if(fieldText.textContent || fieldText.classList.contains("db-job-tag-txt")){ // Sicherstellen, dass das Span relevant ist
+                    fieldDiv.appendChild(fieldText);
+                 }
             }
             jobDiv.appendChild(fieldDiv);
         });
@@ -369,11 +375,6 @@ function setupFilterListeners() {
     checkboxes.forEach(checkbox => {
         if (checkbox) {
             checkbox.addEventListener("change", handleFilterChange);
-        } else {
-            // Es ist hilfreich zu wissen, welche Checkbox fehlt, falls es zu Problemen kommt.
-            // Hier könnte man die ID der erwarteten Checkbox loggen, aber das erfordert mehr Aufwand.
-            // Fürs Erste reicht eine allgemeine Warnung, wenn eine Checkbox null ist.
-            // console.warn("⚠️ Eine oder mehrere Filter-Checkboxen wurden nicht im DOM gefunden.");
         }
     });
     // Spezifischere Warnungen, falls benötigt:
