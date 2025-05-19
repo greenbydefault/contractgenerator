@@ -85,6 +85,82 @@ function getApplicationStatusForFilter(jobData, memberId) {
     return "Ausstehend";
 }
 
+// 💀 Skeleton Loader rendern
+function renderSkeletonLoader(container, count) {
+    container.innerHTML = ""; // Vorherigen Inhalt (z.B. "Lade...") entfernen
+
+    // Definiert die Struktur der Platzhalter für die "weiteren Felder"
+    const fieldSkeletons = [
+        { type: "text", classModifier: "skeleton-text-short" }, // Platzhalter für Bezahlung
+        { type: "text", classModifier: "skeleton-text-medium" }, // Platzhalter für Bewerbungsfrist
+        { type: "text", classModifier: "skeleton-text-medium" }, // Platzhalter für Contentdeadline
+        { type: "tag" }, // Platzhalter für Job Status
+        { type: "tag" }  // Platzhalter für Bewerbungsstatus
+    ];
+
+    for (let i = 0; i < count; i++) {
+        const jobDiv = document.createElement("div");
+        // CSS-Klasse für die Skeleton-Reihe, die gestylt werden muss
+        jobDiv.classList.add("db-table-row", "db-table-bewerbungen", "skeleton-row");
+
+        // Job Info (Bild + Name) - Platzhalter
+        const jobInfoDiv = document.createElement("div");
+        jobInfoDiv.classList.add("db-table-row-item", "justify-left", "job-info-container");
+
+        const skeletonImage = document.createElement("div");
+        // CSS-Klassen für das Skeleton-Bild
+        skeletonImage.classList.add("db-table-img", "is-margin-right-12", "skeleton-element", "skeleton-image");
+        jobInfoDiv.appendChild(skeletonImage);
+
+        const skeletonName = document.createElement("div");
+        // CSS-Klassen für den Skeleton-Titel
+        skeletonName.classList.add("truncate", "job-title", "skeleton-element", "skeleton-text", "skeleton-text-title");
+        jobInfoDiv.appendChild(skeletonName);
+        jobDiv.appendChild(jobInfoDiv);
+
+        // Weitere Felder - Platzhalter
+        fieldSkeletons.forEach(skelType => {
+            const fieldDiv = document.createElement("div");
+            fieldDiv.classList.add("db-table-row-item");
+            
+            if (skelType.type === "tag") {
+                 const skeletonTag = document.createElement("div");
+                 // CSS-Klassen für Skeleton-Tags
+                 skeletonTag.classList.add("job-tag", "skeleton-element", "skeleton-tag-box");
+                 fieldDiv.appendChild(skeletonTag);
+            } else { // text
+                 const skeletonFieldText = document.createElement("div");
+                 // CSS-Klassen für Skeleton-Textfelder
+                 skeletonFieldText.classList.add("db-job-tag-txt", "skeleton-element", "skeleton-text", skelType.classModifier || "");
+                 fieldDiv.appendChild(skeletonFieldText);
+            }
+            jobDiv.appendChild(fieldDiv);
+        });
+        container.appendChild(jobDiv);
+    }
+    /*
+    CSS-Styling für Skeleton-Elemente (Beispiel - in deiner CSS-Datei hinzufügen):
+    .skeleton-row { opacity: 0.7; }
+    .skeleton-element {
+        background-color: #e0e0e0;
+        border-radius: 4px;
+        animation: pulse 1.5s infinite ease-in-out;
+    }
+    .skeleton-image { width: 80px; height: 80px; } // Beispielmaße anpassen
+    .skeleton-text { height: 20px; margin-bottom: 8px; }
+    .skeleton-text-title { width: 60%; }
+    .skeleton-text-short { width: 30%; }
+    .skeleton-text-medium { width: 50%; }
+    .skeleton-tag-box { width: 80px; height: 24px; }
+
+    @keyframes pulse {
+        0% { background-color: #e0e0e0; }
+        50% { background-color: #d0d0d0; }
+        100% { background-color: #e0e0e0; }
+    }
+    */
+}
+
 
 // 🖨️ Jobs rendern
 function renderJobs(jobsToProcess, webflowMemberId) {
@@ -95,6 +171,7 @@ function renderJobs(jobsToProcess, webflowMemberId) {
     }
 
     // Nur leeren, wenn es die erste Seite ist (initial oder nach Filteränderung)
+    // Dies entfernt auch die Skeleton-Elemente, wenn die echten Daten kommen.
     if (currentPage === 1) {
         appContainer.innerHTML = ""; 
     }
@@ -265,7 +342,7 @@ function renderJobs(jobsToProcess, webflowMemberId) {
             jobDiv.appendChild(fieldDiv);
         });
         jobLink.appendChild(jobDiv);
-        appContainer.appendChild(jobLink); // Hier werden die Elemente jetzt angehängt
+        appContainer.appendChild(jobLink); 
     });
 
     // Load More Button
@@ -274,16 +351,15 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         console.error("❌ Element 'load-more-container' nicht gefunden.");
         return;
     }
-    loadMoreContainer.innerHTML = ""; // Button immer neu erstellen, um Zustand zu verwalten
+    loadMoreContainer.innerHTML = ""; 
 
     if (endIndex < filteredJobs.length) {
         const loadMoreButton = document.createElement("button");
         loadMoreButton.textContent = "Mehr laden";
-        // Die Klasse "load-more-btn" ist hier korrekt zugewiesen
-        loadMoreButton.classList.add("load-more-btn", "button", "is-primary"); 
+        loadMoreButton.classList.add("load-more-btn"); 
         loadMoreButton.addEventListener("click", () => {
-            currentPage++; // Erhöhe die Seite
-            renderJobs(allJobResults, webflowMemberId); // Rufe renderJobs erneut auf
+            currentPage++; 
+            renderJobs(allJobResults, currentWebflowMemberId); 
         });
         loadMoreContainer.appendChild(loadMoreButton);
     }
@@ -297,7 +373,8 @@ async function initializeUserApplications() {
         console.error("FEHLER: App-Container 'application-list' nicht im DOM gefunden.");
         return;
     }
-    appContainer.innerHTML = "<p>Lade Bewerbungen...</p>"; // Ladeindikator für den ersten Start
+    // Zeige Skeleton Loader anstelle von einfachem Text
+    renderSkeletonLoader(appContainer, JOBS_PER_PAGE); 
 
     try {
         if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
@@ -330,17 +407,17 @@ async function initializeUserApplications() {
             allJobResults = await Promise.all(jobPromises);
             allJobResults = allJobResults.filter(job => job.jobData && Object.keys(job.jobData).length > 0);
             
-            // console.log(`📊 ${allJobResults.length} Jobs initial geladen und verarbeitet.`);
-            currentPage = 1; // Wichtig: Seite für den ersten Render-Durchlauf auf 1 setzen
-            renderJobs(allJobResults, currentWebflowMemberId);
+            currentPage = 1; 
+            renderJobs(allJobResults, currentWebflowMemberId); // Dies wird die Skeletons ersetzen
         } else {
-            // Sicherstellen, dass der Container geleert wird, wenn keine Bewerbungen da sind
+            // Wenn keine Bewerbungen da sind, Skeletons entfernen und Nachricht anzeigen
             appContainer.innerHTML = "<p>Keine abgeschlossenen Bewerbungen gefunden oder keine Jobs zum Anzeigen.</p>";
             const loadMoreContainer = document.getElementById("load-more-container");
-            if (loadMoreContainer) loadMoreContainer.innerHTML = ""; // Auch den Button-Container leeren
+            if (loadMoreContainer) loadMoreContainer.innerHTML = ""; 
         }
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler beim Laden der Bewerbungen:", error);
+        // Bei Fehler Skeletons entfernen und Fehlermeldung anzeigen
         appContainer.innerHTML = `<p>❌ Es ist ein Fehler aufgetreten: ${error.message}. Bitte versuchen Sie es später erneut.</p>`;
     }
 }
@@ -354,7 +431,13 @@ function setupFilterListeners() {
     const rejectedAppFilterCheckbox = document.getElementById("application-status-rejected-filter");
 
     const handleFilterChange = () => {
-        currentPage = 1; // Wichtig: Bei Filteränderung Seite auf 1 zurücksetzen
+        currentPage = 1; 
+        // Es ist nicht nötig, hier explizit den Skeleton Loader aufzurufen,
+        // da renderJobs bei currentPage === 1 den Container leert und neu zeichnet.
+        // Wenn das Laden der gefilterten Jobs sehr schnell geht, sieht man die Skeletons nicht.
+        // Wenn es länger dauert, würde der Benutzer kurz den leeren Container sehen.
+        // Optional könnte man hier auch renderSkeletonLoader() aufrufen, bevor renderJobs() die Daten verarbeitet.
+        // Für den Moment belassen wir es dabei, dass renderJobs den Container direkt neu befüllt.
         renderJobs(allJobResults, currentWebflowMemberId);
     };
 
