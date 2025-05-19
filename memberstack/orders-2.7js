@@ -128,26 +128,7 @@ function renderBookedJobsSkeletonLoader(container, count) {
         });
         container.appendChild(jobDiv);
     }
-    /* CSS (in deiner CSS-Datei einfügen):
-    .skeleton-row { opacity: 0.7; }
-    .skeleton-element { background-color: #e0e0e0; border-radius: 4px; animation: pulse 1.5s infinite ease-in-out; }
-    .skeleton-image { width: 60px; height: 60px; border-radius: 8px; } /* Beispielmaße, anpassen an db-table-img */
-    .skeleton-creator-profile { border-radius: 50%; } /* Runde Ecken für Profilbild-Skeleton */
-    .skeleton-text { height: 1em; margin-bottom: 0.5em; }
-    .skeleton-text-title { width: 60%; margin-left: 8px; } /* Ggf. kleinerer Titel wegen Profilbild */
-    .skeleton-text-short { width: 40%; } .skeleton-text-medium { width: 60%; }
-    .skeleton-tag-box { width: 80px; height: 24px; } /* Für normale Tags und den Brand-Tag-Skeleton */
-    @keyframes pulse { 0% { background-color: #e0e0e0; } 50% { background-color: #d0d0d0; } 100% { background-color: #e0e0e0; } }
     
-    .job-entry { opacity: 0; transition: opacity 0.4s ease-in-out; }
-    .job-entry.visible { opacity: 1; }
-    .no-jobs-message.job-entry, .error-message.job-entry { opacity: 0; transition: opacity 0.4s ease-in-out;}
-    .no-jobs-message.job-entry.visible, .error-message.job-entry.visible { opacity: 1;}
-
-    .job-tag.customer { /* Dein spezifisches Styling für den Kunden-Tag */
-        /* z.B. background-color: #f0f0f0; color: #333; border: 1px solid #ccc; */
-    }
-    */
 }
 
 // 🖨️ Jobs rendern
