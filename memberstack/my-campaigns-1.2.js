@@ -113,18 +113,21 @@ function renderMyJobsSkeletonLoader(container, count) {
         skeletonStatusTag.classList.add("job-tag", "skeleton-element", "skeleton-tag-box");
         statusDiv.appendChild(skeletonStatusTag);
         jobHeader.appendChild(statusDiv);
-
-        const toggleDiv = document.createElement("div");
-        toggleDiv.classList.add("db-table-row-item");
-        const skeletonToggle = document.createElement("div");
-        skeletonToggle.classList.add("skeleton-element", "skeleton-button-icon"); 
-        toggleDiv.appendChild(skeletonToggle);
-        jobHeader.appendChild(toggleDiv);
         
         jobWrapper.appendChild(jobHeader);
+
+        // Skeleton für Toggle Button Zeile (NEU)
+        const skeletonToggleRow = document.createElement("div");
+        skeletonToggleRow.classList.add("applicants-toggle-row-skeleton", "skeleton-element"); // Eigene Klasse für Styling
+        skeletonToggleRow.style.height = "30px"; // Beispielhöhe
+        skeletonToggleRow.style.width = "150px"; // Beispielbreite
+        skeletonToggleRow.style.margin = "10px auto"; // Beispiel-Margin für Zentrierung
+        jobWrapper.appendChild(skeletonToggleRow);
+
         container.appendChild(jobWrapper);
     }
     // HINWEIS: Die CSS-Regeln für Skeleton-Elemente und .job-entry MÜSSEN in deiner CSS-Datei sein.
+    // .applicants-toggle-row-skeleton { /* Spezifisches Styling für den Skeleton der Toggle-Zeile */ }
 }
 
 // --- Rendering-Funktionen ---
@@ -200,7 +203,7 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
 
     const fragment = document.createDocumentFragment();
 
-    jobsWithApplicants.forEach(jobItem => { // jobItem enthält hier das volle Job-Objekt (inkl. fieldData) und die 'applicants' Liste
+    jobsWithApplicants.forEach(jobItem => { 
         const jobFieldData = jobItem.fieldData;
         if (!jobFieldData) {
             console.warn("Job-Item ohne fieldData übersprungen:", jobItem);
@@ -210,6 +213,7 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         const jobWrapper = document.createElement("div");
         jobWrapper.classList.add("my-job-item", "job-entry"); 
 
+        // Job-Header erstellen (die eigentliche Job-Zeile)
         const jobHeaderDiv = document.createElement("div");
         jobHeaderDiv.classList.add("db-table-row", "db-table-my-job"); 
 
@@ -247,17 +251,24 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         if (jobFieldData["job-status"] === "Beendet") statusTag.classList.add("is-bg-light-red");
         statusCell.appendChild(statusTag);
         jobHeaderDiv.appendChild(statusCell);
+        
+        jobWrapper.appendChild(jobHeaderDiv); // Job-Header zum Wrapper hinzufügen
 
-        const toggleCell = document.createElement("div");
-        toggleCell.classList.add("db-table-row-item", "applicants-toggle-cell");
+        // Eigene Zeile für den Toggle Button (NEU)
+        const toggleButtonRow = document.createElement("div");
+        toggleButtonRow.classList.add("applicants-toggle-row"); // Eigene Klasse für Styling
+        // Beispiel-Styling (kann in CSS ausgelagert werden):
+        toggleButtonRow.style.textAlign = "center"; 
+        toggleButtonRow.style.padding = "10px 0";
+
         const toggleButton = document.createElement("button");
         toggleButton.classList.add("button", "is-small", "applicants-toggle-btn"); 
         toggleButton.innerHTML = `Bewerber (${jobItem.applicants.length}) <span class="toggle-icon">▼</span>`; 
-        toggleCell.appendChild(toggleButton);
-        jobHeaderDiv.appendChild(toggleCell);
+        toggleButtonRow.appendChild(toggleButton);
+        jobWrapper.appendChild(toggleButtonRow); // Toggle-Button-Zeile zum Wrapper hinzufügen
         
-        jobWrapper.appendChild(jobHeaderDiv);
 
+        // Container für Bewerberliste (initial versteckt)
         const applicantsContainer = document.createElement("div");
         applicantsContainer.classList.add("applicants-list-container");
         applicantsContainer.style.display = "none"; 
@@ -275,7 +286,7 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
             noApplicantsMsg.style.padding = "10px 0";
             applicantsContainer.appendChild(noApplicantsMsg);
         }
-        jobWrapper.appendChild(applicantsContainer);
+        jobWrapper.appendChild(applicantsContainer); // Bewerberliste zum Wrapper hinzufügen
         fragment.appendChild(jobWrapper);
 
         toggleButton.addEventListener("click", () => {
@@ -283,7 +294,7 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
             applicantsContainer.style.display = isHidden ? "block" : "none";
             toggleButton.querySelector(".toggle-icon").textContent = isHidden ? "▲" : "▼";
             if (isHidden) {
-                const applicantEntries = applicantsContainer.querySelectorAll(".job-entry");
+                const applicantEntries = applicantsContainer.querySelectorAll(".applicants-list-container .job-entry"); // Genauerer Selektor
                 applicantEntries.forEach(entry => entry.classList.remove("visible")); 
                 requestAnimationFrame(() => {
                     applicantEntries.forEach(entry => entry.classList.add("visible"));
@@ -326,15 +337,13 @@ async function displayMyJobsAndApplicants() {
         }
         console.log(`✅ MyJobs: Webflow Member ID: ${currentWebflowMemberId_MJ}`);
 
-        // 1. Lade das Item des aktuellen Benutzers, um seine geposteten Jobs zu erhalten
         const currentUserItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, currentWebflowMemberId_MJ);
         if (!currentUserItem || !currentUserItem.fieldData) {
             console.error("❌ Benutzerdaten des aktuellen Users nicht gefunden oder fieldData leer.");
-            renderMyJobsAndApplicants([]); // Leere Liste anzeigen
+            renderMyJobsAndApplicants([]); 
             return;
         }
 
-        // 2. Hole die IDs der geposteten Jobs aus dem Feld "posted-jobs"
         const postedJobIds = currentUserItem.fieldData["posted-jobs"] || [];
         console.log(`User hat ${postedJobIds.length} Jobs im Feld 'posted-jobs'.`);
 
@@ -343,9 +352,8 @@ async function displayMyJobsAndApplicants() {
             return;
         }
 
-        // 3. Lade die Details für jeden geposteten Job
         const myJobItemsPromises = postedJobIds.map(jobId => fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId));
-        let myJobItems = (await Promise.all(myJobItemsPromises)).filter(job => job !== null && job.fieldData); // Nur valide Jobs mit fieldData
+        let myJobItems = (await Promise.all(myJobItemsPromises)).filter(job => job !== null && job.fieldData); 
 
         console.log(`Found ${myJobItems.length} valid jobs posted by this user.`);
 
@@ -354,11 +362,9 @@ async function displayMyJobsAndApplicants() {
             return;
         }
 
-        // 4. Für jeden eigenen Job die Bewerberdaten abrufen
         const jobsWithApplicantsPromises = myJobItems.map(async (jobItem) => {
             const jobFieldData = jobItem.fieldData;
             let applicantsData = [];
-            // Verwende "bewerber" als Feldname für die Bewerber-IDs
             const applicantIds = jobFieldData["bewerber"] || []; 
 
             if (applicantIds.length > 0) {
@@ -367,8 +373,6 @@ async function displayMyJobsAndApplicants() {
                 );
                 applicantsData = (await Promise.all(applicantPromises)).filter(applicant => applicant !== null);
             }
-            // Wichtig: Das Job-Item selbst (jobItem) wird zurückgegeben, nicht nur jobItem.fieldData,
-            // da renderMyJobsAndApplicants das volle Item-Objekt für den Job erwartet.
             return { ...jobItem, applicants: applicantsData }; 
         });
 
