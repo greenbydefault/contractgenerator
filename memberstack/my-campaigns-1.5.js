@@ -268,17 +268,21 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         toggleButtonRow.style.textAlign = "center"; 
         toggleButtonRow.style.padding = "10px 0";
 
-        const toggleButton = document.createElement("button");
-        // Klassen für den Toggle-Button geändert
-        toggleButton.classList.add("db-table-applicants"); 
-        toggleButton.innerHTML = `Bewerberliste <span class="toggle-icon">▼</span>`; 
-        toggleButtonRow.appendChild(toggleButton);
+        // Toggle-Element ist jetzt ein DIV statt BUTTON
+        const toggleDivElement = document.createElement("div"); 
+        toggleDivElement.classList.add("db-table-applicants"); // Deine gewünschte Klasse
+        toggleDivElement.innerHTML = `Bewerberliste <span class="toggle-icon">▼</span>`; 
+        toggleDivElement.style.cursor = "pointer"; // Um anzuzeigen, dass es klickbar ist
+        // Optional: Rolle für Barrierefreiheit hinzufügen, wenn es sich wie ein Button verhalten soll
+        // toggleDivElement.setAttribute("role", "button");
+        // toggleDivElement.setAttribute("tabindex", "0"); // Macht es fokussierbar per Tastatur
+
+        toggleButtonRow.appendChild(toggleDivElement);
         jobWrapper.appendChild(toggleButtonRow); 
         
         const applicantsContainer = document.createElement("div");
         applicantsContainer.classList.add("applicants-list-container");
         applicantsContainer.style.display = "none"; 
-        applicantsContainer.style.paddingLeft = "20px"; 
 
         if (jobItem.applicants.length > 0) {
             jobItem.applicants.forEach(applicant => {
@@ -295,10 +299,11 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         jobWrapper.appendChild(applicantsContainer); 
         fragment.appendChild(jobWrapper);
 
-        toggleButton.addEventListener("click", () => {
+        // Event Listener für das Toggle-DIV
+        toggleDivElement.addEventListener("click", () => {
             const isHidden = applicantsContainer.style.display === "none";
             applicantsContainer.style.display = isHidden ? "block" : "none";
-            toggleButton.querySelector(".toggle-icon").textContent = isHidden ? "▲" : "▼";
+            toggleDivElement.querySelector(".toggle-icon").textContent = isHidden ? "▲" : "▼";
             if (isHidden) {
                 const applicantEntries = applicantsContainer.querySelectorAll(".job-entry"); 
                 applicantEntries.forEach(entry => entry.classList.remove("visible")); 
@@ -307,6 +312,13 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
                 });
             }
         });
+        // Optional: Event Listener für Enter/Space Taste, falls tabindex="0" gesetzt wurde
+        // toggleDivElement.addEventListener("keydown", (event) => {
+        //     if (event.key === "Enter" || event.key === " ") {
+        //         event.preventDefault(); // Verhindert Standardaktionen wie Scrollen bei Leertaste
+        //         toggleDivElement.click(); // Löst das Klick-Event aus
+        //     }
+        // });
     });
 
     container.appendChild(fragment);
