@@ -93,9 +93,11 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         console.error("❌ Element 'application-list' nicht gefunden.");
         return;
     }
-    appContainer.innerHTML = ""; // Leert den Container vor dem Neuzeichnen
 
-    // console.log(`🟢 Eingeloggte Webflow Member-ID für Rendering: ${webflowMemberId}`);
+    // Nur leeren, wenn es die erste Seite ist (initial oder nach Filteränderung)
+    if (currentPage === 1) {
+        appContainer.innerHTML = ""; 
+    }
 
     // Filterlogik basierend auf Job-Status Checkboxen
     const showJobActiveFilter = document.getElementById("job-status-active-filter")?.checked;
@@ -115,17 +117,16 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         const isJobCurrentlyActive = jobEndDate && jobEndDate >= now;
         let jobStatusPasses = false;
         if ((!showJobActiveFilter && !showJobClosedFilter) || (showJobActiveFilter && showJobClosedFilter)) {
-            jobStatusPasses = true; // Zeige alle, wenn keine oder beide Job-Status-Filter aktiv sind
+            jobStatusPasses = true; 
         } else if (showJobActiveFilter && isJobCurrentlyActive) {
             jobStatusPasses = true;
         } else if (showJobClosedFilter && !isJobCurrentlyActive) {
             jobStatusPasses = true;
         }
-        if (!jobEndDate && (showJobActiveFilter || showJobClosedFilter)) { // Wenn kein Enddatum, aber Filter aktiv
-             if (showJobActiveFilter && !showJobClosedFilter) jobStatusPasses = false; // Sollte nicht als aktiv gelten
-             else if (showJobClosedFilter && !showJobActiveFilter) jobStatusPasses = true; // Könnte als "beendet/unbekannt" gelten
+        if (!jobEndDate && (showJobActiveFilter || showJobClosedFilter)) { 
+             if (showJobActiveFilter && !showJobClosedFilter) jobStatusPasses = false; 
+             else if (showJobClosedFilter && !showJobActiveFilter) jobStatusPasses = true; 
         }
-
 
         // Bewerbungs-Status Filterung
         const currentApplicationStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
@@ -133,7 +134,7 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         const noAppStatusFiltersChecked = !showAppPendingFilter && !showAppAcceptedFilter && !showAppRejectedFilter;
 
         if (noAppStatusFiltersChecked) {
-            applicationStatusPasses = true; // Zeige alle, wenn keine Bewerbungs-Status-Filter aktiv sind
+            applicationStatusPasses = true; 
         } else {
             if (showAppPendingFilter && currentApplicationStatus === "Ausstehend") {
                 applicationStatusPasses = true;
@@ -149,18 +150,18 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         return jobStatusPasses && applicationStatusPasses;
     });
     
-    console.log(`🔎 Gefilterte Jobs (${filteredJobs.length}):`, filteredJobs);
-
+    // console.log(`🔎 Gefilterte Jobs (${filteredJobs.length}):`, filteredJobs);
 
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
     const endIndex = startIndex + JOBS_PER_PAGE;
     const jobsToShowOnPage = filteredJobs.slice(startIndex, endIndex);
 
+    // Nachricht anzeigen, wenn auf der ERSTEN Seite keine Jobs den Kriterien entsprechen
     if (jobsToShowOnPage.length === 0 && currentPage === 1) {
         appContainer.innerHTML = "<p>ℹ️ Keine Jobs entsprechen den aktuellen Filterkriterien.</p>";
     }
 
-    jobsToShowOnPage.forEach(({ jobData }) => { // Index wird hier nicht direkt benötigt
+    jobsToShowOnPage.forEach(({ jobData }) => { 
         if (!jobData) return;
 
         const jobLink = document.createElement("a");
@@ -175,14 +176,12 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         const jobInfoDiv = document.createElement("div");
         jobInfoDiv.classList.add("db-table-row-item", "justify-left", "job-info-container");
 
-        // Bild (Styling entfernt)
         const jobImage = document.createElement("img");
         jobImage.classList.add("db-table-img", "is-margin-right-12");
         jobImage.src = jobData["job-image"]?.url || jobData["job-image"] || "https://via.placeholder.com/80x80?text=Job";
         jobImage.alt = jobData["name"] || "Job Bild";
         jobInfoDiv.appendChild(jobImage);
 
-        // Name
         const jobName = document.createElement("span");
         jobName.classList.add("truncate", "job-title");
         jobName.textContent = jobData["name"] || "Unbekannter Job";
@@ -190,7 +189,6 @@ function renderJobs(jobsToProcess, webflowMemberId) {
 
         jobDiv.appendChild(jobInfoDiv);
 
-        // Weitere Felder
         const fields = [
             { key: "job-payment", label: "Bezahlung" },
             { key: "job-date-end", label: "Bewerbungsfrist" },
@@ -205,17 +203,15 @@ function renderJobs(jobsToProcess, webflowMemberId) {
             fieldDiv.classList.add("db-table-row-item", `item-${field.key}`);
 
             const fieldText = document.createElement("span");
-            // Die Klasse "db-job-tag-txt" wird hier nicht mehr standardmäßig hinzugefügt,
-            // sondern nur noch für die Felder, die keine Tags sind.
 
             if (field.key === "job-payment") {
-                fieldText.classList.add("db-job-tag-txt"); // Hier bleibt es, da es kein Tag-Element ist
+                fieldText.classList.add("db-job-tag-txt"); 
                 fieldText.textContent = value ? `${value} €` : "N/A";
             } else if (field.key === "job-date-end") {
-                fieldText.classList.add("db-job-tag-txt"); // Hier bleibt es
+                fieldText.classList.add("db-job-tag-txt"); 
                 fieldText.textContent = value ? calculateDeadlineCountdown(value) : "N/A";
             } else if (field.key === "fertigstellung-content" && value) {
-                fieldText.classList.add("db-job-tag-txt"); // Hier bleibt es
+                fieldText.classList.add("db-job-tag-txt"); 
                 const date = new Date(value);
                 fieldText.textContent = !isNaN(date.getTime()) ? `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}` : "N/A";
             } else if (field.key === "job-status") {
@@ -224,7 +220,6 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                 const statusDiv = document.createElement("div");
                 statusDiv.classList.add("job-tag");
                 const statusTextInner = document.createElement("span");
-                // statusTextInner.classList.add("db-job-tag-txt"); // ENTFERNT
                 
                 if (endDateJob && endDateJob < now) {
                     statusDiv.classList.add("is-bg-light-red");
@@ -242,7 +237,6 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                 const statusDiv = document.createElement("div");
                 statusDiv.classList.add("job-tag");
                 const statusTextInner = document.createElement("span");
-                // statusTextInner.classList.add("db-job-tag-txt"); // ENTFERNT
 
                 const appStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
 
@@ -252,28 +246,26 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                 } else if (appStatus === "Abgelehnt") {
                     statusDiv.classList.add("is-bg-light-red");
                     statusTextInner.textContent = "Abgelehnt";
-                } else { // Ausstehend
+                } else { 
                     statusDiv.classList.add("is-bg-light-blue");
                     statusTextInner.textContent = "Ausstehend";
                 }
                 statusDiv.appendChild(statusTextInner);
                 fieldDiv.appendChild(statusDiv);
             } else {
-                fieldText.classList.add("db-job-tag-txt"); // Hier bleibt es für andere generische Felder
+                fieldText.classList.add("db-job-tag-txt"); 
                 fieldText.textContent = value || "Nicht verfügbar";
             }
 
-            // Nur fieldText hinzufügen, wenn es nicht schon durch eine komplexere Logik (wie Status-Tags) gehandhabt wurde
-            // und wenn es Textinhalt hat (um leere Spans zu vermeiden, falls die Klasse db-job-tag-txt nicht hinzugefügt wurde)
             if (field.key !== "job-status" && field.key !== "application-status") {
-                 if(fieldText.textContent || fieldText.classList.contains("db-job-tag-txt")){ // Sicherstellen, dass das Span relevant ist
+                 if(fieldText.textContent || fieldText.classList.contains("db-job-tag-txt")){ 
                     fieldDiv.appendChild(fieldText);
                  }
             }
             jobDiv.appendChild(fieldDiv);
         });
         jobLink.appendChild(jobDiv);
-        appContainer.appendChild(jobLink);
+        appContainer.appendChild(jobLink); // Hier werden die Elemente jetzt angehängt
     });
 
     // Load More Button
@@ -282,15 +274,16 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         console.error("❌ Element 'load-more-container' nicht gefunden.");
         return;
     }
-    loadMoreContainer.innerHTML = "";
+    loadMoreContainer.innerHTML = ""; // Button immer neu erstellen, um Zustand zu verwalten
 
     if (endIndex < filteredJobs.length) {
         const loadMoreButton = document.createElement("button");
         loadMoreButton.textContent = "Mehr laden";
-        loadMoreButton.classList.add("load-more-btn", "button", "is-primary");
+        // Die Klasse "load-more-btn" ist hier korrekt zugewiesen
+        loadMoreButton.classList.add("load-more-btn", "button", "is-primary"); 
         loadMoreButton.addEventListener("click", () => {
-            currentPage++;
-            renderJobs(allJobResults, webflowMemberId);
+            currentPage++; // Erhöhe die Seite
+            renderJobs(allJobResults, webflowMemberId); // Rufe renderJobs erneut auf
         });
         loadMoreContainer.appendChild(loadMoreButton);
     }
@@ -304,7 +297,7 @@ async function initializeUserApplications() {
         console.error("FEHLER: App-Container 'application-list' nicht im DOM gefunden.");
         return;
     }
-    appContainer.innerHTML = "<p>Lade Bewerbungen...</p>";
+    appContainer.innerHTML = "<p>Lade Bewerbungen...</p>"; // Ladeindikator für den ersten Start
 
     try {
         if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
@@ -314,7 +307,7 @@ async function initializeUserApplications() {
             if (!currentWebflowMemberId) {
                 console.warn("⚠️ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
             } else {
-                console.log(`👤 Aktuelle eingeloggte Webflow Member-ID: ${currentWebflowMemberId}`);
+                // console.log(`👤 Aktuelle eingeloggte Webflow Member-ID: ${currentWebflowMemberId}`);
             }
         } else {
             console.warn("⚠️ MemberStack (window.$memberstackDom.getCurrentMember) ist nicht verfügbar.");
@@ -325,7 +318,7 @@ async function initializeUserApplications() {
             const userData = await fetchCollectionItem(USER_COLLECTION_ID, currentWebflowMemberId);
             applications = userData?.fieldData?.["abgeschlossene-bewerbungen"] || [];
         } else {
-            console.log("ℹ️ Keine Member-ID, daher werden keine spezifischen 'abgeschlossene-bewerbungen' geladen.");
+            // console.log("ℹ️ Keine Member-ID, daher werden keine spezifischen 'abgeschlossene-bewerbungen' geladen.");
         }
 
         if (applications.length > 0) {
@@ -337,13 +330,14 @@ async function initializeUserApplications() {
             allJobResults = await Promise.all(jobPromises);
             allJobResults = allJobResults.filter(job => job.jobData && Object.keys(job.jobData).length > 0);
             
-            console.log(`📊 ${allJobResults.length} Jobs initial geladen und verarbeitet.`);
-            currentPage = 1;
+            // console.log(`📊 ${allJobResults.length} Jobs initial geladen und verarbeitet.`);
+            currentPage = 1; // Wichtig: Seite für den ersten Render-Durchlauf auf 1 setzen
             renderJobs(allJobResults, currentWebflowMemberId);
         } else {
+            // Sicherstellen, dass der Container geleert wird, wenn keine Bewerbungen da sind
             appContainer.innerHTML = "<p>Keine abgeschlossenen Bewerbungen gefunden oder keine Jobs zum Anzeigen.</p>";
             const loadMoreContainer = document.getElementById("load-more-container");
-            if (loadMoreContainer) loadMoreContainer.innerHTML = "";
+            if (loadMoreContainer) loadMoreContainer.innerHTML = ""; // Auch den Button-Container leeren
         }
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler beim Laden der Bewerbungen:", error);
@@ -360,7 +354,7 @@ function setupFilterListeners() {
     const rejectedAppFilterCheckbox = document.getElementById("application-status-rejected-filter");
 
     const handleFilterChange = () => {
-        currentPage = 1;
+        currentPage = 1; // Wichtig: Bei Filteränderung Seite auf 1 zurücksetzen
         renderJobs(allJobResults, currentWebflowMemberId);
     };
 
@@ -377,13 +371,12 @@ function setupFilterListeners() {
             checkbox.addEventListener("change", handleFilterChange);
         }
     });
-    // Spezifischere Warnungen, falls benötigt:
+    
     if (!activeJobFilterCheckbox) console.warn("⚠️ Checkbox 'job-status-active-filter' nicht gefunden.");
     if (!closedJobFilterCheckbox) console.warn("⚠️ Checkbox 'job-status-closed-filter' nicht gefunden.");
     if (!pendingAppFilterCheckbox) console.warn("⚠️ Checkbox 'application-status-pending-filter' nicht gefunden.");
     if (!acceptedAppFilterCheckbox) console.warn("⚠️ Checkbox 'application-status-accepted-filter' nicht gefunden.");
     if (!rejectedAppFilterCheckbox) console.warn("⚠️ Checkbox 'application-status-rejected-filter' nicht gefunden.");
-
 }
 
 
