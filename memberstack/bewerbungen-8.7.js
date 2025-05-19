@@ -10,8 +10,8 @@ const JOBS_PER_PAGE = 15;
 let currentPage = 1;
 let allJobResults = [];
 let currentWebflowMemberId = null;
-// Speichert das aktive Sortierobjekt, z.B. { key: 'deadline', direction: 'asc' }
 let activeSortCriteria = null; 
+let currentSearchTerm = ""; // NEU: Für den Suchbegriff
 
 // 🛠️ Hilfsfunktionen (bleiben unverändert)
 function buildWorkerUrl(apiUrl) {
@@ -69,7 +69,7 @@ function getApplicationStatusForFilter(jobData, memberId) {
     return "Ausstehend";
 }
 
-// 💀 Skeleton Loader rendern (bleibt größtenteils unverändert)
+// 💀 Skeleton Loader rendern
 function renderSkeletonLoader(container, count) {
     container.innerHTML = ""; 
     const fieldSkeletons = [
@@ -108,33 +108,15 @@ function renderSkeletonLoader(container, count) {
     }
     /*
     WICHTIG: FÜGE DIESE CSS-REGELN ZU DEINER CSS-DATEI HINZU, DAMIT SKELETON UND TRANSITION FUNKTIONIEREN!
-
     .skeleton-row { opacity: 0.7; }
-    .skeleton-element {
-        background-color: #e0e0e0; 
-        border-radius: 4px;       
-        animation: pulse 1.5s infinite ease-in-out; 
-    }
+    .skeleton-element { background-color: #e0e0e0; border-radius: 4px; animation: pulse 1.5s infinite ease-in-out; }
     .skeleton-image { width: 80px; height: 80px; } 
     .skeleton-text { height: 20px; margin-bottom: 8px; }
-    .skeleton-text-title { width: 60%; }
-    .skeleton-text-short { width: 30%; }
-    .skeleton-text-medium { width: 50%; }
+    .skeleton-text-title { width: 60%; } .skeleton-text-short { width: 30%; } .skeleton-text-medium { width: 50%; }
     .skeleton-tag-box { width: 80px; height: 24px; }
-
-    @keyframes pulse { 
-        0% { background-color: #e0e0e0; }
-        50% { background-color: #d0d0d0; } 
-        100% { background-color: #e0e0e0; }
-    }
-
-    .job-entry {
-        opacity: 0;
-        transition: opacity 0.4s ease-in-out !important; 
-    }
-    .job-entry.visible {
-        opacity: 1;
-    }
+    @keyframes pulse { 0% { background-color: #e0e0e0; } 50% { background-color: #d0d0d0; } 100% { background-color: #e0e0e0; } }
+    .job-entry { opacity: 0; transition: opacity 0.4s ease-in-out !important; }
+    .job-entry.visible { opacity: 1; }
     */
 }
 
@@ -153,8 +135,21 @@ function renderJobs(jobsToProcess, webflowMemberId) {
     const showAppAcceptedFilter = document.getElementById("application-status-accepted-filter")?.checked;
     const showAppRejectedFilter = document.getElementById("application-status-rejected-filter")?.checked;
 
+    // Suchbegriff für die Filterung vorbereiten (Groß-/Kleinschreibung ignorieren)
+    const searchTermNormalized = currentSearchTerm.toLowerCase().trim();
+
     let filteredJobs = jobsToProcess.filter(({ jobData }) => {
         if (!jobData) return false;
+
+        // 1. Nach Suchbegriff filtern (Jobname)
+        if (searchTermNormalized) {
+            const jobName = (jobData["name"] || "").toLowerCase();
+            if (!jobName.includes(searchTermNormalized)) {
+                return false; // Job entspricht nicht dem Suchbegriff
+            }
+        }
+
+        // 2. Nach Job-Status filtern
         const jobEndDate = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
         const now = new Date();
         const isJobCurrentlyActive = jobEndDate && jobEndDate >= now;
@@ -164,13 +159,16 @@ function renderJobs(jobsToProcess, webflowMemberId) {
              if (showJobActiveFilter && !showJobClosedFilter) jobStatusPasses = false; 
              else if (showJobClosedFilter && !showJobActiveFilter) jobStatusPasses = true; 
         }
+        if (!jobStatusPasses) return false; // Job entspricht nicht dem Job-Status-Filter
 
+        // 3. Nach Bewerbungs-Status filtern
         const currentApplicationStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
         let applicationStatusPasses = !showAppPendingFilter && !showAppAcceptedFilter && !showAppRejectedFilter ||
                                       (showAppPendingFilter && currentApplicationStatus === "Ausstehend") ||
                                       (showAppAcceptedFilter && currentApplicationStatus === "Angenommen") ||
                                       (showAppRejectedFilter && currentApplicationStatus === "Abgelehnt");
-        return jobStatusPasses && applicationStatusPasses;
+        
+        return applicationStatusPasses; // Job entspricht allen aktiven Filtern
     });
     
     // Sortierlogik ANWENDEN
@@ -180,31 +178,31 @@ function renderJobs(jobsToProcess, webflowMemberId) {
             const jobDataA = a.jobData;
             const jobDataB = b.jobData;
             if (!jobDataA || !jobDataB) return 0;
-
             let valA, valB;
-
             switch (activeSortCriteria.key) {
-                case 'deadline': // Bezieht sich auf 'job-date-end'
+                case 'deadline': 
                     valA = jobDataA['job-date-end'] ? new Date(jobDataA['job-date-end']) : new Date(0); 
                     valB = jobDataB['job-date-end'] ? new Date(jobDataB['job-date-end']) : new Date(0);
+                    if (valA.getTime() === 0) valA = activeSortCriteria.direction === 'asc' ? new Date(8640000000000000) : new Date(-8640000000000000);
+                    if (valB.getTime() === 0) valB = activeSortCriteria.direction === 'asc' ? new Date(8640000000000000) : new Date(-8640000000000000);
                     break;
-                case 'content': // Bezieht sich auf 'fertigstellung-content'
+                case 'content': 
                     valA = jobDataA['fertigstellung-content'] ? new Date(jobDataA['fertigstellung-content']) : new Date(0);
                     valB = jobDataB['fertigstellung-content'] ? new Date(jobDataB['fertigstellung-content']) : new Date(0);
+                    if (valA.getTime() === 0) valA = activeSortCriteria.direction === 'asc' ? new Date(8640000000000000) : new Date(-8640000000000000);
+                    if (valB.getTime() === 0) valB = activeSortCriteria.direction === 'asc' ? new Date(8640000000000000) : new Date(-8640000000000000);
                     break;
-                case 'budget': // Bezieht sich auf 'job-payment'
+                case 'budget': 
                     valA = parseFloat(String(jobDataA['job-payment']).replace(/[^0-9.-]+/g,""));
                     valB = parseFloat(String(jobDataB['job-payment']).replace(/[^0-9.-]+/g,""));
-                    if (isNaN(valA)) valA = activeSortCriteria.direction === 'asc' ? Infinity : -Infinity; // NaN ans Ende bei ASC, Anfang bei DESC
+                    if (isNaN(valA)) valA = activeSortCriteria.direction === 'asc' ? Infinity : -Infinity; 
                     if (isNaN(valB)) valB = activeSortCriteria.direction === 'asc' ? Infinity : -Infinity;
                     break;
                 default: return 0;
             }
-            
             let comparison = 0;
             if (valA < valB) comparison = -1;
             if (valA > valB) comparison = 1;
-            
             return activeSortCriteria.direction === 'desc' ? comparison * -1 : comparison;
         });
     }
@@ -217,7 +215,7 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         appContainer.innerHTML = ""; 
         if (jobsToShowOnPage.length === 0) {
             const noJobsMessage = document.createElement('p');
-            noJobsMessage.textContent = "ℹ️ Keine Jobs entsprechen den aktuellen Filter- und Sortierkriterien.";
+            noJobsMessage.textContent = "ℹ️ Keine Jobs entsprechen den aktuellen Filter-, Such- und Sortierkriterien.";
             noJobsMessage.classList.add('job-entry'); 
             appContainer.appendChild(noJobsMessage);
             requestAnimationFrame(() => { noJobsMessage.classList.add('visible'); });
@@ -423,27 +421,28 @@ async function initializeUserApplications() {
     }
 }
 
-// Event Listener für Filter- UND Sortier-Checkboxen
+// Event Listener für Filter, Sortierung UND Suche
 function setupEventListeners() {
     const filterCheckboxIds = [
         "job-status-active-filter", "job-status-closed-filter",
         "application-status-pending-filter", "application-status-accepted-filter", "application-status-rejected-filter"
     ];
-    // IDs für die Sortier-Checkboxen anpassen
+    
     const sortCheckboxDefinitions = [
         { id: "job-sort-deadline-asc", key: "deadline", direction: "asc" },
         { id: "job-sort-deadline-desc", key: "deadline", direction: "desc" },
-        { id: "job-sort-content-asc", key: "content", direction: "asc" }, // Behalte 'asc' für andere, oder erweitere später
-        // { id: "job-sort-content-desc", key: "content", direction: "desc" }, // Beispiel für Erweiterung
+        { id: "job-sort-content-asc", key: "content", direction: "asc" },
+        { id: "job-sort-content-desc", key: "content", direction: "desc" },
         { id: "job-sort-budget-asc", key: "budget", direction: "asc" },
-        // { id: "job-sort-budget-desc", key: "budget", direction: "desc" } // Beispiel für Erweiterung
+        { id: "job-sort-budget-desc", key: "budget", direction: "desc" }  
     ];
+
+    const searchInput = document.getElementById("filter-search"); // NEU: Suchfeld
 
     const allFilterCheckboxes = filterCheckboxIds.map(id => document.getElementById(id)).filter(cb => cb !== null);
     const allSortCheckboxes = sortCheckboxDefinitions.map(def => {
         const cb = document.getElementById(def.id);
         if (cb) {
-            // Speichere die Sortierkriterien direkt auf dem Checkbox-Element
             cb.dataset.sortKey = def.key;
             cb.dataset.sortDirection = def.direction;
         }
@@ -468,23 +467,31 @@ function setupEventListeners() {
                     key: targetCheckbox.dataset.sortKey, 
                     direction: targetCheckbox.dataset.sortDirection 
                 };
-                // Alle anderen Sortier-Checkboxen deaktivieren
                 allSortCheckboxes.forEach(otherCb => {
                     if (otherCb !== targetCheckbox) {
                         otherCb.checked = false;
                     }
                 });
             } else {
-                // Wenn die gerade aktive Sortierung abgewählt wird
                 if (activeSortCriteria && 
                     activeSortCriteria.key === targetCheckbox.dataset.sortKey &&
                     activeSortCriteria.direction === targetCheckbox.dataset.sortDirection) {
-                    activeSortCriteria = null; // Sortierung aufheben
+                    activeSortCriteria = null; 
                 }
             }
             handleInteraction();
         });
     });
+
+    // NEU: Event Listener für das Suchfeld
+    if (searchInput) {
+        searchInput.addEventListener("input", (event) => {
+            currentSearchTerm = event.target.value;
+            handleInteraction(); // Ruft die Neuzeichnung mit dem Suchbegriff auf
+        });
+    } else {
+        console.warn("⚠️ Suchfeld 'filter-search' nicht im DOM gefunden.");
+    }
 
     // Warnungen für fehlende Checkboxen
     filterCheckboxIds.forEach(id => {
