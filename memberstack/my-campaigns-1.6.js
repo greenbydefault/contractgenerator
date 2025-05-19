@@ -265,8 +265,6 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
 
         const toggleButtonRow = document.createElement("div");
         toggleButtonRow.classList.add("applicants-toggle-row"); 
-        toggleButtonRow.style.textAlign = "center"; 
-        toggleButtonRow.style.padding = "10px 0";
 
         // Toggle-Element ist jetzt ein DIV statt BUTTON
         const toggleDivElement = document.createElement("div"); 
