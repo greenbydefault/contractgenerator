@@ -108,7 +108,6 @@ function renderJobs(jobsFieldDataArray, containerId) {
             return; // Überspringe leere Job-Daten
         }
 
-        // Link-Element für den gesamten Job-Eintrag
         const jobLink = document.createElement("a");
         jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug}`;
         jobLink.target = "_blank";
@@ -126,22 +125,38 @@ function renderJobs(jobsFieldDataArray, containerId) {
         jobImage.classList.add("db-table-img", "is-margin-right-12");
         
         const jobNameForLog = jobData["name"] || "Unbekannter Job";
-        console.log(`[Job: ${jobNameForLog}] Rohdaten für job-image:`, jobData["job-image"]);
+        // console.log(`[Job: ${jobNameForLog}] Rohdaten für job-image:`, jobData["job-image"]); // Für Debugging beibehalten
 
-        const imageUrl = jobData["job-image"]?.url;
-        const finalImageUrl = imageUrl || "https://via.placeholder.com/60x60?text=Job";
+        const imageUrlFromData = jobData["job-image"]?.url; // Korrekter Zugriff auf die URL eines Bildfeldes
+        const originalPlaceholderUrl = "https://via.placeholder.com/100"; // Platzhalter aus dem Originalskript
+        const errorPlaceholderUrl = "https://via.placeholder.com/100?text=Error"; // Fehler-Platzhalter
+
+        let currentSrcToTry;
+
+        if (imageUrlFromData) {
+            currentSrcToTry = imageUrlFromData;
+            console.log(`[Job: ${jobNameForLog}] Versuche Bild von Datenquelle zu laden: ${currentSrcToTry}`);
+        } else {
+            currentSrcToTry = originalPlaceholderUrl;
+            console.log(`[Job: ${jobNameForLog}] Keine Bild-URL in Daten. Versuche originalen Platzhalter: ${currentSrcToTry}`);
+        }
         
-        console.log(`[Job: ${jobNameForLog}] Versuche Bild zu laden: ${finalImageUrl}`);
-        jobImage.src = finalImageUrl;
-        
+        jobImage.src = currentSrcToTry;
         jobImage.alt = jobData["name"] || "Job Bild";
-        jobImage.style.width = "60px";
-        jobImage.style.height = "60px";
-        jobImage.style.objectFit = "cover";
-        
+        jobImage.style.maxWidth = "100px"; // Stil aus dem Originalskript
+        jobImage.style.height = "auto";    // Um das Seitenverhältnis bei maxWidth beizubehalten
+
         jobImage.onerror = () => {
-            console.error(`[Job: ${jobNameForLog}] FEHLER beim Laden von Bild: ${finalImageUrl}. Setze auf Error-Fallback.`);
-            jobImage.src = "https://via.placeholder.com/60x60?text=Error"; 
+            const failedSrc = jobImage.src; // Die src, die gerade fehlgeschlagen ist
+            console.error(`[Job: ${jobNameForLog}] FEHLER beim Laden von Bild: ${failedSrc}.`);
+            // Verhindert eine Endlosschleife, falls der Fehler-Platzhalter auch fehlschlägt.
+            if (failedSrc !== errorPlaceholderUrl) {
+                console.log(`[Job: ${jobNameForLog}] Setze auf Error-Fallback: ${errorPlaceholderUrl}`);
+                jobImage.src = errorPlaceholderUrl;
+            } else {
+                // Dieser Fall sollte selten eintreten, es sei denn, via.placeholder.com hat generelle Probleme
+                console.warn(`[Job: ${jobNameForLog}] Error-Fallback ${errorPlaceholderUrl} ist bereits fehlgeschlagen oder wurde versucht und schlug fehl.`);
+            }
         };
         jobInfoDiv.appendChild(jobImage);
 
