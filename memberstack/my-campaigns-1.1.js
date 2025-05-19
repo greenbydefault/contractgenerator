@@ -4,7 +4,7 @@
 const API_BASE_URL_MJ = "https://api.webflow.com/v2/collections";
 const WORKER_BASE_URL_MJ = "https://bewerbungen.oliver-258.workers.dev/?url="; // Deine Worker URL
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
-const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für Bewerber)
+const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3; // Anzahl der Skeleton-Job-Zeilen
 
 let currentWebflowMemberId_MJ = null;
@@ -18,7 +18,7 @@ function buildWorkerUrl_MJ(apiUrl) {
 async function fetchWebflowCollection(collectionId, params = {}) {
     let allItems = [];
     let offset = 0;
-    const limit = 100; // Webflow API limit per request
+    const limit = 100; 
 
     try {
         while (true) {
@@ -33,10 +33,10 @@ async function fetchWebflowCollection(collectionId, params = {}) {
                 throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
             }
             const data = await response.json();
-            allItems = allItems.concat(data.items || []); // data.items für paginierte Live-Items
+            allItems = allItems.concat(data.items || []); 
 
             if ((data.items && data.items.length < limit) || !data.items || data.items.length === 0) {
-                break; // No more items to fetch
+                break; 
             }
             offset += limit;
         }
@@ -191,7 +191,7 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
 
     if (jobsWithApplicants.length === 0) {
         const noJobsMsg = document.createElement("p");
-        noJobsMsg.textContent = "Du hast noch keine Jobs erstellt oder es wurden keine Jobs gefunden.";
+        noJobsMsg.textContent = "Du hast noch keine Jobs erstellt oder es wurden keine Jobs gefunden, die deinen Kriterien entsprechen.";
         noJobsMsg.classList.add("job-entry");
         container.appendChild(noJobsMsg);
         requestAnimationFrame(() => noJobsMsg.classList.add("visible"));
@@ -200,9 +200,12 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
 
     const fragment = document.createDocumentFragment();
 
-    jobsWithApplicants.forEach(jobItem => {
+    jobsWithApplicants.forEach(jobItem => { // jobItem enthält hier das volle Job-Objekt (inkl. fieldData) und die 'applicants' Liste
         const jobFieldData = jobItem.fieldData;
-        if (!jobFieldData) return;
+        if (!jobFieldData) {
+            console.warn("Job-Item ohne fieldData übersprungen:", jobItem);
+            return;
+        }
 
         const jobWrapper = document.createElement("div");
         jobWrapper.classList.add("my-job-item", "job-entry"); 
@@ -323,22 +326,39 @@ async function displayMyJobsAndApplicants() {
         }
         console.log(`✅ MyJobs: Webflow Member ID: ${currentWebflowMemberId_MJ}`);
 
-        const allJobsItems = await fetchWebflowCollection(JOB_COLLECTION_ID_MJ);
-        
-        // ANPASSEN: "created-by-user-id" ist der angenommene Feldname für die Ersteller-ID im Job-Item.
-        const myJobItems = allJobsItems.filter(job => job.fieldData && job.fieldData["created-by"] === currentWebflowMemberId_MJ); 
-        console.log(`Found ${myJobItems.length} jobs created by this user.`);
+        // 1. Lade das Item des aktuellen Benutzers, um seine geposteten Jobs zu erhalten
+        const currentUserItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, currentWebflowMemberId_MJ);
+        if (!currentUserItem || !currentUserItem.fieldData) {
+            console.error("❌ Benutzerdaten des aktuellen Users nicht gefunden oder fieldData leer.");
+            renderMyJobsAndApplicants([]); // Leere Liste anzeigen
+            return;
+        }
 
+        // 2. Hole die IDs der geposteten Jobs aus dem Feld "posted-jobs"
+        const postedJobIds = currentUserItem.fieldData["posted-jobs"] || [];
+        console.log(`User hat ${postedJobIds.length} Jobs im Feld 'posted-jobs'.`);
+
+        if (postedJobIds.length === 0) {
+            renderMyJobsAndApplicants([]);
+            return;
+        }
+
+        // 3. Lade die Details für jeden geposteten Job
+        const myJobItemsPromises = postedJobIds.map(jobId => fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId));
+        let myJobItems = (await Promise.all(myJobItemsPromises)).filter(job => job !== null && job.fieldData); // Nur valide Jobs mit fieldData
+
+        console.log(`Found ${myJobItems.length} valid jobs posted by this user.`);
 
         if (myJobItems.length === 0) {
             renderMyJobsAndApplicants([]);
             return;
         }
 
+        // 4. Für jeden eigenen Job die Bewerberdaten abrufen
         const jobsWithApplicantsPromises = myJobItems.map(async (jobItem) => {
             const jobFieldData = jobItem.fieldData;
             let applicantsData = [];
-            // KORRIGIERT: Verwende "bewerber" als Feldname für die Bewerber-IDs
+            // Verwende "bewerber" als Feldname für die Bewerber-IDs
             const applicantIds = jobFieldData["bewerber"] || []; 
 
             if (applicantIds.length > 0) {
@@ -347,6 +367,8 @@ async function displayMyJobsAndApplicants() {
                 );
                 applicantsData = (await Promise.all(applicantPromises)).filter(applicant => applicant !== null);
             }
+            // Wichtig: Das Job-Item selbst (jobItem) wird zurückgegeben, nicht nur jobItem.fieldData,
+            // da renderMyJobsAndApplicants das volle Item-Objekt für den Job erwartet.
             return { ...jobItem, applicants: applicantsData }; 
         });
 
@@ -363,3 +385,4 @@ async function displayMyJobsAndApplicants() {
 
 // --- Initialisierung ---
 window.addEventListener("DOMContentLoaded", displayMyJobsAndApplicants);
+
