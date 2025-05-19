@@ -113,21 +113,27 @@ function renderMyJobsSkeletonLoader(container, count) {
         skeletonStatusTag.classList.add("job-tag", "skeleton-element", "skeleton-tag-box");
         statusDiv.appendChild(skeletonStatusTag);
         jobHeader.appendChild(statusDiv);
+
+        // NEU: Skeleton für Bewerberanzahl in der Job-Zeile
+        const applicantsCountDiv = document.createElement("div");
+        applicantsCountDiv.classList.add("db-table-row-item");
+        const skeletonApplicantsCount = document.createElement("div");
+        skeletonApplicantsCount.classList.add("skeleton-element", "skeleton-text", "skeleton-text-short");
+        applicantsCountDiv.appendChild(skeletonApplicantsCount);
+        jobHeader.appendChild(applicantsCountDiv);
         
         jobWrapper.appendChild(jobHeader);
 
-        // Skeleton für Toggle Button Zeile (NEU)
         const skeletonToggleRow = document.createElement("div");
-        skeletonToggleRow.classList.add("applicants-toggle-row-skeleton", "skeleton-element"); // Eigene Klasse für Styling
-        skeletonToggleRow.style.height = "30px"; // Beispielhöhe
-        skeletonToggleRow.style.width = "150px"; // Beispielbreite
-        skeletonToggleRow.style.margin = "10px auto"; // Beispiel-Margin für Zentrierung
+        skeletonToggleRow.classList.add("applicants-toggle-row-skeleton", "skeleton-element"); 
+        skeletonToggleRow.style.height = "30px"; 
+        skeletonToggleRow.style.width = "150px"; 
+        skeletonToggleRow.style.margin = "10px auto"; 
         jobWrapper.appendChild(skeletonToggleRow);
 
         container.appendChild(jobWrapper);
     }
     // HINWEIS: Die CSS-Regeln für Skeleton-Elemente und .job-entry MÜSSEN in deiner CSS-Datei sein.
-    // .applicants-toggle-row-skeleton { /* Spezifisches Styling für den Skeleton der Toggle-Zeile */ }
 }
 
 // --- Rendering-Funktionen ---
@@ -213,7 +219,6 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         const jobWrapper = document.createElement("div");
         jobWrapper.classList.add("my-job-item", "job-entry"); 
 
-        // Job-Header erstellen (die eigentliche Job-Zeile)
         const jobHeaderDiv = document.createElement("div");
         jobHeaderDiv.classList.add("db-table-row", "db-table-my-job"); 
 
@@ -251,24 +256,27 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         if (jobFieldData["job-status"] === "Beendet") statusTag.classList.add("is-bg-light-red");
         statusCell.appendChild(statusTag);
         jobHeaderDiv.appendChild(statusCell);
-        
-        jobWrapper.appendChild(jobHeaderDiv); // Job-Header zum Wrapper hinzufügen
 
-        // Eigene Zeile für den Toggle Button (NEU)
+        // NEU: Bewerberanzahl als letzte Zelle in der Job-Zeile
+        const applicantsCountCell = document.createElement("div");
+        applicantsCountCell.classList.add("db-table-row-item");
+        applicantsCountCell.textContent = `Bewerber: ${jobItem.applicants.length}`;
+        jobHeaderDiv.appendChild(applicantsCountCell);
+        
+        jobWrapper.appendChild(jobHeaderDiv); 
+
         const toggleButtonRow = document.createElement("div");
-        toggleButtonRow.classList.add("applicants-toggle-row"); // Eigene Klasse für Styling
-        // Beispiel-Styling (kann in CSS ausgelagert werden):
+        toggleButtonRow.classList.add("applicants-toggle-row"); 
         toggleButtonRow.style.textAlign = "center"; 
         toggleButtonRow.style.padding = "10px 0";
 
         const toggleButton = document.createElement("button");
         toggleButton.classList.add("button", "is-small", "applicants-toggle-btn"); 
-        toggleButton.innerHTML = `Bewerber (${jobItem.applicants.length}) <span class="toggle-icon">▼</span>`; 
+        // Text des Buttons angepasst (Anzahl entfernt)
+        toggleButton.innerHTML = `Bewerberliste <span class="toggle-icon">▼</span>`; 
         toggleButtonRow.appendChild(toggleButton);
-        jobWrapper.appendChild(toggleButtonRow); // Toggle-Button-Zeile zum Wrapper hinzufügen
+        jobWrapper.appendChild(toggleButtonRow); 
         
-
-        // Container für Bewerberliste (initial versteckt)
         const applicantsContainer = document.createElement("div");
         applicantsContainer.classList.add("applicants-list-container");
         applicantsContainer.style.display = "none"; 
@@ -286,7 +294,7 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
             noApplicantsMsg.style.padding = "10px 0";
             applicantsContainer.appendChild(noApplicantsMsg);
         }
-        jobWrapper.appendChild(applicantsContainer); // Bewerberliste zum Wrapper hinzufügen
+        jobWrapper.appendChild(applicantsContainer); 
         fragment.appendChild(jobWrapper);
 
         toggleButton.addEventListener("click", () => {
@@ -294,7 +302,7 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
             applicantsContainer.style.display = isHidden ? "block" : "none";
             toggleButton.querySelector(".toggle-icon").textContent = isHidden ? "▲" : "▼";
             if (isHidden) {
-                const applicantEntries = applicantsContainer.querySelectorAll(".applicants-list-container .job-entry"); // Genauerer Selektor
+                const applicantEntries = applicantsContainer.querySelectorAll(".job-entry"); 
                 applicantEntries.forEach(entry => entry.classList.remove("visible")); 
                 requestAnimationFrame(() => {
                     applicantEntries.forEach(entry => entry.classList.add("visible"));
