@@ -114,7 +114,6 @@ function renderMyJobsSkeletonLoader(container, count) {
         statusDiv.appendChild(skeletonStatusTag);
         jobHeader.appendChild(statusDiv);
 
-        // NEU: Skeleton für Bewerberanzahl in der Job-Zeile
         const applicantsCountDiv = document.createElement("div");
         applicantsCountDiv.classList.add("db-table-row-item");
         const skeletonApplicantsCount = document.createElement("div");
@@ -257,7 +256,6 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         statusCell.appendChild(statusTag);
         jobHeaderDiv.appendChild(statusCell);
 
-        // NEU: Bewerberanzahl als letzte Zelle in der Job-Zeile
         const applicantsCountCell = document.createElement("div");
         applicantsCountCell.classList.add("db-table-row-item");
         applicantsCountCell.textContent = `Bewerber: ${jobItem.applicants.length}`;
@@ -271,8 +269,8 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         toggleButtonRow.style.padding = "10px 0";
 
         const toggleButton = document.createElement("button");
-        toggleButton.classList.add("button", "is-small", "applicants-toggle-btn"); 
-        // Text des Buttons angepasst (Anzahl entfernt)
+        // Klassen für den Toggle-Button geändert
+        toggleButton.classList.add("db-table-applicants"); 
         toggleButton.innerHTML = `Bewerberliste <span class="toggle-icon">▼</span>`; 
         toggleButtonRow.appendChild(toggleButton);
         jobWrapper.appendChild(toggleButtonRow); 
