@@ -6,12 +6,12 @@ const WORKER_BASE_URL_MJ = "https://bewerbungen.oliver-258.workers.dev/?url="; /
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3; // Anzahl der Skeleton-Job-Zeilen
+const API_CALL_DELAY_MS = 250; // NEU: Verzögerung zwischen API-Aufrufen in Millisekunden (z.B. 250ms = 4 Anfragen/Sekunde)
 
 let currentWebflowMemberId_MJ = null;
 let allMyJobsData_MJ = []; // Speichert alle geladenen eigenen Jobs mit Bewerbern
 
 // --- Mapping-Konfigurationen ---
-// Das MAPPINGS-Objekt ist nun direkt in diesem Skript definiert.
 const MAPPINGS = {
     followerRanges: {
         "4b742e0670e6172d81112005c1be62c0": "0 - 2.500",
@@ -24,7 +24,7 @@ const MAPPINGS = {
         "cc74dfe0b4fe308ac66e11ba55419501": "250.000 - 500.000",
         "24bdb369f9cdb37e28678b8d1fba0308": "500.000 - 1.000.000",
         "0f579a02ba3055cf32347301e34ce262": "1.000.000+",
-        "126e325d19f997cd4158ebd2f6bc43c8": "Follower (spez.)" // Beispiel-ID
+        "126e325d19f997cd4158ebd2f6bc43c8": "Follower (spez.)"
     },
     bundeslaender: {
         "ad69af181ec0a76ead7ca0808f9322d5": "Baden-Württemberg",
@@ -56,7 +56,7 @@ const MAPPINGS = {
         "5744f42d22c8da504632912511a80667": "50+",
         "d8e4582c524ded37c12c2bd414ac4287": "Keine Angabe"
     },
-    creatorTypen: { // Für das Feld "creator-type"
+    creatorTypen: {
         "ad1b8266d488daebad7c20c21ffa75c9": "UGC Creator",
         "126c5ed961ae4a5a100ec61f98bb0413": "Content Creator",
         "e2e05ef792fcc0e7e889945a53108133": "Influencer",
@@ -65,7 +65,7 @@ const MAPPINGS = {
         "48e29cee99112e44c5d7cd505e9f2442": "Videograf",
         "29ad386dd5d90248db0ff689bbbbf68d": "Keine Angabe"
     },
-    sprachen: { // Für das Feld "sprache"
+    sprachen: {
         "1c8e60afd27397cecf0172584d642461": "Deutsch",
         "c80924ee660d3514aae61540d9b3d114": "Englisch"
     }
@@ -74,6 +74,11 @@ const MAPPINGS = {
 // --- Hilfsfunktionen ---
 function buildWorkerUrl_MJ(apiUrl) {
     return `${WORKER_BASE_URL_MJ}${encodeURIComponent(apiUrl)}`;
+}
+
+// Hilfsfunktion für Verzögerungen
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function fetchWebflowCollection(collectionId, params = {}) {
@@ -85,10 +90,18 @@ async function fetchWebflowCollection(collectionId, params = {}) {
             const queryParams = new URLSearchParams({ ...params, limit: limit.toString(), offset: offset.toString() }).toString();
             const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?${queryParams}`;
             const workerUrl = buildWorkerUrl_MJ(apiUrl);
+            
+            console.log(`Fetching collection page: ${apiUrl}`); // Debug-Log
+            await delay(API_CALL_DELAY_MS); // Verzögerung vor jedem paginierten Aufruf
             const response = await fetch(workerUrl);
+
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`API-Fehler beim Abrufen der Collection ${collectionId}: ${response.status} - ${errorText}`);
+                console.error(`API-Fehler (Collection ${collectionId}, Offset ${offset}): ${response.status} - ${errorText}`);
+                if (response.status === 429) {
+                    console.warn(`Rate limit getroffen bei Collection fetch. Versuche es später erneut oder erhöhe API_CALL_DELAY_MS.`);
+                    // Hier könnte man eine komplexere Retry-Logik mit Exponential Backoff einbauen
+                }
                 throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
             }
             const data = await response.json();
@@ -101,7 +114,7 @@ async function fetchWebflowCollection(collectionId, params = {}) {
         return allItems;
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen der Collection ${collectionId}: ${error.message}`);
-        return [];
+        return []; // Leeres Array zurückgeben, um Totalabsturz zu vermeiden
     }
 }
 
@@ -113,6 +126,8 @@ async function fetchWebflowItem(collectionId, itemId) {
     const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/${itemId}/live`;
     const workerUrl = buildWorkerUrl_MJ(apiUrl);
     try {
+        // Die Verzögerung wird jetzt VOR dem Aufruf in den Schleifen von displayMyJobsAndApplicants gehandhabt.
+        // await delay(API_CALL_DELAY_MS); // Entfernt von hier, um Doppel-Delays zu vermeiden
         const response = await fetch(workerUrl);
         if (!response.ok) {
             if (response.status === 404) {
@@ -121,7 +136,12 @@ async function fetchWebflowItem(collectionId, itemId) {
             }
             const errorText = await response.text();
             console.error(`API-Fehler beim Abrufen von Item ${itemId} aus Collection ${collectionId}: ${response.status} - ${errorText}`);
-            return null;
+             if (response.status === 429) {
+                console.warn(`Rate limit getroffen bei Item ${itemId}. Erhöhe API_CALL_DELAY_MS oder implementiere Retry.`);
+                // Rückgabe eines speziellen Objekts oder null, um den Fehler anzuzeigen
+                return { error: true, status: 429, message: "Too Many Requests for item " + itemId };
+            }
+            return null; // Bei anderen Fehlern null zurückgeben
         }
         return await response.json();
     } catch (error) {
@@ -199,9 +219,8 @@ function createApplicantRowElement(applicantFieldData) {
     const applicantDiv = document.createElement("div");
     applicantDiv.classList.add("db-table-row", "db-table-applicant", "job-entry");
 
-    // Das MAPPINGS-Objekt ist direkt hier verfügbar.
-    if (typeof MAPPINGS === 'undefined') { // Sollte nicht passieren, da es oben definiert ist.
-        console.error("❌ MAPPINGS-Objekt ist nicht definiert. Das sollte nicht passieren.");
+    if (typeof MAPPINGS === 'undefined') {
+        console.error("❌ MAPPINGS-Objekt ist nicht definiert.");
         const errorDiv = document.createElement("div");
         errorDiv.textContent = "Fehler: Mapping-Daten nicht verfügbar.";
         errorDiv.style.color = "red";
@@ -385,6 +404,13 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
             jobItem.applicants.forEach(applicant => {
                 if (applicant && applicant.fieldData) {
                     applicantsContainer.appendChild(createApplicantRowElement(applicant.fieldData));
+                } else if (applicant && applicant.error && applicant.status === 429) {
+                    // Zeige eine Nachricht für diesen spezifischen Bewerber an, wenn Rate Limit getroffen wurde
+                    const rateLimitMsg = document.createElement("p");
+                    rateLimitMsg.textContent = `Daten für Bewerber konnten wegen API-Limits nicht geladen werden.`;
+                    rateLimitMsg.style.color = "orange";
+                    rateLimitMsg.style.padding = "5px 0";
+                    applicantsContainer.appendChild(rateLimitMsg);
                 }
             });
         } else {
@@ -422,9 +448,8 @@ async function displayMyJobsAndApplicants() {
         return;
     }
     renderMyJobsSkeletonLoader(container, SKELETON_JOBS_COUNT_MJ);
-    try {
-        // MAPPINGS ist jetzt direkt im Skript definiert, keine Prüfung auf Import nötig.
 
+    try {
         if (typeof window.$memberstackDom === 'undefined') {
             await new Promise(resolve => {
                 const interval = setInterval(() => {
@@ -434,49 +459,102 @@ async function displayMyJobsAndApplicants() {
         }
         const member = await window.$memberstackDom.getCurrentMember();
         currentWebflowMemberId_MJ = member?.data?.customFields?.['webflow-member-id'];
+
         if (!currentWebflowMemberId_MJ) {
             console.error("❌ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
             container.innerHTML = "<p class='error-message job-entry visible'>Benutzerdaten konnten nicht geladen werden.</p>";
             return;
         }
         console.log(`✅ MyJobs: Webflow Member ID: ${currentWebflowMemberId_MJ}`);
+
+        await delay(API_CALL_DELAY_MS); // Erste Verzögerung vor dem Abrufen des aktuellen Benutzers
         const currentUserItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, currentWebflowMemberId_MJ);
-        if (!currentUserItem || !currentUserItem.fieldData) {
-            console.error("❌ Benutzerdaten des aktuellen Users nicht gefunden oder fieldData leer.");
+
+        if (!currentUserItem || currentUserItem.error) {
+            console.error("❌ Benutzerdaten des aktuellen Users nicht gefunden oder Fehler beim Abruf.", currentUserItem);
+            let errorMsg = "Benutzerdaten des aktuellen Users konnten nicht geladen werden.";
+            if (currentUserItem && currentUserItem.status === 429) {
+                errorMsg = "Zu viele Anfragen beim Laden der Benutzerdaten. Bitte versuche es später erneut.";
+            }
+            container.innerHTML = `<p class='error-message job-entry visible'>${errorMsg}</p>`;
+            return;
+        }
+         if (!currentUserItem.fieldData) {
+            console.error("❌ Benutzerdaten des aktuellen Users (fieldData) nicht gefunden.");
             renderMyJobsAndApplicants([]);
             return;
         }
+
+
         const postedJobIds = currentUserItem.fieldData["posted-jobs"] || [];
         console.log(`User hat ${postedJobIds.length} Jobs im Feld 'posted-jobs'.`);
+
         if (postedJobIds.length === 0) {
             renderMyJobsAndApplicants([]);
             return;
         }
-        const myJobItemsPromises = postedJobIds.map(jobId => fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId));
-        let myJobItems = (await Promise.all(myJobItemsPromises)).filter(job => job !== null && job.fieldData);
+
+        let myJobItems = [];
+        for (const jobId of postedJobIds) {
+            console.log(`Fetching job item: ${jobId}`);
+            await delay(API_CALL_DELAY_MS); // Verzögerung vor jedem Job-Abruf
+            const jobItem = await fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId);
+            if (jobItem && jobItem.fieldData && !jobItem.error) { // Stelle sicher, dass es kein Fehlerobjekt ist
+                myJobItems.push(jobItem);
+            } else if (jobItem && jobItem.error && jobItem.status === 429) {
+                console.warn(`Rate limit für Job ${jobId} getroffen. Job wird übersprungen.`);
+                // Optional: Dem User eine Nachricht anzeigen, dass nicht alle Jobs geladen werden konnten.
+            } else {
+                console.warn(`Job ${jobId} konnte nicht geladen werden oder hat keine fieldData.`);
+            }
+        }
+        
         console.log(`Found ${myJobItems.length} valid jobs posted by this user.`);
-        if (myJobItems.length === 0) {
+
+        if (myJobItems.length === 0 && postedJobIds.length > 0) {
+             container.innerHTML = "<p class='info-message job-entry visible'>Einige Jobdaten konnten aufgrund von API-Limits nicht geladen werden. Es werden möglicherweise nicht alle Jobs angezeigt.</p>";
+             // Nicht direkt returnen, sondern versuchen, das zu rendern, was wir haben (was leer sein könnte)
+             // oder eine spezifischere Nachricht anzeigen.
+             // Fürs Erste, wenn keine Jobs geladen werden konnten, aber welche da sein sollten:
+             if(myJobItems.length === 0) renderMyJobsAndApplicants([]);
+             return; // Oder zumindest die Verarbeitung hier abbrechen, wenn keine Jobs geladen werden konnten
+        } else if (myJobItems.length === 0) {
             renderMyJobsAndApplicants([]);
             return;
         }
-        const jobsWithApplicantsPromises = myJobItems.map(async (jobItem) => {
+
+
+        const jobsWithApplicantsData = [];
+        for (const jobItem of myJobItems) {
             const jobFieldData = jobItem.fieldData;
-            let applicantsData = [];
+            let fetchedApplicantsData = [];
             const applicantIds = jobFieldData["bewerber"] || [];
+
             if (applicantIds.length > 0) {
-                const applicantPromises = applicantIds.map(applicantId =>
-                    fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId)
-                );
-                applicantsData = (await Promise.all(applicantPromises)).filter(applicant => applicant !== null && applicant.fieldData);
+                for (const applicantId of applicantIds) {
+                    console.log(`Fetching applicant item: ${applicantId} for job ${jobItem.id}`);
+                    await delay(API_CALL_DELAY_MS); // Verzögerung vor jedem Bewerber-Abruf
+                    const applicantItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId);
+                    if (applicantItem && !applicantItem.error) { // Stelle sicher, dass es kein Fehlerobjekt ist
+                        fetchedApplicantsData.push(applicantItem);
+                    } else if (applicantItem && applicantItem.error && applicantItem.status === 429) {
+                         console.warn(`Rate limit für Bewerber ${applicantId} (Job ${jobItem.id}) getroffen. Bewerber wird übersprungen.`);
+                         fetchedApplicantsData.push(applicantItem); // Füge das Fehlerobjekt hinzu, um es in renderMyJobsAndApplicants zu behandeln
+                    } else {
+                        console.warn(`Bewerber ${applicantId} (Job ${jobItem.id}) konnte nicht geladen werden.`);
+                    }
+                }
             }
-            return { ...jobItem, applicants: applicantsData };
-        });
-        allMyJobsData_MJ = await Promise.all(jobsWithApplicantsPromises);
+            jobsWithApplicantsData.push({ ...jobItem, applicants: fetchedApplicantsData });
+        }
+
+        allMyJobsData_MJ = jobsWithApplicantsData;
         renderMyJobsAndApplicants(allMyJobsData_MJ);
+
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler in displayMyJobsAndApplicants:", error);
         if (container) {
-            container.innerHTML = `<p class='error-message job-entry visible'>Ein Fehler ist aufgetreten: ${error.message}.</p>`;
+            container.innerHTML = `<p class='error-message job-entry visible'>Ein Fehler ist aufgetreten: ${error.message}. Bitte versuche es später erneut.</p>`;
         }
     }
 }
