@@ -1,8 +1,8 @@
 // mappings.js
-// Diese Datei enthält alle Mapping-Konfigurationen.
-// Stelle sicher, dass diese Datei VOR dem Hauptskript geladen wird.
+// Diese Datei enthält alle Mapping-Konfigurationen und exportiert sie.
+// Stelle sicher, dass diese Datei über eine öffentliche URL erreichbar ist (z.B. GitHub Pages).
 
-const MAPPINGS = {
+export const MAPPINGS = {
     followerRanges: {
         "4b742e0670e6172d81112005c1be62c0": "0 - 2.500",
         "b07d2c7b0cdc43e2c496bb3aa798f672": "2.500 - 5.000",
@@ -14,7 +14,7 @@ const MAPPINGS = {
         "cc74dfe0b4fe308ac66e11ba55419501": "250.000 - 500.000",
         "24bdb369f9cdb37e28678b8d1fba0308": "500.000 - 1.000.000",
         "0f579a02ba3055cf32347301e34ce262": "1.000.000+",
-        "126e325d19f997cd4158ebd2f6bc43c8": "Follower (spez.)" // ID aus Beispieldaten, Label ggf. anpassen
+        "126e325d19f997cd4158ebd2f6bc43c8": "Follower (spez.)"
     },
     bundeslaender: {
         "ad69af181ec0a76ead7ca0808f9322d5": "Baden-Württemberg",
@@ -46,7 +46,7 @@ const MAPPINGS = {
         "5744f42d22c8da504632912511a80667": "50+",
         "d8e4582c524ded37c12c2bd414ac4287": "Keine Angabe"
     },
-    creatorTypen: { // Für das Feld "creator-type"
+    creatorTypen: {
         "ad1b8266d488daebad7c20c21ffa75c9": "UGC Creator",
         "126c5ed961ae4a5a100ec61f98bb0413": "Content Creator",
         "e2e05ef792fcc0e7e889945a53108133": "Influencer",
@@ -55,8 +55,9 @@ const MAPPINGS = {
         "48e29cee99112e44c5d7cd505e9f2442": "Videograf",
         "29ad386dd5d90248db0ff689bbbbf68d": "Keine Angabe"
     },
-    sprachen: { // Für das Feld "sprache"
+    sprachen: {
         "1c8e60afd27397cecf0172584d642461": "Deutsch",
         "c80924ee660d3514aae61540d9b3d114": "Englisch"
     }
+    // Hier können bei Bedarf weitere Mapping-Kategorien hinzugefügt werden.
 };
