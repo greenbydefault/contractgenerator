@@ -6,7 +6,7 @@ const WORKER_BASE_URL_MJ = "https://bewerbungen.oliver-258.workers.dev/?url="; /
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3; // Anzahl der Skeleton-Job-Zeilen
-const API_CALL_DELAY_MS = 550; // Verzögerung auf 550ms (ca. 109 Anfragen/Minute)
+const API_CALL_DELAY_MS = 25; // Verzögerung auf 550ms (ca. 109 Anfragen/Minute)
 
 let currentWebflowMemberId_MJ = null;
 // allMyJobsData_MJ speichert jetzt nur noch die Job-Daten, Bewerber werden bei Bedarf geladen.
@@ -25,7 +25,7 @@ const MAPPINGS = {
         "cc74dfe0b4fe308ac66e11ba55419501": "250.000 - 500.000",
         "24bdb369f9cdb37e28678b8d1fba0308": "500.000 - 1.000.000",
         "0f579a02ba3055cf32347301e34ce262": "1.000.000+",
-        "126e325d19f997cd4158ebd2f6bc43c8": "Follower (spez.)"
+        "126e325d19f997cd4158ebd2f6bc43c8": "0" // ANGEPASST von "Follower (spez.)"
     },
     bundeslaender: {
         "ad69af181ec0a76ead7ca0808f9322d5": "Baden-Württemberg",
@@ -79,6 +79,14 @@ function buildWorkerUrl_MJ(apiUrl) {
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function normalizeUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+    return `https://${url}`;
 }
 
 async function fetchWebflowCollection(collectionId, params = {}) {
@@ -237,6 +245,7 @@ function createApplicantRowElement(applicantFieldData) {
     namePlusStatusDiv.classList.add("is-flexbox-vertical");
     const nameSpan = document.createElement("span");
     nameSpan.textContent = applicantFieldData.name || "Unbekannter Bewerber";
+    nameSpan.classList.add("truncate"); // ANGEPASST: Klasse hinzugefügt
     namePlusStatusDiv.appendChild(nameSpan);
     const plusStatusSpan = document.createElement("span");
     plusStatusSpan.classList.add("is-txt-tiny");
@@ -273,31 +282,39 @@ function createApplicantRowElement(applicantFieldData) {
     applicantDiv.appendChild(spracheDiv);
 
     const socialDiv = document.createElement("div");
-    socialDiv.classList.add("db-table-row-item");
-    const homepageUrl = applicantFieldData["homepage"];
-    if (homepageUrl) {
-        const platforms = [
-            { name: "Instagram", icon: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e8d979b71d2a7e5db3_Instagram.svg", keyword: "instagram.com" },
-            { name: "TikTok", icon: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e99dce86c2b6ba83fe_Tiktok.svg", keyword: "tiktok.com" },
-            { name: "YouTube", icon: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e9b00d0480ffe289dc_YouTube.svg", keyword: "youtube.com" }
-        ];
-        for (const platform of platforms) {
-            if (homepageUrl.toLowerCase().includes(platform.keyword)) {
-                const socialLink = document.createElement("a");
-                socialLink.href = homepageUrl;
-                socialLink.classList.add("db-application-option", "no-icon", "w-inline-block");
-                socialLink.target = "_blank";
-                socialLink.rel = "noopener noreferrer";
-                const iconImg = document.createElement("img");
-                iconImg.src = platform.icon;
-                iconImg.alt = `${platform.name} Profil`;
-                iconImg.classList.add("db-icon-18");
-                socialLink.appendChild(iconImg);
-                socialDiv.appendChild(socialLink);
-                break;
+    socialDiv.classList.add("db-table-row-item"); 
+
+    const socialPlatforms = [
+        { key: "instagram", name: "Instagram", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e8d979b71d2a7e5db3_Instagram.svg" },
+        { key: "tiktok", name: "TikTok", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e99dce86c2b6ba83fe_Tiktok.svg" },
+        { key: "youtube", name: "YouTube", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e9b00d0480ffe289dc_YouTube.svg" }
+    ];
+
+    let socialLinksRendered = false;
+    socialPlatforms.forEach(platform => {
+        const platformUrlValue = applicantFieldData[platform.key]; 
+        const normalizedPlatformUrl = normalizeUrl(platformUrlValue);
+
+        if (normalizedPlatformUrl) {
+            const socialLink = document.createElement("a");
+            socialLink.href = normalizedPlatformUrl;
+            socialLink.classList.add("db-application-option", "no-icon", "w-inline-block");
+            socialLink.target = "_blank";
+            socialLink.rel = "noopener noreferrer";
+            if (socialLinksRendered) { 
+                socialLink.style.marginLeft = "8px"; 
             }
+
+            const iconImg = document.createElement("img");
+            iconImg.src = platform.iconUrl;
+            iconImg.alt = `${platform.name} Profil`;
+            iconImg.classList.add("db-icon-18");
+            
+            socialLink.appendChild(iconImg);
+            socialDiv.appendChild(socialLink);
+            socialLinksRendered = true;
         }
-    }
+    });
     applicantDiv.appendChild(socialDiv);
 
     const followerDiv = document.createElement("div");
@@ -315,12 +332,11 @@ function createApplicantRowElement(applicantFieldData) {
     return applicantDiv;
 }
 
-// NEUE Funktion zum Laden und Anzeigen von Bewerbern für einen bestimmten Job
 async function loadAndDisplayApplicantsForJob(jobId, applicantIds, applicantsContainerElement, toggleElement) {
     console.log(`Lade Bewerber für Job ${jobId}...`);
-    toggleElement.style.pointerEvents = 'none'; // Klick deaktivieren während des Ladens
+    toggleElement.style.pointerEvents = 'none'; 
     applicantsContainerElement.innerHTML = '<p style="padding: 10px; text-align: center;">Lade Bewerberdaten...</p>';
-    applicantsContainerElement.style.display = "block"; // Sicherstellen, dass der Ladeindikator sichtbar ist
+    applicantsContainerElement.style.display = "block"; 
 
     let fetchedApplicantsData = [];
     let hasRateLimitErrorForThisJob = false;
@@ -338,21 +354,20 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantIds, applicantsCon
                 }
             } else {
                  console.warn(`Bewerber ${applicantId} (Job ${jobId}) konnte nicht geladen werden (null zurückgegeben).`);
-                 // Optional: Ein Platzhalter-Fehlerobjekt hinzufügen, um es anzuzeigen
                  fetchedApplicantsData.push({ id: applicantId, error: true, message: `Daten für Bewerber ${applicantId} nicht verfügbar.` });
             }
         }
     }
 
-    applicantsContainerElement.innerHTML = ''; // Ladeindikator entfernen
+    applicantsContainerElement.innerHTML = ''; 
 
     if (fetchedApplicantsData.length > 0) {
         let validApplicantsRendered = 0;
         fetchedApplicantsData.forEach(applicant => {
-            if (applicant && applicant.fieldData) { // Gültiger Bewerber
+            if (applicant && applicant.fieldData) { 
                 applicantsContainerElement.appendChild(createApplicantRowElement(applicant.fieldData));
                 validApplicantsRendered++;
-            } else if (applicant && applicant.error) { // Fehlerobjekt (z.B. Rate Limit oder nicht gefunden)
+            } else if (applicant && applicant.error) { 
                 const errorMsg = document.createElement("p");
                 errorMsg.style.color = "orange";
                 errorMsg.style.padding = "5px 0";
@@ -365,7 +380,6 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantIds, applicantsCon
             }
         });
         if (validApplicantsRendered === 0 && fetchedApplicantsData.some(app => app.error)) {
-            // Wenn nur Fehler geladen wurden
              if (!hasRateLimitErrorForThisJob && fetchedApplicantsData.every(app => !app.fieldData)) {
                 const noDataMsg = document.createElement("p");
                 noDataMsg.textContent = "Keine gültigen Bewerberdaten gefunden.";
@@ -373,33 +387,29 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantIds, applicantsCon
                 applicantsContainerElement.appendChild(noDataMsg);
             }
         } else if (validApplicantsRendered === 0) {
-            // Fallback, wenn keine validen Daten und keine spezifischen Fehler
             const noApplicantsMsg = document.createElement("p");
             noApplicantsMsg.textContent = "Keine Bewerbungen für diesen Job gefunden.";
             noApplicantsMsg.style.padding = "10px 0";
             applicantsContainerElement.appendChild(noApplicantsMsg);
         }
-
-
-    } else if (applicantIds.length > 0) { // Es gab IDs, aber nichts wurde gefetched (alle waren null)
+    } else if (applicantIds.length > 0) { 
         const errorMsg = document.createElement("p");
         errorMsg.textContent = "Fehler beim Laden der Bewerberdaten. Keine Daten empfangen.";
         errorMsg.style.padding = "10px 0";
         applicantsContainerElement.appendChild(errorMsg);
-    } else { // Keine applicantIds vorhanden
+    } else { 
         const noApplicantsMsg = document.createElement("p");
         noApplicantsMsg.textContent = "Für diesen Job liegen keine Bewerbungen vor.";
         noApplicantsMsg.style.padding = "10px 0";
         applicantsContainerElement.appendChild(noApplicantsMsg);
     }
 
-    applicantsContainerElement.dataset.loaded = 'true'; // Markieren, dass geladen wurde
-    toggleElement.style.pointerEvents = 'auto'; // Klick wieder aktivieren
-    // Den Toggle-Icon Zustand hier nicht ändern, das macht der Haupt-ClickListener
+    applicantsContainerElement.dataset.loaded = 'true'; 
+    toggleElement.style.pointerEvents = 'auto'; 
 }
 
 
-function renderMyJobsAndApplicants(jobItems) { // jobItems enthalten jetzt keine vorausgeladenen Bewerber mehr
+function renderMyJobsAndApplicants(jobItems) { 
     const container = document.getElementById("jobs-list");
     if (!container) {
         console.error("❌ Container 'jobs-list' nicht gefunden.");
@@ -409,7 +419,6 @@ function renderMyJobsAndApplicants(jobItems) { // jobItems enthalten jetzt keine
 
     if (jobItems.length === 0) {
         const noJobsMsg = document.createElement("p");
-        // Nachricht wird jetzt spezifischer in displayMyJobsAndApplicants gesetzt, falls nötig
         noJobsMsg.textContent = "Du hast noch keine Jobs erstellt oder es wurden keine Jobs gefunden."; 
         noJobsMsg.classList.add("job-entry", "visible");
         container.appendChild(noJobsMsg);
@@ -417,7 +426,7 @@ function renderMyJobsAndApplicants(jobItems) { // jobItems enthalten jetzt keine
     }
 
     const fragment = document.createDocumentFragment();
-    let globalRateLimitMessageShown = false; // Um die globale Nachricht nur einmal anzuzeigen
+    let globalRateLimitMessageShown = false; 
 
     jobItems.forEach(jobItem => {
         if (jobItem.error && jobItem.status === 429) {
@@ -430,7 +439,6 @@ function renderMyJobsAndApplicants(jobItems) { // jobItems enthalten jetzt keine
                 globalRateLimitInfo.style.textAlign = "center";
                 globalRateLimitInfo.style.padding = "10px";
                 globalRateLimitInfo.classList.add("job-entry", "visible");
-                // Füge es am Anfang des Containers ein, wenn der Container bereits existiert
                 if(container.firstChild) container.insertBefore(globalRateLimitInfo, container.firstChild);
                 else container.appendChild(globalRateLimitInfo);
                 globalRateLimitMessageShown = true;
@@ -498,32 +506,25 @@ function renderMyJobsAndApplicants(jobItems) { // jobItems enthalten jetzt keine
         
         const applicantsContainer = document.createElement("div");
         applicantsContainer.classList.add("applicants-list-container");
-        applicantsContainer.style.display = "none"; // Initial versteckt
-        // applicantsContainer.dataset.loaded wird von loadAndDisplayApplicantsForJob gesetzt
+        applicantsContainer.style.display = "none"; 
 
         jobWrapper.appendChild(applicantsContainer);
         fragment.appendChild(jobWrapper);
 
-        // Event Listener für das Toggle-DIV zum Laden und Anzeigen von Bewerbern
-        toggleDivElement.addEventListener("click", async () => { // async machen für await
+        toggleDivElement.addEventListener("click", async () => { 
             const isHidden = applicantsContainer.style.display === "none";
             
-            if (isHidden) { // Wenn der Container geöffnet werden soll
+            if (isHidden) { 
                 if (applicantsContainer.dataset.loaded !== 'true') {
-                    // Bewerber für diesen Job laden, wenn noch nicht geschehen
                     await loadAndDisplayApplicantsForJob(jobItem.id, applicantIds, applicantsContainer, toggleDivElement);
                 } else {
-                    // Nur anzeigen, wenn schon geladen
                     applicantsContainer.style.display = "block";
                 }
             } else {
-                // Container schließen
                 applicantsContainer.style.display = "none";
             }
-            // Icon Zustand immer anpassen
             toggleDivElement.querySelector(".toggle-icon").textContent = applicantsContainer.style.display === "none" ? "▼" : "▲";
 
-            // Animation für neu geladene/angezeigte Bewerber (optional)
             if (applicantsContainer.style.display === "block") {
                 const applicantEntries = applicantsContainer.querySelectorAll(".job-entry");
                 applicantEntries.forEach(entry => entry.classList.remove("visible"));
@@ -601,13 +602,11 @@ async function displayMyJobsAndApplicants() {
             console.log(`Fetching job item: ${jobId}`);
             await delay(API_CALL_DELAY_MS); 
             const jobItem = await fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId);
-            if (jobItem && !jobItem.error) { // Nur hinzufügen, wenn kein Fehlerobjekt
+            if (jobItem && !jobItem.error) { 
                 myJobItems.push(jobItem);
             } else if (jobItem && jobItem.error && jobItem.status === 429) {
                 console.warn(`Rate limit für Job ${jobId} getroffen. Job wird nicht geladen.`);
                 rateLimitHitDuringJobLoading = true;
-                // Optional: Füge das Fehlerobjekt hinzu, um es in renderMyJobsAndApplicants zu behandeln
-                // myJobItems.push(jobItem); // Dies würde den Job als Fehler in der Liste anzeigen
             } else {
                 console.warn(`Job ${jobId} konnte nicht geladen werden oder hat keine fieldData.`);
             }
@@ -623,14 +622,12 @@ async function displayMyJobsAndApplicants() {
              container.innerHTML = `<p class='info-message job-entry visible'>${message}</p>`;
              return; 
         } else if (myJobItems.length === 0) {
-            renderMyJobsAndApplicants([]); // Zeigt "Du hast noch keine Jobs..."
+            renderMyJobsAndApplicants([]); 
             return;
         }
         
-        // Die Variable allMyJobsData_MJ wird jetzt nur noch die Job-Items ohne vorausgeladene Bewerber enthalten.
-        // Die Bewerber werden bei Bedarf (Lazy Loading) geladen.
         allMyJobsData_MJ = myJobItems; 
-        renderMyJobsAndApplicants(allMyJobsData_MJ); // Rufe renderMyJobsAndApplicants mit den reinen Job-Daten auf
+        renderMyJobsAndApplicants(allMyJobsData_MJ); 
 
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler in displayMyJobsAndApplicants:", error);
