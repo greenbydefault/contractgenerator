@@ -18,14 +18,14 @@ function buildWorkerUrl_MJ(apiUrl) {
 async function fetchWebflowCollection(collectionId, params = {}) {
     let allItems = [];
     let offset = 0;
-    const limit = 100; 
+    const limit = 100;
 
     try {
         while (true) {
             const queryParams = new URLSearchParams({ ...params, limit: limit.toString(), offset: offset.toString() }).toString();
             const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?${queryParams}`;
             const workerUrl = buildWorkerUrl_MJ(apiUrl);
-            
+
             const response = await fetch(workerUrl);
             if (!response.ok) {
                 const errorText = await response.text();
@@ -33,17 +33,17 @@ async function fetchWebflowCollection(collectionId, params = {}) {
                 throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
             }
             const data = await response.json();
-            allItems = allItems.concat(data.items || []); 
+            allItems = allItems.concat(data.items || []);
 
             if ((data.items && data.items.length < limit) || !data.items || data.items.length === 0) {
-                break; 
+                break;
             }
             offset += limit;
         }
         return allItems;
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen der Collection ${collectionId}: ${error.message}`);
-        return []; 
+        return [];
     }
 }
 
@@ -60,13 +60,13 @@ async function fetchWebflowItem(collectionId, itemId) {
         if (!response.ok) {
             if (response.status === 404) {
                 console.warn(`Item ${itemId} in Collection ${collectionId} nicht gefunden (404).`);
-                return null; 
+                return null;
             }
             const errorText = await response.text();
             console.error(`API-Fehler beim Abrufen von Item ${itemId} aus Collection ${collectionId}: ${response.status} - ${errorText}`);
-            return null; 
+            return null;
         }
-        return await response.json(); 
+        return await response.json();
     } catch (error) {
         console.error(`❌ Netzwerkfehler oder anderer Fehler beim Abrufen des Items (${collectionId}/${itemId}): ${error.message}`);
         return null;
@@ -78,14 +78,14 @@ function renderMyJobsSkeletonLoader(container, count) {
     container.innerHTML = "";
     for (let i = 0; i < count; i++) {
         const jobWrapper = document.createElement("div");
-        jobWrapper.classList.add("my-job-item-skeleton", "skeleton-row", "job-entry"); 
+        jobWrapper.classList.add("my-job-item-skeleton", "skeleton-row", "job-entry");
 
         const jobHeader = document.createElement("div");
-        jobHeader.classList.add("db-table-row", "db-table-my-job"); 
+        jobHeader.classList.add("db-table-row", "db-table-my-job");
 
         const jobNameDiv = document.createElement("div");
         jobNameDiv.classList.add("db-table-row-item", "justify-left");
-        const skeletonJobImage = document.createElement("div"); 
+        const skeletonJobImage = document.createElement("div");
         skeletonJobImage.classList.add("db-table-img", "is-margin-right-12", "skeleton-element", "skeleton-image");
         jobNameDiv.appendChild(skeletonJobImage);
         const skeletonJobName = document.createElement("div");
@@ -99,7 +99,7 @@ function renderMyJobsSkeletonLoader(container, count) {
         skeletonPayment.classList.add("skeleton-element", "skeleton-text", "skeleton-text-short");
         paymentDiv.appendChild(skeletonPayment);
         jobHeader.appendChild(paymentDiv);
-        
+
         const categoryDiv = document.createElement("div");
         categoryDiv.classList.add("db-table-row-item");
         const skeletonCategory = document.createElement("div");
@@ -120,14 +120,14 @@ function renderMyJobsSkeletonLoader(container, count) {
         skeletonApplicantsCount.classList.add("skeleton-element", "skeleton-text", "skeleton-text-short");
         applicantsCountDiv.appendChild(skeletonApplicantsCount);
         jobHeader.appendChild(applicantsCountDiv);
-        
+
         jobWrapper.appendChild(jobHeader);
 
         const skeletonToggleRow = document.createElement("div");
-        skeletonToggleRow.classList.add("applicants-toggle-row-skeleton", "skeleton-element"); 
-        skeletonToggleRow.style.height = "30px"; 
-        skeletonToggleRow.style.width = "150px"; 
-        skeletonToggleRow.style.margin = "10px auto"; 
+        skeletonToggleRow.classList.add("applicants-toggle-row-skeleton", "skeleton-element");
+        skeletonToggleRow.style.height = "30px";
+        skeletonToggleRow.style.width = "150px";
+        skeletonToggleRow.style.margin = "10px auto";
         jobWrapper.appendChild(skeletonToggleRow);
 
         container.appendChild(jobWrapper);
@@ -136,58 +136,93 @@ function renderMyJobsSkeletonLoader(container, count) {
 }
 
 // --- Rendering-Funktionen ---
+
+// ***** NEU ANGEPASSTE FUNKTION *****
 function createApplicantRowElement(applicantFieldData) {
     const applicantDiv = document.createElement("div");
-    applicantDiv.classList.add("db-table-row", "db-table-applicant", "job-entry"); 
+    applicantDiv.classList.add("db-table-row", "db-table-applicant", "job-entry");
 
-    const nameDiv = document.createElement("div");
-    nameDiv.classList.add("db-table-row-item", "justify-left");
-    if (applicantFieldData["profile-picture"]?.url || applicantFieldData["profile-picture"]) {
+    // 1. Spalte: Bild + Name/Plus-Status
+    const profileInfoDiv = document.createElement("div");
+    profileInfoDiv.classList.add("db-table-row-item", "justify-left"); // "justify-left" für linksbündige Ausrichtung
+
+    // Bild des Creators
+    if (applicantFieldData["user-profile-img"]) {
         const applicantImg = document.createElement("img");
         applicantImg.classList.add("db-table-img", "is-margin-right-12");
-        applicantImg.src = applicantFieldData["profile-picture"].url || applicantFieldData["profile-picture"];
+        // Die URL kann direkt ein String sein oder ein Objekt mit einer .url Eigenschaft haben
+        applicantImg.src = typeof applicantFieldData["user-profile-img"] === 'string' ? applicantFieldData["user-profile-img"] : applicantFieldData["user-profile-img"]?.url;
         applicantImg.alt = applicantFieldData.name || "Bewerberbild";
-        applicantImg.style.width = "40px"; 
+        applicantImg.style.width = "40px";
         applicantImg.style.height = "40px";
         applicantImg.style.borderRadius = "50%";
         applicantImg.style.objectFit = "cover";
-        nameDiv.appendChild(applicantImg);
+        profileInfoDiv.appendChild(applicantImg);
     }
+
+    // Container für Name und Plus-Status
+    const namePlusStatusDiv = document.createElement("div");
+    namePlusStatusDiv.classList.add("is-flexbox-vertical"); // Deine CSS-Klasse für vertikale Anordnung
+
+    // Name des Creators
     const nameSpan = document.createElement("span");
     nameSpan.textContent = applicantFieldData.name || "Unbekannter Bewerber";
-    nameDiv.appendChild(nameSpan);
-    applicantDiv.appendChild(nameDiv);
+    namePlusStatusDiv.appendChild(nameSpan);
 
-    const typeDiv = document.createElement("div");
-    typeDiv.classList.add("db-table-row-item");
-    typeDiv.textContent = applicantFieldData["creator-type"] || "K.A."; 
-    applicantDiv.appendChild(typeDiv);
+    // Plus-Mitglied-Status
+    const plusStatusSpan = document.createElement("span");
+    plusStatusSpan.textContent = applicantFieldData["plus-mitglied"] ? "Plus Mitglied" : "Standard"; // Oder "Kein Plus Mitglied" etc.
+    plusStatusSpan.style.fontSize = "0.9em"; // Beispiel für kleinere Schrift
+    plusStatusSpan.style.color = applicantFieldData["plus-mitglied"] ? "blue" : "#666"; // Beispiel für farbliche Unterscheidung
+    namePlusStatusDiv.appendChild(plusStatusSpan);
 
-    const categoryDiv = document.createElement("div");
-    categoryDiv.classList.add("db-table-row-item");
-    categoryDiv.textContent = applicantFieldData["user-kategorie"] || "K.A."; 
-    applicantDiv.appendChild(categoryDiv);
-    
+    profileInfoDiv.appendChild(namePlusStatusDiv);
+    applicantDiv.appendChild(profileInfoDiv);
+
+    // 2. Spalte: City + Bundesland
     const locationDiv = document.createElement("div");
     locationDiv.classList.add("db-table-row-item");
-    locationDiv.textContent = applicantFieldData["standort"] || "K.A."; 
+    const city = applicantFieldData["user-city-2"] || "K.A.";
+    const bundesland = applicantFieldData["bundesland-option"] || "K.A."; // Beachte: Könnte eine ID sein
+    locationDiv.textContent = `${city}, ${bundesland}`;
     applicantDiv.appendChild(locationDiv);
 
+    // 3. Spalte: Kategorie
+    const categoryDiv = document.createElement("div");
+    categoryDiv.classList.add("db-table-row-item");
+    categoryDiv.textContent = applicantFieldData["creator-main-categorie"] || "K.A.";
+    applicantDiv.appendChild(categoryDiv);
+
+    // 4. Spalte: Social Media Kanäle
     const socialDiv = document.createElement("div");
     socialDiv.classList.add("db-table-row-item");
-    if (applicantFieldData["social-media-link"]) { 
+    if (applicantFieldData["homepage"]) {
         const socialLink = document.createElement("a");
-        socialLink.href = applicantFieldData["social-media-link"];
-        socialLink.textContent = "Profil"; 
-        socialLink.target = "_blank";
+        socialLink.href = applicantFieldData["homepage"];
+        socialLink.textContent = "Profil"; // Oder den Hostnamen der URL anzeigen
+        socialLink.target = "_blank"; // Link in neuem Tab öffnen
+        socialLink.rel = "noopener noreferrer"; // Sicherheitsaspekt
         socialDiv.appendChild(socialLink);
     } else {
         socialDiv.textContent = "K.A.";
     }
     applicantDiv.appendChild(socialDiv);
 
+    // 5. Spalte: Anzahl der Follower
+    const followerDiv = document.createElement("div");
+    followerDiv.classList.add("db-table-row-item");
+    followerDiv.textContent = applicantFieldData["creator-follower"] || "K.A."; // Beachte: Könnte eine ID oder kodierter Wert sein
+    applicantDiv.appendChild(followerDiv);
+
+    // 6. Spalte: Alter
+    const ageDiv = document.createElement("div");
+    ageDiv.classList.add("db-table-row-item");
+    ageDiv.textContent = applicantFieldData["creator-age"] || "K.A."; // Beachte: Könnte eine ID oder kodierter Wert sein
+    applicantDiv.appendChild(ageDiv);
+
     return applicantDiv;
 }
+// ***** ENDE DER ANGEPASSTEN FUNKTION *****
 
 function renderMyJobsAndApplicants(jobsWithApplicants) {
     const container = document.getElementById("jobs-list");
@@ -195,7 +230,7 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         console.error("❌ Container 'jobs-list' nicht gefunden.");
         return;
     }
-    container.innerHTML = ""; 
+    container.innerHTML = "";
 
     if (jobsWithApplicants.length === 0) {
         const noJobsMsg = document.createElement("p");
@@ -208,7 +243,7 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
 
     const fragment = document.createDocumentFragment();
 
-    jobsWithApplicants.forEach(jobItem => { 
+    jobsWithApplicants.forEach(jobItem => {
         const jobFieldData = jobItem.fieldData;
         if (!jobFieldData) {
             console.warn("Job-Item ohne fieldData übersprungen:", jobItem);
@@ -216,10 +251,10 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         }
 
         const jobWrapper = document.createElement("div");
-        jobWrapper.classList.add("my-job-item", "job-entry"); 
+        jobWrapper.classList.add("my-job-item", "job-entry");
 
         const jobHeaderDiv = document.createElement("div");
-        jobHeaderDiv.classList.add("db-table-row", "db-table-my-job"); 
+        jobHeaderDiv.classList.add("db-table-row", "db-table-my-job");
 
         const jobInfoDataCell = document.createElement("div");
         jobInfoDataCell.classList.add("db-table-row-item", "justify-left");
@@ -243,14 +278,14 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
 
         const categoryCell = document.createElement("div");
         categoryCell.classList.add("db-table-row-item");
-        categoryCell.textContent = jobFieldData["industrie-kategorie"] || "K.A."; 
+        categoryCell.textContent = jobFieldData["industrie-kategorie"] || "K.A.";
         jobHeaderDiv.appendChild(categoryCell);
-        
+
         const statusCell = document.createElement("div");
         statusCell.classList.add("db-table-row-item");
         const statusTag = document.createElement("div");
         statusTag.classList.add("job-tag");
-        statusTag.textContent = jobFieldData["job-status"] || "Unbekannt"; 
+        statusTag.textContent = jobFieldData["job-status"] || "Unbekannt";
         if (jobFieldData["job-status"] === "Aktiv") statusTag.classList.add("is-bg-light-green");
         if (jobFieldData["job-status"] === "Beendet") statusTag.classList.add("is-bg-light-red");
         statusCell.appendChild(statusTag);
@@ -260,31 +295,27 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         applicantsCountCell.classList.add("db-table-row-item");
         applicantsCountCell.textContent = `Bewerber: ${jobItem.applicants.length}`;
         jobHeaderDiv.appendChild(applicantsCountCell);
-        
-        jobWrapper.appendChild(jobHeaderDiv); 
+
+        jobWrapper.appendChild(jobHeaderDiv);
 
         const toggleButtonRow = document.createElement("div");
-        toggleButtonRow.classList.add("applicants-toggle-row"); 
+        toggleButtonRow.classList.add("applicants-toggle-row");
 
-        // Toggle-Element ist jetzt ein DIV statt BUTTON
-        const toggleDivElement = document.createElement("div"); 
+        const toggleDivElement = document.createElement("div");
         toggleDivElement.classList.add("db-table-applicants"); // Deine gewünschte Klasse
-        toggleDivElement.innerHTML = `Bewerberliste <span class="toggle-icon">▼</span>`; 
-        toggleDivElement.style.cursor = "pointer"; // Um anzuzeigen, dass es klickbar ist
-        // Optional: Rolle für Barrierefreiheit hinzufügen, wenn es sich wie ein Button verhalten soll
-        // toggleDivElement.setAttribute("role", "button");
-        // toggleDivElement.setAttribute("tabindex", "0"); // Macht es fokussierbar per Tastatur
-
+        toggleDivElement.innerHTML = `Bewerberliste <span class="toggle-icon">▼</span>`;
+        toggleDivElement.style.cursor = "pointer";
         toggleButtonRow.appendChild(toggleDivElement);
-        jobWrapper.appendChild(toggleButtonRow); 
-        
+        jobWrapper.appendChild(toggleButtonRow);
+
         const applicantsContainer = document.createElement("div");
         applicantsContainer.classList.add("applicants-list-container");
-        applicantsContainer.style.display = "none"; 
+        applicantsContainer.style.display = "none";
 
         if (jobItem.applicants.length > 0) {
             jobItem.applicants.forEach(applicant => {
-                if (applicant && applicant.fieldData) { 
+                if (applicant && applicant.fieldData) {
+                    // Hier wird die angepasste Funktion createApplicantRowElement verwendet
                     applicantsContainer.appendChild(createApplicantRowElement(applicant.fieldData));
                 }
             });
@@ -294,29 +325,21 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
             noApplicantsMsg.style.padding = "10px 0";
             applicantsContainer.appendChild(noApplicantsMsg);
         }
-        jobWrapper.appendChild(applicantsContainer); 
+        jobWrapper.appendChild(applicantsContainer);
         fragment.appendChild(jobWrapper);
 
-        // Event Listener für das Toggle-DIV
         toggleDivElement.addEventListener("click", () => {
             const isHidden = applicantsContainer.style.display === "none";
             applicantsContainer.style.display = isHidden ? "block" : "none";
             toggleDivElement.querySelector(".toggle-icon").textContent = isHidden ? "▲" : "▼";
             if (isHidden) {
-                const applicantEntries = applicantsContainer.querySelectorAll(".job-entry"); 
-                applicantEntries.forEach(entry => entry.classList.remove("visible")); 
+                const applicantEntries = applicantsContainer.querySelectorAll(".job-entry");
+                applicantEntries.forEach(entry => entry.classList.remove("visible"));
                 requestAnimationFrame(() => {
                     applicantEntries.forEach(entry => entry.classList.add("visible"));
                 });
             }
         });
-        // Optional: Event Listener für Enter/Space Taste, falls tabindex="0" gesetzt wurde
-        // toggleDivElement.addEventListener("keydown", (event) => {
-        //     if (event.key === "Enter" || event.key === " ") {
-        //         event.preventDefault(); // Verhindert Standardaktionen wie Scrollen bei Leertaste
-        //         toggleDivElement.click(); // Löst das Klick-Event aus
-        //     }
-        // });
     });
 
     container.appendChild(fragment);
@@ -356,7 +379,7 @@ async function displayMyJobsAndApplicants() {
         const currentUserItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, currentWebflowMemberId_MJ);
         if (!currentUserItem || !currentUserItem.fieldData) {
             console.error("❌ Benutzerdaten des aktuellen Users nicht gefunden oder fieldData leer.");
-            renderMyJobsAndApplicants([]); 
+            renderMyJobsAndApplicants([]);
             return;
         }
 
@@ -369,7 +392,7 @@ async function displayMyJobsAndApplicants() {
         }
 
         const myJobItemsPromises = postedJobIds.map(jobId => fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId));
-        let myJobItems = (await Promise.all(myJobItemsPromises)).filter(job => job !== null && job.fieldData); 
+        let myJobItems = (await Promise.all(myJobItemsPromises)).filter(job => job !== null && job.fieldData);
 
         console.log(`Found ${myJobItems.length} valid jobs posted by this user.`);
 
@@ -381,15 +404,15 @@ async function displayMyJobsAndApplicants() {
         const jobsWithApplicantsPromises = myJobItems.map(async (jobItem) => {
             const jobFieldData = jobItem.fieldData;
             let applicantsData = [];
-            const applicantIds = jobFieldData["bewerber"] || []; 
+            const applicantIds = jobFieldData["bewerber"] || []; // Das Feld in der Job Collection, das auf User Items (Bewerber) verweist
 
             if (applicantIds.length > 0) {
-                const applicantPromises = applicantIds.map(applicantId => 
-                    fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId)
+                const applicantPromises = applicantIds.map(applicantId =>
+                    fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId) // Bewerberdaten aus der User Collection laden
                 );
-                applicantsData = (await Promise.all(applicantPromises)).filter(applicant => applicant !== null);
+                applicantsData = (await Promise.all(applicantPromises)).filter(applicant => applicant !== null && applicant.fieldData);
             }
-            return { ...jobItem, applicants: applicantsData }; 
+            return { ...jobItem, applicants: applicantsData };
         });
 
         allMyJobsData_MJ = await Promise.all(jobsWithApplicantsPromises);
@@ -405,4 +428,3 @@ async function displayMyJobsAndApplicants() {
 
 // --- Initialisierung ---
 window.addEventListener("DOMContentLoaded", displayMyJobsAndApplicants);
-
