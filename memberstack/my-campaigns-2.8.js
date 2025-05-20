@@ -6,7 +6,7 @@ const WORKER_BASE_URL_MJ = "https://bewerbungen.oliver-258.workers.dev/?url="; /
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3; // Anzahl der Skeleton-Job-Zeilen
-const API_CALL_DELAY_MS = 550; // WICHTIG: Auf ca. 550ms belassen (ca. 109 Anfragen/Minute) um API-Limits einzuhalten.
+const API_CALL_DELAY_MS = 5; // WICHTIG: Auf ca. 550ms belassen (ca. 109 Anfragen/Minute) um API-Limits einzuhalten.
 const MAX_ITEMS_PER_BATCH_REQUEST = 100; // Webflow API Limit für item_ids Parameter
 
 let currentWebflowMemberId_MJ = null;
@@ -163,7 +163,7 @@ async function fetchMultipleWebflowItems(collectionId, itemIds) {
     const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?item_ids=${itemIdsString}`;
     const workerUrl = buildWorkerUrl_MJ(apiUrl);
 
-    console.log(`Fetching batch of items: ${apiUrl}`);
+    console.log(`Fetching batch of items for job (first few IDs: ${itemIds.slice(0,3).join(',')}...): ${apiUrl}`);
     
     try {
         const response = await fetch(workerUrl);
@@ -177,6 +177,7 @@ async function fetchMultipleWebflowItems(collectionId, itemIds) {
             return itemIds.map(id => ({ error: true, status: response.status, message: `API Error for batch including item ${id}`, id: id }));
         }
         const data = await response.json();
+        console.log(`Batch fetch for ${itemIds.length} IDs returned ${data.items ? data.items.length : 0} items.`);
         return data.items || []; 
     } catch (error) {
         console.error(`❌ Netzwerkfehler oder anderer Fehler beim Batch-Abruf (${collectionId}): ${error.message}`);
@@ -327,15 +328,7 @@ function createApplicantRowElement(applicantFieldData) {
     creatorTypeCell.appendChild(creatorTypeTag);
     applicantDiv.appendChild(creatorTypeCell);
 
-    // Sprache entfernt
-    // const spracheCell = document.createElement("div");
-    // spracheCell.classList.add("db-table-row-item");
-    // const spracheTag = document.createElement("span");
-    // spracheTag.classList.add("job-tag", "customer");
-    // const spracheId = applicantFieldData["sprache"];
-    // spracheTag.textContent = MAPPINGS.sprachen[spracheId] || (spracheId ? spracheId : "K.A.");
-    // spracheCell.appendChild(spracheTag);
-    // applicantDiv.appendChild(spracheCell);
+    // Sprache wurde entfernt
 
     const socialCell = document.createElement("div");
     socialCell.classList.add("db-table-row-item"); 
@@ -344,7 +337,7 @@ function createApplicantRowElement(applicantFieldData) {
         { key: "tiktok", name: "TikTok", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e99dce86c2b6ba83fe_Tiktok.svg" },
         { key: "youtube", name: "YouTube", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e9b00d0480ffe289dc_YouTube.svg" }
     ];
-    let socialLinksRenderedCount = 0; // Zähler für gerenderte Links
+    let socialLinksRenderedCount = 0; 
     socialPlatforms.forEach(platform => {
         const platformUrlValue = applicantFieldData[platform.key]; 
         const normalizedPlatformUrl = normalizeUrl(platformUrlValue);
@@ -354,10 +347,7 @@ function createApplicantRowElement(applicantFieldData) {
             socialLink.classList.add("db-application-option", "no-icon", "w-inline-block");
             socialLink.target = "_blank";
             socialLink.rel = "noopener noreferrer";
-            if (socialLinksRenderedCount > 0) { // Nur Margin hinzufügen, wenn es nicht das erste Icon ist
-                // Margin wird jetzt nicht mehr per Style gesetzt, sondern sollte über CSS-Klassen erfolgen, falls gewünscht.
-                // socialLink.style.marginLeft = "8px"; // Entfernt
-            }
+            // Margin-left wurde entfernt
             const iconImg = document.createElement("img");
             iconImg.src = platform.iconUrl;
             iconImg.alt = `${platform.name} Profil`;
@@ -390,23 +380,25 @@ function createApplicantRowElement(applicantFieldData) {
     return applicantDiv;
 }
 
-async function loadAndDisplayApplicantsForJob(jobId, applicantIds, applicantsContainerElement, toggleElement) {
-    console.log(`Lade Bewerber für Job ${jobId} (${applicantIds.length} IDs)...`);
+async function loadAndDisplayApplicantsForJob(jobId, applicantIdsForThisJob, applicantsContainerElement, toggleElement) {
+    // Wichtig: applicantIdsForThisJob sind die spezifischen IDs für DIESEN Job
+    console.log(`Lade Bewerber für Job ${jobId} (IDs: ${applicantIdsForThisJob.join(', ') || 'keine'})...`);
     toggleElement.style.pointerEvents = 'none'; 
     applicantsContainerElement.innerHTML = '<p style="padding: 10px; text-align: center;">Lade Bewerberdaten...</p>';
     applicantsContainerElement.style.display = "block"; 
 
     let allFetchedApplicants = [];
     
-    if (applicantIds.length > 0) {
-        for (let i = 0; i < applicantIds.length; i += MAX_ITEMS_PER_BATCH_REQUEST) {
-            const chunk = applicantIds.slice(i, i + MAX_ITEMS_PER_BATCH_REQUEST);
-            console.log(`Fetching chunk ${Math.floor(i / MAX_ITEMS_PER_BATCH_REQUEST) + 1} for job ${jobId} with ${chunk.length} applicant IDs.`);
+    if (applicantIdsForThisJob.length > 0) {
+        for (let i = 0; i < applicantIdsForThisJob.length; i += MAX_ITEMS_PER_BATCH_REQUEST) {
+            const chunk = applicantIdsForThisJob.slice(i, i + MAX_ITEMS_PER_BATCH_REQUEST);
+            console.log(`Fetching chunk ${Math.floor(i / MAX_ITEMS_PER_BATCH_REQUEST) + 1} for job ${jobId} with ${chunk.length} applicant IDs: ${chunk.join(',')}`);
             await delay(API_CALL_DELAY_MS); 
             const itemsFromBatch = await fetchMultipleWebflowItems(USER_COLLECTION_ID_MJ, chunk);
             if (itemsFromBatch && itemsFromBatch.length > 0) {
                 allFetchedApplicants.push(...itemsFromBatch);
             } else {
+                console.warn(`Batch-Anfrage für Job ${jobId}, Chunk ${i} lieferte keine Items oder Fehler.`);
                 chunk.forEach(id => {
                     allFetchedApplicants.push({ id: id, error: true, message: `Daten für Bewerber ${id} im Batch nicht verfügbar.` });
                 });
@@ -453,18 +445,18 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantIds, applicantsCon
                  generalErrorMsg.style.padding = "10px 0";
                  applicantsContainerElement.appendChild(generalErrorMsg);
             }
-        } else if (validApplicantsRendered === 0 && applicantIds.length > 0) { 
+        } else if (validApplicantsRendered === 0 && applicantIdsForThisJob.length > 0) { 
             const noDataMsg = document.createElement("p");
             noDataMsg.textContent = "Keine gültigen Bewerberdaten gefunden.";
             noDataMsg.style.padding = "10px 0";
             applicantsContainerElement.appendChild(noDataMsg);
-        } else if (validApplicantsRendered === 0 && applicantIds.length === 0) { 
+        } else if (validApplicantsRendered === 0 && applicantIdsForThisJob.length === 0) { 
              const noApplicantsMsg = document.createElement("p");
             noApplicantsMsg.textContent = "Für diesen Job liegen keine Bewerbungen vor.";
             noApplicantsMsg.style.padding = "10px 0";
             applicantsContainerElement.appendChild(noApplicantsMsg);
         }
-    } else if (applicantIds.length > 0) { 
+    } else if (applicantIdsForThisJob.length > 0) { 
         const errorMsg = document.createElement("p");
         errorMsg.textContent = "Fehler beim Laden der Bewerberdaten. Keine Daten empfangen.";
         errorMsg.style.padding = "10px 0";
@@ -500,7 +492,7 @@ function renderMyJobsAndApplicants(jobItems) {
     const fragment = document.createDocumentFragment();
     let globalRateLimitMessageShown = false; 
 
-    jobItems.forEach(jobItem => {
+    jobItems.forEach(jobItem => { // jobItem ist hier das spezifische Job-Objekt für jede Iteration
         if (jobItem.error && jobItem.status === 429) {
             console.warn(`Job (ID: ${jobItem.id || 'unbekannt'}) konnte wegen Rate Limit nicht geladen werden und wird nicht gerendert.`);
             if (!globalRateLimitMessageShown && !document.getElementById('global-rate-limit-message')) {
@@ -560,10 +552,11 @@ function renderMyJobsAndApplicants(jobItems) {
         statusCell.appendChild(statusTag);
         jobHeaderDiv.appendChild(statusCell);
         
-        const applicantIds = jobFieldData["bewerber"] || [];
+        // Wichtig: applicantIdsForThisSpecificJob wird hier korrekt aus dem aktuellen jobItem geholt.
+        const applicantIdsForThisSpecificJob = jobFieldData["bewerber"] || [];
         const applicantsCountCell = document.createElement("div");
         applicantsCountCell.classList.add("db-table-row-item");
-        applicantsCountCell.textContent = `Bewerber: ${applicantIds.length}`;
+        applicantsCountCell.textContent = `Bewerber: ${applicantIdsForThisSpecificJob.length}`;
         jobHeaderDiv.appendChild(applicantsCountCell);
 
         jobWrapper.appendChild(jobHeaderDiv);
@@ -588,9 +581,8 @@ function renderMyJobsAndApplicants(jobItems) {
             
             if (isHidden) { 
                 if (applicantsContainer.dataset.loaded !== 'true') {
-                    // Stelle sicher, dass die korrekten, job-spezifischen applicantIds verwendet werden.
-                    const currentJobApplicantIds = jobItem.fieldData["bewerber"] || [];
-                    await loadAndDisplayApplicantsForJob(jobItem.id, currentJobApplicantIds, applicantsContainer, toggleDivElement);
+                    // Hier werden die job-spezifischen applicantIdsForThisSpecificJob verwendet.
+                    await loadAndDisplayApplicantsForJob(jobItem.id, applicantIdsForThisSpecificJob, applicantsContainer, toggleDivElement);
                 } else {
                     applicantsContainer.style.display = "block";
                 }
