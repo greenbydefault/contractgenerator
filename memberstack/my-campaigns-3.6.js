@@ -6,11 +6,14 @@ const WORKER_BASE_URL_MJ = "https://meine-kampagnen.oliver-258.workers.dev/";
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3;
-const API_CALL_DELAY_MS = 1; 
+const API_CALL_DELAY_MS = 550; 
 let currentApplicantPageSize = 15; // Standard-Seitengröße, später anpassbar
 
 let currentWebflowMemberId_MJ = null;
 let allMyJobsData_MJ = []; // Speichert die geladenen Job-Items
+let preloadedApplicantData = {}; // Cache für vorgeladene Bewerberseiten { jobId: { pageNum: [items] } }
+let activePreloading = {}; // Verhindert mehrfaches Preloading derselben Seite { jobId_pageNum: boolean }
+
 
 // --- Mapping-Konfigurationen ---
 const MAPPINGS = {
@@ -101,7 +104,7 @@ async function fetchWebflowItem(collectionId, itemId) {
         const response = await fetch(workerUrl);
         if (!response.ok) {
             if (response.status === 404) {
-                console.warn(`Item ${itemId} in Collection ${collectionId} nicht gefunden (404).`);
+                // console.warn(`Item ${itemId} in Collection ${collectionId} nicht gefunden (404).`); // Kann verbose sein
                 return { id: itemId, error: true, status: 404, message: `Item ${itemId} not found.` };
             }
             const errorText = await response.text();
@@ -175,7 +178,7 @@ function renderMyJobsSkeletonLoader(container, count) {
         jobWrapper.appendChild(jobHeader);
         const skeletonPaginationRow = document.createElement("div");
         skeletonPaginationRow.classList.add("applicants-toggle-row-skeleton", "skeleton-element"); 
-        skeletonPaginationRow.style.height = "30px";
+        skeletonPaginationRow.style.height = "30px"; // Beibehalten für Skeleton
         skeletonPaginationRow.style.width = "200px"; 
         skeletonPaginationRow.style.margin = "10px auto";
         jobWrapper.appendChild(skeletonPaginationRow);
@@ -187,7 +190,7 @@ function renderMyJobsSkeletonLoader(container, count) {
 function createApplicantRowElement(applicantFieldData) {
     const applicantDiv = document.createElement("div");
     applicantDiv.classList.add("db-table-row", "db-table-applicant", "job-entry");
-    applicantDiv.style.cursor = "pointer";
+    // applicantDiv.style.cursor = "pointer"; // Wird durch Webflow-Klassen gesteuert
 
     applicantDiv.addEventListener('click', (event) => {
         if (event.target.closest('a.db-application-option')) {
@@ -206,7 +209,7 @@ function createApplicantRowElement(applicantFieldData) {
         console.error("❌ MAPPINGS-Objekt ist nicht definiert.");
         const errorDiv = document.createElement("div");
         errorDiv.textContent = "Fehler: Mapping-Daten nicht verfügbar.";
-        errorDiv.style.color = "red";
+        // errorDiv.style.color = "red"; // Styling über Webflow
         applicantDiv.appendChild(errorDiv);
         return applicantDiv;
     }
@@ -310,63 +313,57 @@ function createApplicantRowElement(applicantFieldData) {
 
 async function renderPaginationControls(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, currentPage, totalPages) {
     if (!paginationWrapper) {
-        console.warn(`DEBUG: Kein Pagination Wrapper für Job ${jobId} gefunden.`);
+        // console.warn(`DEBUG: Kein Pagination Wrapper für Job ${jobId} gefunden.`); // Kann verbose sein
         return;
     }
     paginationWrapper.innerHTML = ''; 
-    paginationWrapper.style.display = totalPages <= 1 ? "none" : "flex"; // Paginierung ausblenden, wenn nicht benötigt
-    paginationWrapper.style.justifyContent = "center"; // Zentriert die Paginierungselemente
-    paginationWrapper.style.alignItems = "center";
-    paginationWrapper.style.marginTop = "15px";
+    paginationWrapper.style.display = totalPages <= 1 ? "none" : "flex"; 
+    // paginationWrapper.style.justifyContent = "center"; // Styling über Webflow
+    // paginationWrapper.style.alignItems = "center"; // Styling über Webflow
+    // paginationWrapper.style.marginTop = "15px"; // Styling über Webflow
 
 
     if (totalPages <= 1) {
         return;
     }
 
-    // "Zurück" Button
     const prevButton = document.createElement("a");
     prevButton.href = "#"; 
     prevButton.classList.add("db-pagination-count", "button-prev"); 
     prevButton.textContent = "Zurück";
-    prevButton.style.marginRight = "10px";
+    // prevButton.style.marginRight = "10px"; // Styling über Webflow
     if (currentPage === 1) {
         prevButton.classList.add("disabled"); 
-        prevButton.style.pointerEvents = "none"; 
-        prevButton.style.opacity = "0.5";
+        // prevButton.style.pointerEvents = "none"; // Styling über Webflow mit .disabled
+        // prevButton.style.opacity = "0.5"; // Styling über Webflow mit .disabled
     } else {
         prevButton.addEventListener("click", async (e) => {
             e.preventDefault();
-            prevButton.style.pointerEvents = "none"; 
+            if (prevButton.classList.contains("disabled-loading")) return;
+            prevButton.classList.add("disabled-loading");
             prevButton.textContent = "Lade...";
             await loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, currentPage - 1);
+            // prevButton.classList.remove("disabled-loading"); // Wird durch Neurendern der Controls erledigt
         });
     }
     paginationWrapper.appendChild(prevButton);
 
-    // Seitenzahlen
-    // Logik für Ellipsen und maximale Anzahl sichtbarer Seiten (optional, für viele Seiten)
-    const MAX_VISIBLE_PAGES = 5; // Z.B. maximal 5 Seitenzahlen anzeigen
+    const MAX_VISIBLE_PAGES = 5; 
     let startPage, endPage;
 
     if (totalPages <= MAX_VISIBLE_PAGES) {
-        // Alle Seiten anzeigen
         startPage = 1;
         endPage = totalPages;
     } else {
-        // Logik für Ellipsen
         const maxPagesBeforeCurrentPage = Math.floor(MAX_VISIBLE_PAGES / 2);
         const maxPagesAfterCurrentPage = Math.ceil(MAX_VISIBLE_PAGES / 2) - 1;
         if (currentPage <= maxPagesBeforeCurrentPage) {
-            // Aktuelle Seite ist am Anfang
             startPage = 1;
             endPage = MAX_VISIBLE_PAGES;
         } else if (currentPage + maxPagesAfterCurrentPage >= totalPages) {
-            // Aktuelle Seite ist am Ende
             startPage = totalPages - MAX_VISIBLE_PAGES + 1;
             endPage = totalPages;
         } else {
-            // Aktuelle Seite ist in der Mitte
             startPage = currentPage - maxPagesBeforeCurrentPage;
             endPage = currentPage + maxPagesAfterCurrentPage;
         }
@@ -377,17 +374,20 @@ async function renderPaginationControls(jobId, allApplicantIdsForThisJob, applic
         firstPageLink.href = "#";
         firstPageLink.classList.add("db-pagination-count");
         firstPageLink.textContent = "1";
-        firstPageLink.style.margin = "0 5px";
+        // firstPageLink.style.margin = "0 5px"; // Styling über Webflow
         firstPageLink.addEventListener("click", async (e) => {
             e.preventDefault();
+            if (firstPageLink.classList.contains("disabled-loading") || firstPageLink.classList.contains("active")) return;
+            paginationWrapper.querySelectorAll('.db-pagination-count').forEach(el => el.classList.add("disabled-loading"));
+            firstPageLink.textContent = "..."; 
             await loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, 1);
         });
         paginationWrapper.appendChild(firstPageLink);
         if (startPage > 2) {
             const ellipsisSpan = document.createElement("span");
-            ellipsisSpan.classList.add("db-pagination-count");
+            ellipsisSpan.classList.add("db-pagination-count", "ellipsis"); // Eigene Klasse für Ellipsen-Styling
             ellipsisSpan.textContent = "...";
-            ellipsisSpan.style.margin = "0 5px";
+            // ellipsisSpan.style.margin = "0 5px"; // Styling über Webflow
             paginationWrapper.appendChild(ellipsisSpan);
         }
     }
@@ -397,19 +397,16 @@ async function renderPaginationControls(jobId, allApplicantIdsForThisJob, applic
         pageLink.href = "#";
         pageLink.classList.add("db-pagination-count");
         pageLink.textContent = i;
-        pageLink.style.margin = "0 5px";
+        // pageLink.style.margin = "0 5px"; // Styling über Webflow
         if (i === currentPage) {
-            pageLink.classList.add("active"); // Oder 'is-current'
-            pageLink.style.fontWeight = "bold"; // Beispiel für Hervorhebung
-            pageLink.style.textDecoration = "underline";
+            pageLink.classList.add("active"); 
         } else {
             pageLink.addEventListener("click", async (e) => {
                 e.preventDefault();
-                // Deaktiviere alle Paginierungslinks während des Ladens
-                paginationWrapper.querySelectorAll('.db-pagination-count').forEach(el => el.style.pointerEvents = 'none');
-                pageLink.textContent = "..."; // Visuelles Feedback
+                if (pageLink.classList.contains("disabled-loading")) return;
+                paginationWrapper.querySelectorAll('.db-pagination-count').forEach(el => el.classList.add("disabled-loading"));
+                pageLink.textContent = "..."; 
                 await loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, i);
-                 // Aktivierung erfolgt in renderPaginationControls nach dem Laden
             });
         }
         paginationWrapper.appendChild(pageLink);
@@ -418,77 +415,128 @@ async function renderPaginationControls(jobId, allApplicantIdsForThisJob, applic
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
             const ellipsisSpan = document.createElement("span");
-            ellipsisSpan.classList.add("db-pagination-count");
+            ellipsisSpan.classList.add("db-pagination-count", "ellipsis");
             ellipsisSpan.textContent = "...";
-            ellipsisSpan.style.margin = "0 5px";
+            // ellipsisSpan.style.margin = "0 5px"; // Styling über Webflow
             paginationWrapper.appendChild(ellipsisSpan);
         }
         const lastPageLink = document.createElement("a");
         lastPageLink.href = "#";
         lastPageLink.classList.add("db-pagination-count");
         lastPageLink.textContent = totalPages;
-        lastPageLink.style.margin = "0 5px";
+        // lastPageLink.style.margin = "0 5px"; // Styling über Webflow
         lastPageLink.addEventListener("click", async (e) => {
             e.preventDefault();
+             if (lastPageLink.classList.contains("disabled-loading") || lastPageLink.classList.contains("active")) return;
+            paginationWrapper.querySelectorAll('.db-pagination-count').forEach(el => el.classList.add("disabled-loading"));
+            lastPageLink.textContent = "...";
             await loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, totalPages);
         });
         paginationWrapper.appendChild(lastPageLink);
     }
 
-
-    // "Weiter" Button
     const nextButton = document.createElement("a");
     nextButton.href = "#";
     nextButton.classList.add("db-pagination-count", "button-next"); 
     nextButton.textContent = "Weiter";
-    nextButton.style.marginLeft = "10px";
+    // nextButton.style.marginLeft = "10px"; // Styling über Webflow
     if (currentPage === totalPages) {
         nextButton.classList.add("disabled");
-        nextButton.style.pointerEvents = "none";
-        nextButton.style.opacity = "0.5";
+        // nextButton.style.pointerEvents = "none"; // Styling über Webflow mit .disabled
+        // nextButton.style.opacity = "0.5"; // Styling über Webflow mit .disabled
     } else {
         nextButton.addEventListener("click", async (e) => {
             e.preventDefault();
-            nextButton.style.pointerEvents = "none";
+            if (nextButton.classList.contains("disabled-loading")) return;
+            nextButton.classList.add("disabled-loading");
             nextButton.textContent = "Lade...";
             await loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, currentPage + 1);
+            // nextButton.classList.remove("disabled-loading"); // Wird durch Neurendern der Controls erledigt
         });
     }
     paginationWrapper.appendChild(nextButton);
 }
 
+async function initiatePreloadForNextPage(jobId, allApplicantIdsForThisJob, currentPage, totalPages, paginationWrapper) {
+    const nextPageToPreload = currentPage + 1;
+    if (nextPageToPreload > totalPages) return; // Keine weiteren Seiten zum Vorladen
 
-async function loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, pageNumber = 1) {
-    console.log(`DEBUG: loadAndDisplayApplicantsForJob START - Job ID: ${jobId}, Page: ${pageNumber}, PageSize: ${currentApplicantPageSize}`);
+    const preloadKey = `${jobId}_${nextPageToPreload}`;
+    if (preloadedApplicantData[jobId]?.[nextPageToPreload] || activePreloading[preloadKey]) {
+        // console.log(`DEBUG: Preload für Job ${jobId}, Seite ${nextPageToPreload} bereits vorhanden oder aktiv.`);
+        return;
+    }
+
+    activePreloading[preloadKey] = true;
+    console.log(`DEBUG: Starte Preload für Job ${jobId}, Seite ${nextPageToPreload}`);
+
+    try {
+        await delay(API_CALL_DELAY_MS * 1.5); // Längere Verzögerung für Hintergrund-Tasks
+
+        const offset = (nextPageToPreload - 1) * currentApplicantPageSize;
+        const idsToFetch = allApplicantIdsForThisJob.slice(offset, offset + currentApplicantPageSize);
+        
+        if (idsToFetch.length > 0) {
+            const applicantPromises = idsToFetch.map(applicantId =>
+                fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId)
+            );
+            const preloadedItems = await Promise.all(applicantPromises);
+
+            if (!preloadedApplicantData[jobId]) {
+                preloadedApplicantData[jobId] = {};
+            }
+            preloadedApplicantData[jobId][nextPageToPreload] = preloadedItems;
+            console.log(`DEBUG: Preload ERFOLGREICH für Job ${jobId}, Seite ${nextPageToPreload}. ${preloadedItems.length} Items geladen.`);
+        }
+    } catch (error) {
+        console.error(`DEBUG: Preload FEHLER für Job ${jobId}, Seite ${nextPageToPreload}:`, error);
+    } finally {
+        delete activePreloading[preloadKey];
+    }
+}
+
+
+async function loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, pageNumber = 1, isTriggeredByPagination = false) {
+    console.log(`DEBUG: loadAndDisplayApplicantsForJob START - Job ID: ${jobId}, Page: ${pageNumber}, PageSize: ${currentApplicantPageSize}, TriggeredByPagination: ${isTriggeredByPagination}`);
     
     const mainToggleButton = document.querySelector(`.my-job-item[data-job-id="${jobId}"] .db-table-applicants`);
     if (mainToggleButton) mainToggleButton.style.pointerEvents = 'none';
+
+    // Nur verzögern, wenn durch Paginierung ausgelöst (nicht beim ersten Öffnen des Toggles)
+    if (isTriggeredByPagination) {
+        await delay(API_CALL_DELAY_MS);
+    }
 
     applicantsContainerElement.innerHTML = ''; 
     applicantsContainerElement.dataset.currentPage = pageNumber;
 
     const loadingMessage = document.createElement("p");
     loadingMessage.classList.add("applicants-message");
-    loadingMessage.style.padding = "20px";
-    loadingMessage.style.textAlign = "center";
+    // loadingMessage.style.padding = "20px"; // Styling über Webflow
+    // loadingMessage.style.textAlign = "center"; // Styling über Webflow
     loadingMessage.textContent = `Lade Bewerber (Seite ${pageNumber})...`;
     applicantsContainerElement.appendChild(loadingMessage);
 
-    const offset = (pageNumber - 1) * currentApplicantPageSize;
-    const idsToFetch = allApplicantIdsForThisJob.slice(offset, offset + currentApplicantPageSize);
     let fetchedApplicantsDetails = [];
+    const totalPages = Math.ceil(allApplicantIdsForThisJob.length / currentApplicantPageSize);
 
-    if (idsToFetch.length > 0) {
-        console.log(`DEBUG: Lade Seite ${pageNumber} für Job ${jobId}. Offset: ${offset}, Anzahl: ${idsToFetch.length}. IDs: ${idsToFetch.join(', ')}`);
-        for (const applicantId of idsToFetch) {
-            await delay(API_CALL_DELAY_MS);
-            const applicantItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId);
-            if (applicantItem) { 
-                fetchedApplicantsDetails.push(applicantItem);
-            } 
+    if (preloadedApplicantData[jobId]?.[pageNumber]) {
+        console.log(`DEBUG: Nutze vorgeladene Daten für Job ${jobId}, Seite ${pageNumber}`);
+        fetchedApplicantsDetails = preloadedApplicantData[jobId][pageNumber];
+        delete preloadedApplicantData[jobId][pageNumber]; // Einmal verwenden
+    } else {
+        const offset = (pageNumber - 1) * currentApplicantPageSize;
+        const idsToFetch = allApplicantIdsForThisJob.slice(offset, offset + currentApplicantPageSize);
+
+        if (idsToFetch.length > 0) {
+            console.log(`DEBUG: Lade Seite ${pageNumber} für Job ${jobId}. Offset: ${offset}, Anzahl: ${idsToFetch.length}. IDs: ${idsToFetch.join(', ')}`);
+            const applicantPromises = idsToFetch.map(applicantId =>
+                fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId)
+            );
+            fetchedApplicantsDetails = await Promise.all(applicantPromises);
         }
     }
-
+    
     loadingMessage.remove(); 
 
     fetchedApplicantsDetails.sort((a, b) => {
@@ -507,19 +555,19 @@ async function loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, 
             const applicantRow = createApplicantRowElement(applicant.fieldData);
             applicantsContainerElement.appendChild(applicantRow);
             requestAnimationFrame(() => { 
-                applicantRow.style.opacity = 0;
+                applicantRow.style.opacity = "0"; // Start für Fade-in
                 requestAnimationFrame(() => {
                     applicantRow.style.transition = "opacity 0.3s ease-in-out";
-                    applicantRow.style.opacity = 1;
+                    applicantRow.style.opacity = "1";
                 });
             });
             validApplicantsRenderedOnThisPage++;
         } else if (applicant && applicant.error) {
             const errorMsg = document.createElement("p");
             errorMsg.classList.add("applicants-message");
-            errorMsg.style.color = "orange";
-            errorMsg.style.padding = "5px 0";
-            errorMsg.style.textAlign = "center";
+            // errorMsg.style.color = "orange"; // Styling über Webflow
+            // errorMsg.style.padding = "5px 0"; // Styling über Webflow
+            // errorMsg.style.textAlign = "center"; // Styling über Webflow
             if (applicant.status === 429) {
                 errorMsg.textContent = `Bewerberdaten (ID: ${applicant.id}) konnten wegen API-Limits nicht geladen werden.`;
             } else if (applicant.status === 404) {
@@ -533,29 +581,27 @@ async function loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, 
     
     console.log(`DEBUG: Job ${jobId}, Seite ${pageNumber}: ${validApplicantsRenderedOnThisPage} Bewerber gerendert.`);
 
-    if (validApplicantsRenderedOnThisPage === 0 && allApplicantIdsForThisJob.length > 0 && idsToFetch.length > 0) {
+    if (validApplicantsRenderedOnThisPage === 0 && allApplicantIdsForThisJob.length > 0 && fetchedApplicantsDetails.length > 0) {
         const noDataMsg = document.createElement("p");
         noDataMsg.classList.add("applicants-message");
         noDataMsg.textContent = "Keine gültigen Bewerberdaten für diese Seite gefunden.";
-        noDataMsg.style.padding = "10px 0";
-        noDataMsg.style.textAlign = "center";
         applicantsContainerElement.appendChild(noDataMsg);
     } else if (allApplicantIdsForThisJob.length === 0) {
         const noApplicantsMsg = document.createElement("p");
         noApplicantsMsg.classList.add("applicants-message");
         noApplicantsMsg.textContent = "Für diesen Job liegen keine Bewerbungen vor.";
-        noApplicantsMsg.style.padding = "10px 0";
-        noApplicantsMsg.style.textAlign = "center";
         applicantsContainerElement.appendChild(noApplicantsMsg);
     }
     
-    const totalPages = Math.ceil(allApplicantIdsForThisJob.length / currentApplicantPageSize);
-    // Rufe renderPaginationControls auf, auch wenn es nur eine Seite gibt, 
-    // da es die Pagination ausblendet, wenn totalPages <= 1.
     await renderPaginationControls(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, pageNumber, totalPages);
     
     if (mainToggleButton) mainToggleButton.style.pointerEvents = 'auto'; 
-    applicantsContainerElement.dataset.initialPageLoaded = 'true'; 
+    applicantsContainerElement.dataset.initialPageLoaded = 'true';
+
+    // Starte Preloading für die nächste Seite, wenn diese Seite erfolgreich geladen wurde
+    if (validApplicantsRenderedOnThisPage > 0 || (allApplicantIdsForThisJob.length > 0 && fetchedApplicantsDetails.length === 0 && validApplicantsRenderedOnThisPage === 0) ) { // Auch preloade, wenn Seite leer war aber existiert
+        initiatePreloadForNextPage(jobId, allApplicantIdsForThisJob, pageNumber, totalPages, paginationWrapper);
+    }
 }
 
 
@@ -585,10 +631,10 @@ function renderMyJobsAndApplicants(jobItems) {
                 const globalRateLimitInfo = document.createElement("p");
                 globalRateLimitInfo.id = 'global-rate-limit-message';
                 globalRateLimitInfo.textContent = "Hinweis: Einige Jobdaten konnten aufgrund von API-Anfragelimits nicht geladen werden.";
-                globalRateLimitInfo.style.color = "orange";
-                globalRateLimitInfo.style.textAlign = "center";
-                globalRateLimitInfo.style.padding = "10px";
-                globalRateLimitInfo.classList.add("job-entry", "visible");
+                // globalRateLimitInfo.style.color = "orange"; // Styling über Webflow
+                // globalRateLimitInfo.style.textAlign = "center"; // Styling über Webflow
+                // globalRateLimitInfo.style.padding = "10px"; // Styling über Webflow
+                globalRateLimitInfo.classList.add("job-entry", "visible", "error-message"); // Eigene Fehlerklasse
                 if (container.firstChild) container.insertBefore(globalRateLimitInfo, container.firstChild);
                 else container.appendChild(globalRateLimitInfo);
                 globalRateLimitMessageShown = true;
@@ -661,7 +707,7 @@ function renderMyJobsAndApplicants(jobItems) {
         const toggleDivElement = document.createElement("div");
         toggleDivElement.classList.add("db-table-applicants"); 
         toggleDivElement.innerHTML = `Bewerberliste anzeigen <span class="toggle-icon">▼</span>`;
-        toggleDivElement.style.cursor = "pointer";
+        // toggleDivElement.style.cursor = "pointer"; // Styling über Webflow
         toggleButtonRow.appendChild(toggleDivElement);
         jobWrapper.appendChild(toggleButtonRow);
 
@@ -675,7 +721,7 @@ function renderMyJobsAndApplicants(jobItems) {
         
         let paginationWrapper = jobWrapper.querySelector(".db-table-pagination");
         if (!paginationWrapper) {
-            console.warn(`Kein .db-table-pagination für Job ${jobItem.id} in Webflow gefunden. Erstelle dynamisch.`);
+            // console.warn(`Kein .db-table-pagination für Job ${jobItem.id} in Webflow gefunden. Erstelle dynamisch.`); // Kann verbose sein
             paginationWrapper = document.createElement("div");
             paginationWrapper.classList.add("db-table-pagination");
             jobWrapper.appendChild(paginationWrapper); 
@@ -690,14 +736,13 @@ function renderMyJobsAndApplicants(jobItems) {
 
             if (isHidden) {
                 applicantsContainer.style.display = "block";
-                // paginationWrapper wird in renderPaginationControls sichtbar gemacht, falls nötig
                 toggleDivElement.innerHTML = `Bewerberliste ausblenden <span class="toggle-icon">▲</span>`;
                 if (!initialPageLoaded) { 
                     toggleDivElement.style.pointerEvents = 'none';
-                    await loadAndDisplayApplicantsForJob(jobItem.id, applicantIdsForThisSpecificJob, applicantsContainer, paginationWrapper, 1);
+                    // Die 'isTriggeredByPagination' Flag ist hier false (oder nicht übergeben = default false)
+                    await loadAndDisplayApplicantsForJob(jobItem.id, applicantIdsForThisSpecificJob, applicantsContainer, paginationWrapper, 1, false);
                     toggleDivElement.style.pointerEvents = 'auto';
                 } else {
-                    // Wenn schon mal geladen, Paginierung auch anzeigen
                      paginationWrapper.style.display = (Math.ceil(applicantIdsForThisSpecificJob.length / currentApplicantPageSize) <= 1) ? "none" : "flex";
                 }
             } else {
@@ -742,7 +787,7 @@ async function displayMyJobsAndApplicants() {
         }
         console.log(`✅ MyJobs: Webflow Member ID: ${currentWebflowMemberId_MJ}`);
 
-        await delay(API_CALL_DELAY_MS);
+        await delay(API_CALL_DELAY_MS); // Delay vor dem Laden des aktuellen Users
         const currentUserItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, currentWebflowMemberId_MJ);
 
         if (!currentUserItem || (currentUserItem.error && currentUserItem.status !== 429 && currentUserItem.status !== 404) ) {
@@ -772,7 +817,7 @@ async function displayMyJobsAndApplicants() {
         let myJobItems = [];
         for (const jobId of postedJobIds) {
             console.log(`Fetching job item: ${jobId}`);
-            await delay(API_CALL_DELAY_MS);
+            await delay(API_CALL_DELAY_MS); // Delay zwischen dem Laden der einzelnen Job-Items
             const jobItem = await fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId);
             
             if (jobItem) { 
@@ -818,25 +863,35 @@ function initializePageSizeSelector() {
         pageSizeSelector.value = currentApplicantPageSize; 
         pageSizeSelector.addEventListener('change', (event) => {
             const newSize = parseInt(event.target.value, 10);
-            if (newSize === 15 || newSize === 25) {
+            if (newSize === 15 || newSize === 25) { // Nur erlaubte Werte
+                const oldSize = currentApplicantPageSize;
                 currentApplicantPageSize = newSize;
-                console.log(`DEBUG: Seitengröße geändert auf ${currentApplicantPageSize}`);
+                console.log(`DEBUG: Seitengröße geändert von ${oldSize} auf ${currentApplicantPageSize}`);
                 
+                // Finde den aktuell geöffneten Job (falls einer offen ist) und lade ihn neu
                 const openApplicantContainer = document.querySelector('.applicants-list-container[style*="display: block"]');
                 if (openApplicantContainer) {
                     const jobId = openApplicantContainer.dataset.jobId;
-                    const jobData = allMyJobsData_MJ.find(job => job.id === jobId); // Finde Job-Daten aus dem globalen Array
+                    const jobData = allMyJobsData_MJ.find(job => job.id === jobId); 
                     const jobWrapper = openApplicantContainer.closest('.my-job-item');
                     const paginationWrapper = jobWrapper ? jobWrapper.querySelector(".db-table-pagination") : null;
+                    const toggleDivElement = jobWrapper ? jobWrapper.querySelector(".db-table-applicants") : null;
 
-                    if (jobData && jobData.fieldData && jobData.fieldData.bewerber && paginationWrapper) {
-                        console.log(`DEBUG: Lade Job ${jobId} mit neuer Seitengröße neu (Seite 1).`);
-                        const toggleDivElement = jobWrapper.querySelector(".db-table-applicants");
-                        if(toggleDivElement) toggleDivElement.style.pointerEvents = 'none';
+                    if (jobData && jobData.fieldData && jobData.fieldData.bewerber && paginationWrapper && toggleDivElement) {
+                        console.log(`DEBUG: Lade Job ${jobId} mit neuer Seitengröße ${currentApplicantPageSize} neu (Seite 1).`);
                         
-                        loadAndDisplayApplicantsForJob(jobId, jobData.fieldData.bewerber, openApplicantContainer, paginationWrapper, 1)
+                        // Deaktiviere Toggle und Paginierung während des Neuladens
+                        toggleDivElement.style.pointerEvents = 'none';
+                        paginationWrapper.querySelectorAll('.db-pagination-count').forEach(el => el.classList.add("disabled-loading"));
+
+                        // Setze 'initialPageLoaded' zurück, damit die erste Seite neu geladen wird,
+                        // auch wenn sie vorher schon mal geladen war (jetzt mit neuer Seitengröße)
+                        openApplicantContainer.dataset.initialPageLoaded = 'false'; 
+                        
+                        loadAndDisplayApplicantsForJob(jobId, jobData.fieldData.bewerber, openApplicantContainer, paginationWrapper, 1, false) // false für isTriggeredByPagination
                           .finally(() => {
-                            if(toggleDivElement) toggleDivElement.style.pointerEvents = 'auto';
+                            toggleDivElement.style.pointerEvents = 'auto';
+                            // Paginierungs-Buttons werden durch renderPaginationControls neu erstellt und sind dann wieder klickbar
                           });
                     }
                 }
