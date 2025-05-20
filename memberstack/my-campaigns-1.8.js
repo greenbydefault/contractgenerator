@@ -132,7 +132,6 @@ function renderMyJobsSkeletonLoader(container, count) {
 
         container.appendChild(jobWrapper);
     }
-    // HINWEIS: Die CSS-Regeln für Skeleton-Elemente und .job-entry MÜSSEN in deiner CSS-Datei sein.
 }
 
 // --- Rendering-Funktionen ---
@@ -142,38 +141,48 @@ function createApplicantRowElement(applicantFieldData) {
     const applicantDiv = document.createElement("div");
     applicantDiv.classList.add("db-table-row", "db-table-applicant", "job-entry");
 
+    // Mapping für Bundesländer IDs zu Namen
+    const bundeslandMap = {
+        "ad69af181ec0a76ead7ca0808f9322d5": "Baden-Württemberg",
+        "4ed09f2799f39cd4458f3e590563b0a7": "Bayern",
+        "8c1ff8264b84de6bbffd30ff9e315c44": "Berlin",
+        "76951a563940804aa945c925a4eaa52c": "Brandenburg",
+        "e2dd8f0b080138d125c58421c45e9060": "Bremen",
+        "e1eb8fe3d24f911f99395fad2d0c84f9": "Hamburg",
+        "17f378f66aeb54c4f513f3e1d94a8885": "Hessen",
+        "e5f9b206a121c4d3ded9fd18258fb76a": "Mecklenburg-Vorpommern",
+        "5069427f38715209276132e26184ee1d": "Niedersachsen",
+        "54f3ea7a90d2bc63ec97195e2de1a3a3": "Nordrhein-Westfalen",
+        "b3801d7ef0176c308a5115b0a9307a5f": "Rheinland-Pfalz",
+        "42b8ac1c54146db14db5f11c20af1d23": "Saarland",
+        "ab6c9a1c2a60464b33d02c3097d648ca": "Sachsen",
+        "ab852edb71d3280bfe41083c793a4961": "Sachsen-Anhalt",
+        "d44e3e9bad2c19f3502da1c8d5832311": "Schleswig-Holstein",
+        "070d97b7c9dd6ee1e87625e64029b1f2": "Thüringen"
+    };
+
     // 1. Spalte: Bild + Name/Plus-Status
     const profileInfoDiv = document.createElement("div");
-    profileInfoDiv.classList.add("db-table-row-item", "justify-left"); // "justify-left" für linksbündige Ausrichtung
+    profileInfoDiv.classList.add("db-table-row-item", "justify-left");
 
-    // Bild des Creators
     if (applicantFieldData["user-profile-img"]) {
         const applicantImg = document.createElement("img");
         applicantImg.classList.add("db-table-img", "is-margin-right-12");
-        // Die URL kann direkt ein String sein oder ein Objekt mit einer .url Eigenschaft haben
         applicantImg.src = typeof applicantFieldData["user-profile-img"] === 'string' ? applicantFieldData["user-profile-img"] : applicantFieldData["user-profile-img"]?.url;
         applicantImg.alt = applicantFieldData.name || "Bewerberbild";
-        applicantImg.style.width = "40px";
-        applicantImg.style.height = "40px";
-        applicantImg.style.borderRadius = "50%";
-        applicantImg.style.objectFit = "cover";
         profileInfoDiv.appendChild(applicantImg);
     }
 
-    // Container für Name und Plus-Status
     const namePlusStatusDiv = document.createElement("div");
-    namePlusStatusDiv.classList.add("is-flexbox-vertical"); // Deine CSS-Klasse für vertikale Anordnung
+    namePlusStatusDiv.classList.add("is-flexbox-vertical");
 
-    // Name des Creators
     const nameSpan = document.createElement("span");
     nameSpan.textContent = applicantFieldData.name || "Unbekannter Bewerber";
     namePlusStatusDiv.appendChild(nameSpan);
 
-    // Plus-Mitglied-Status
     const plusStatusSpan = document.createElement("span");
-    plusStatusSpan.textContent = applicantFieldData["plus-mitglied"] ? "Plus Mitglied" : "Standard"; // Oder "Kein Plus Mitglied" etc.
-    plusStatusSpan.style.fontSize = "0.9em"; // Beispiel für kleinere Schrift
-    plusStatusSpan.style.color = applicantFieldData["plus-mitglied"] ? "blue" : "#666"; // Beispiel für farbliche Unterscheidung
+    plusStatusSpan.classList.add("is-txt-tiny");
+    plusStatusSpan.textContent = applicantFieldData["plus-mitglied"] ? "Plus Mitglied" : "Standard";
     namePlusStatusDiv.appendChild(plusStatusSpan);
 
     profileInfoDiv.appendChild(namePlusStatusDiv);
@@ -183,8 +192,9 @@ function createApplicantRowElement(applicantFieldData) {
     const locationDiv = document.createElement("div");
     locationDiv.classList.add("db-table-row-item");
     const city = applicantFieldData["user-city-2"] || "K.A.";
-    const bundesland = applicantFieldData["bundesland-option"] || "K.A."; // Beachte: Könnte eine ID sein
-    locationDiv.textContent = `${city}, ${bundesland}`;
+    const bundeslandId = applicantFieldData["bundesland-option"];
+    const bundeslandName = bundeslandMap[bundeslandId] || (bundeslandId ? bundeslandId : "K.A."); // Zeige ID falls nicht gemappt, sonst K.A.
+    locationDiv.textContent = `${city}, ${bundeslandName}`;
     applicantDiv.appendChild(locationDiv);
 
     // 3. Spalte: Kategorie
@@ -195,29 +205,63 @@ function createApplicantRowElement(applicantFieldData) {
 
     // 4. Spalte: Social Media Kanäle
     const socialDiv = document.createElement("div");
-    socialDiv.classList.add("db-table-row-item");
-    if (applicantFieldData["homepage"]) {
-        const socialLink = document.createElement("a");
-        socialLink.href = applicantFieldData["homepage"];
-        socialLink.textContent = "Profil"; // Oder den Hostnamen der URL anzeigen
-        socialLink.target = "_blank"; // Link in neuem Tab öffnen
-        socialLink.rel = "noopener noreferrer"; // Sicherheitsaspekt
-        socialDiv.appendChild(socialLink);
-    } else {
-        socialDiv.textContent = "K.A.";
+    socialDiv.classList.add("db-table-row-item"); // Diese Klasse wird immer hinzugefügt
+
+    const homepageUrl = applicantFieldData["homepage"];
+    let socialLinkRendered = false;
+
+    if (homepageUrl) {
+        const platforms = [
+            { name: "Instagram", icon: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e8d979b71d2a7e5db3_Instagram.svg", keyword: "instagram.com" },
+            { name: "TikTok", icon: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e99dce86c2b6ba83fe_Tiktok.svg", keyword: "tiktok.com" },
+            { name: "YouTube", icon: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e9b00d0480ffe289dc_YouTube.svg", keyword: "youtube.com" } // Allgemeineres Keyword
+        ];
+
+        for (const platform of platforms) {
+            if (homepageUrl.toLowerCase().includes(platform.keyword)) {
+                const socialLink = document.createElement("a");
+                socialLink.href = homepageUrl;
+                socialLink.classList.add("db-application-option", "no-icon", "w-inline-block");
+                socialLink.target = "_blank";
+                socialLink.rel = "noopener noreferrer";
+
+                const iconImg = document.createElement("img");
+                iconImg.src = platform.icon;
+                iconImg.alt = `${platform.name} Profil`;
+                // BENUTZERANFORDERUNG: Klasse für Icon, keine Inline-Styles für Größe
+                iconImg.classList.add("db-icon-18");
+
+                socialLink.appendChild(iconImg);
+                socialDiv.appendChild(socialLink); // Füge den Link zum socialDiv hinzu
+                socialLinkRendered = true;
+                // Es könnte mehrere Links geben, wenn der User z.B. Instagram UND YouTube im Homepage-Feld hat (unwahrscheinlich, aber möglich)
+                // Wenn nur ein Link pro Homepage-URL angezeigt werden soll, hier 'break;' einfügen.
+                // Für den Fall, dass mehrere Icons angezeigt werden sollen, wenn die URL mehrere Keywords enthält (z.B. Linktree mit Verweisen),
+                // müsste die Logik angepasst werden oder mehrere Felder im CMS für Social Media Links genutzt werden.
+                // Aktuell wird nur der erste Treffer angezeigt, wenn 'break;' verwendet wird.
+                // Ohne 'break;' würden alle passenden Icons für dieselbe URL angezeigt, was meist nicht gewünscht ist.
+                // Annahme: Pro Homepage-URL soll nur ein Icon-Typ angezeigt werden.
+                 break;
+            }
+        }
     }
+
+    // BENUTZERANFORDERUNG: Wenn kein spezifischer Social Media Link gefunden wurde, soll nichts ausgegeben werden.
+    // Das socialDiv bleibt leer, wenn socialLinkRendered false ist.
+    // Die Zelle existiert (wegen db-table-row-item), ist aber leer.
     applicantDiv.appendChild(socialDiv);
+
 
     // 5. Spalte: Anzahl der Follower
     const followerDiv = document.createElement("div");
     followerDiv.classList.add("db-table-row-item");
-    followerDiv.textContent = applicantFieldData["creator-follower"] || "K.A."; // Beachte: Könnte eine ID oder kodierter Wert sein
+    followerDiv.textContent = applicantFieldData["creator-follower"] || "K.A.";
     applicantDiv.appendChild(followerDiv);
 
     // 6. Spalte: Alter
     const ageDiv = document.createElement("div");
     ageDiv.classList.add("db-table-row-item");
-    ageDiv.textContent = applicantFieldData["creator-age"] || "K.A."; // Beachte: Könnte eine ID oder kodierter Wert sein
+    ageDiv.textContent = applicantFieldData["creator-age"] || "K.A.";
     applicantDiv.appendChild(ageDiv);
 
     return applicantDiv;
@@ -302,7 +346,7 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         toggleButtonRow.classList.add("applicants-toggle-row");
 
         const toggleDivElement = document.createElement("div");
-        toggleDivElement.classList.add("db-table-applicants"); // Deine gewünschte Klasse
+        toggleDivElement.classList.add("db-table-applicants");
         toggleDivElement.innerHTML = `Bewerberliste <span class="toggle-icon">▼</span>`;
         toggleDivElement.style.cursor = "pointer";
         toggleButtonRow.appendChild(toggleDivElement);
@@ -315,7 +359,6 @@ function renderMyJobsAndApplicants(jobsWithApplicants) {
         if (jobItem.applicants.length > 0) {
             jobItem.applicants.forEach(applicant => {
                 if (applicant && applicant.fieldData) {
-                    // Hier wird die angepasste Funktion createApplicantRowElement verwendet
                     applicantsContainer.appendChild(createApplicantRowElement(applicant.fieldData));
                 }
             });
@@ -404,11 +447,11 @@ async function displayMyJobsAndApplicants() {
         const jobsWithApplicantsPromises = myJobItems.map(async (jobItem) => {
             const jobFieldData = jobItem.fieldData;
             let applicantsData = [];
-            const applicantIds = jobFieldData["bewerber"] || []; // Das Feld in der Job Collection, das auf User Items (Bewerber) verweist
+            const applicantIds = jobFieldData["bewerber"] || [];
 
             if (applicantIds.length > 0) {
                 const applicantPromises = applicantIds.map(applicantId =>
-                    fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId) // Bewerberdaten aus der User Collection laden
+                    fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId)
                 );
                 applicantsData = (await Promise.all(applicantPromises)).filter(applicant => applicant !== null && applicant.fieldData);
             }
