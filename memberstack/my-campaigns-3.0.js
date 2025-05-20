@@ -2,11 +2,11 @@
 
 // 🔧 Konfiguration
 const API_BASE_URL_MJ = "https://api.webflow.com/v2/collections";
-const WORKER_BASE_URL_MJ = "https://bewerbungen.oliver-258.workers.dev/?url="; // Deine Worker URL
+const WORKER_BASE_URL_MJ = "https://meine-kampagnen.oliver-258.workers.dev/"; // ANGEPASST: Neue Worker URL
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3; // Anzahl der Skeleton-Job-Zeilen
-const API_CALL_DELAY_MS = 15; // WICHTIG: Auf ca. 550ms belassen (ca. 109 Anfragen/Minute) um API-Limits einzuhalten.
+const API_CALL_DELAY_MS = 550; // WICHTIG: Auf ca. 550ms belassen (ca. 109 Anfragen/Minute) um API-Limits einzuhalten.
 const MAX_ITEMS_PER_BATCH_REQUEST = 100; // Webflow API Limit für item_ids Parameter
 
 let currentWebflowMemberId_MJ = null;
@@ -74,7 +74,10 @@ const MAPPINGS = {
 
 // --- Hilfsfunktionen ---
 function buildWorkerUrl_MJ(apiUrl) {
-    return `${WORKER_BASE_URL_MJ}${encodeURIComponent(apiUrl)}`;
+    // Stellt sicher, dass die Basis-URL mit einem / endet und der apiUrl korrekt angehängt wird.
+    // Der Worker erwartet den Parameter als ?url=...
+    const baseUrl = WORKER_BASE_URL_MJ.endsWith('/') ? WORKER_BASE_URL_MJ : WORKER_BASE_URL_MJ + '/';
+    return `${baseUrl}?url=${encodeURIComponent(apiUrl)}`;
 }
 
 function delay(ms) {
@@ -99,7 +102,7 @@ async function fetchWebflowCollection(collectionId, params = {}) {
             const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?${queryParams}`;
             const workerUrl = buildWorkerUrl_MJ(apiUrl);
             
-            console.log(`Fetching collection page: ${apiUrl}`);
+            console.log(`Fetching collection page: ${apiUrl} via Worker: ${workerUrl}`);
             await delay(API_CALL_DELAY_MS); 
             const response = await fetch(workerUrl);
 
@@ -133,6 +136,7 @@ async function fetchWebflowItem(collectionId, itemId) {
     const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/${itemId}/live`;
     const workerUrl = buildWorkerUrl_MJ(apiUrl);
     try {
+        console.log(`Fetching single item: ${apiUrl} via Worker: ${workerUrl}`);
         const response = await fetch(workerUrl);
         if (!response.ok) {
             if (response.status === 404) {
@@ -163,7 +167,7 @@ async function fetchMultipleWebflowItems(collectionId, itemIds) {
     const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?item_ids=${itemIdsString}`;
     const workerUrl = buildWorkerUrl_MJ(apiUrl);
 
-    console.log(`Fetching batch of items (IDs: ${itemIdsString.substring(0,150)}...): ${apiUrl}`); // Log gekürzt für Lesbarkeit
+    console.log(`Fetching batch of items (IDs: ${itemIdsString.substring(0,150)}...) via Worker: ${workerUrl}`);
     
     try {
         const response = await fetch(workerUrl);
@@ -337,8 +341,7 @@ function createApplicantRowElement(applicantFieldData) {
         { key: "tiktok", name: "TikTok", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e99dce86c2b6ba83fe_Tiktok.svg" },
         { key: "youtube", name: "YouTube", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e9b00d0480ffe289dc_YouTube.svg" }
     ];
-    // let socialLinksRenderedCount = 0; // Nicht mehr benötigt für Margin
-    socialPlatforms.forEach(platform => {
+    socialPlatforms.forEach(platform => { // socialLinksRenderedCount entfernt, da Margin nicht mehr per JS gesetzt wird
         const platformUrlValue = applicantFieldData[platform.key]; 
         const normalizedPlatformUrl = normalizeUrl(platformUrlValue);
         if (normalizedPlatformUrl) {
@@ -347,14 +350,12 @@ function createApplicantRowElement(applicantFieldData) {
             socialLink.classList.add("db-application-option", "no-icon", "w-inline-block");
             socialLink.target = "_blank";
             socialLink.rel = "noopener noreferrer";
-            // socialLink.style.marginLeft = "8px"; // Entfernt
             const iconImg = document.createElement("img");
             iconImg.src = platform.iconUrl;
             iconImg.alt = `${platform.name} Profil`;
             iconImg.classList.add("db-icon-18");
             socialLink.appendChild(iconImg);
             socialCell.appendChild(socialLink);
-            // socialLinksRenderedCount++; // Nicht mehr benötigt für Margin
         }
     });
     applicantDiv.appendChild(socialCell);
@@ -574,15 +575,12 @@ function renderMyJobsAndApplicants(jobItems) {
         jobWrapper.appendChild(applicantsContainer);
         fragment.appendChild(jobWrapper);
 
-        // Hinzugefügtes Logging zur Überprüfung der IDs beim Erstellen des Event Listeners
         console.log(`RENDER: Setting up click listener for Job ID ${jobItem.id}. Applicant IDs for this job: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
 
         toggleDivElement.addEventListener("click", async () => { 
             const isHidden = applicantsContainer.style.display === "none";
             
-            // Hinzugefügtes Logging beim Klick
             console.log(`CLICK: Job ID ${jobItem.id}. Current applicantIdsForThisSpecificJob in closure: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
-
 
             if (isHidden) { 
                 if (applicantsContainer.dataset.loaded !== 'true') {
@@ -682,7 +680,6 @@ async function displayMyJobsAndApplicants() {
             }
         }
         
-        // Hinzugefügtes Logging zur Überprüfung der Bewerber-IDs pro Job
         console.log("--- Überprüfung der geladenen Job-Daten (myJobItems) ---");
         myJobItems.forEach(job => {
             console.log(`Job ID: ${job.id}, Name: ${job.fieldData.name}, Bewerber IDs im Job-Objekt: ${JSON.stringify(job.fieldData["bewerber"] || [])}`);
