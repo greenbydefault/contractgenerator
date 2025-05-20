@@ -1,4 +1,4 @@
-// 🌐 Optimierte Webflow API Integration für GitHub-Hosting
+ // 🌐 Optimierte Webflow API Integration für GitHub-Hosting
 
 // 🔧 Konfiguration
 const API_BASE_URL_MJ = "https://api.webflow.com/v2/collections";
@@ -6,12 +6,12 @@ const WORKER_BASE_URL_MJ = "https://meine-kampagnen.oliver-258.workers.dev/";
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; 
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; 
 const SKELETON_JOBS_COUNT_MJ = 3;
-const API_CALL_DELAY_MS = 550; 
+const API_CALL_DELAY_MS = 5; 
 let currentApplicantPageSize = 15; 
 
 let currentWebflowMemberId_MJ = null;
 let allMyJobsData_MJ = []; 
-let jobDataCache = {}; // { jobId: { allItems: [], sortedAndFilteredItems: [], activeFilters: {} } }
+let jobDataCache = {}; // { jobId: { allItems: [], sortedAndFilteredItems: [], activeFilters: { follower: [] } } }
 
 
 // --- Mapping-Konfigurationen ---
@@ -27,7 +27,7 @@ const MAPPINGS = {
         "cc74dfe0b4fe308ac66e11ba55419501": "250.000 - 500.000",
         "24bdb369f9cdb37e28678b8d1fba0308": "500.000 - 1.000.000",
         "0f579a02ba3055cf32347301e34ce262": "1.000.000+",
-        "126e325d19f997cd4158ebd2f6bc43c8": "0"
+        "126e325d19f997cd4158ebd2f6bc43c8": "0" // Wird nicht als Filteroption angezeigt
     },
     bundeslaender: {
         "ad69af181ec0a76ead7ca0808f9322d5": "Baden-Württemberg",
@@ -307,96 +307,139 @@ function createApplicantRowElement(applicantFieldData) {
     return applicantDiv;
 }
 
-function createApplicantTableHeaderElement(jobId) { // jobId hinzugefügt für Filter-IDs
+function createApplicantTableHeaderElement() {
     const headerDiv = document.createElement("div");
-    headerDiv.classList.add("db-table-header", "db-table-applicant");
+    headerDiv.classList.add("db-table-header", "db-table-applicant"); 
 
-    const columns = [
-        { text: "Creator", filter: false },
-        { text: "Location", filter: false },
-        { text: "Kategorie", filter: false },
-        { text: "Creator Type", filter: false },
-        { text: "Social Media", filter: false },
-        { text: "Follower", filter: true, filterType: "followerRanges" }, // Filter hier markieren
-        { text: "Alter", filter: false }
-    ];
-
-    columns.forEach(colConfig => {
+    const columns = ["Creator", "Location", "Kategorie", "Creator Type", "Social Media", "Follower", "Alter"];
+    columns.forEach(colText => {
         const colDiv = document.createElement("div");
-        colDiv.classList.add("db-table-row-item"); // Grundklasse für alle Spalten
-
-        if (colConfig.filter && colConfig.filterType === "followerRanges") {
-            colDiv.classList.add("db-table-filter-wrapper"); // Deine Wrapper-Klasse
-
-            const filterText = document.createElement("span");
-            filterText.classList.add("is-txt-16", "is-txt-bold"); // Textklasse
-            filterText.textContent = colConfig.text;
-            colDiv.appendChild(filterText);
-
-            // Hier könnte ein Icon für den Dropdown-Pfeil hinzugefügt werden
-            // const filterIcon = document.createElement("img");
-            // filterIcon.src = "url-zum-dropdown-pfeil.svg";
-            // colDiv.appendChild(filterIcon);
-
-
-            const dropdownList = document.createElement("div");
-            dropdownList.classList.add("db-filter-dropdown-list");
-            dropdownList.style.display = "none"; // Initial versteckt
-
-            Object.entries(MAPPINGS.followerRanges).forEach(([id, rangeText]) => {
-                if (rangeText === "0") return; // "0" nicht als Filteroption anzeigen
-
-                const optionDiv = document.createElement("div");
-                optionDiv.classList.add("db-filter-option");
-
-                const checkbox = document.createElement("input");
-                checkbox.type = "checkbox";
-                checkbox.classList.add("db-filter-checkbox");
-                checkbox.id = `filter-${jobId}-follower-${id}`; // Eindeutige ID
-                checkbox.dataset.filterValue = id;
-                checkbox.dataset.filterType = "follower"; // Typ für spätere Filterlogik
-
-                const label = document.createElement("label");
-                label.htmlFor = checkbox.id;
-                label.classList.add("is-txt-16");
-                label.textContent = rangeText;
-                
-                // Checkbox-Event-Listener (Funktionalität kommt später)
-                checkbox.addEventListener("change", (event) => {
-                    console.log(`Filter geändert: Job ${jobId}, Follower ${id}, Aktiv: ${event.target.checked}`);
-                    // Hier würde die Filterlogik aufgerufen werden
-                    // applyFiltersAndReloadApplicants(jobId);
-                });
-
-                optionDiv.appendChild(checkbox);
-                optionDiv.appendChild(label);
-                dropdownList.appendChild(optionDiv);
-            });
-            colDiv.appendChild(dropdownList);
-
-            // Event Listener zum Öffnen/Schließen des Dropdowns
-            filterText.addEventListener("click", (e) => {
-                e.stopPropagation(); // Verhindert, dass Klick auf andere Elemente durchschlägt
-                dropdownList.style.display = dropdownList.style.display === "none" ? "block" : "none";
-            });
-            // Schließen, wenn außerhalb geklickt wird
-            document.addEventListener("click", (e) => {
-                if (!colDiv.contains(e.target)) {
-                    dropdownList.style.display = "none";
-                }
-            });
-
-
-        } else {
-            // Normale Spaltenüberschrift
-            const textSpan = document.createElement("span");
-            textSpan.classList.add("is-txt-16", "is-txt-bold");
-            textSpan.textContent = colConfig.text;
-            colDiv.appendChild(textSpan);
-        }
+        colDiv.classList.add("db-table-row-item"); 
+        
+        const textSpan = document.createElement("span"); // Text immer in Span für Flexibilität
+        textSpan.classList.add("is-txt-16", "is-txt-bold");
+        textSpan.textContent = colText;
+        colDiv.appendChild(textSpan);
         headerDiv.appendChild(colDiv);
     });
     return headerDiv;
+}
+
+function createFilterRowElement(jobId, applicantsListContainer, paginationWrapper) {
+    const filterRow = document.createElement("div");
+    filterRow.classList.add("db-table-filter-row");
+
+    const filterWrapper = document.createElement("div");
+    filterWrapper.classList.add("db-table-filter-row-wrapper");
+    filterRow.appendChild(filterWrapper);
+
+    // --- Follower Filter ---
+    const followerFilterDiv = document.createElement("div");
+    followerFilterDiv.classList.add("db-individual-filter-trigger"); // Wrapper für einen einzelnen Filter
+
+    const followerFilterText = document.createElement("span");
+    followerFilterText.classList.add("is-txt-16"); // Deine Textklasse
+    followerFilterText.textContent = "Follower";
+    followerFilterDiv.appendChild(followerFilterText);
+
+    const followerFilterIcon = document.createElement("img");
+    followerFilterIcon.src = "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/682c5e5b84cac09c56cdbebe_angle-down-small.svg";
+    followerFilterIcon.classList.add("db-icon-18");
+    followerFilterDiv.appendChild(followerFilterIcon);
+
+    const followerDropdownList = document.createElement("div");
+    followerDropdownList.classList.add("db-filter-dropdown-list");
+    followerDropdownList.style.display = "none"; // Initial versteckt
+
+    Object.entries(MAPPINGS.followerRanges).forEach(([id, rangeText]) => {
+        if (rangeText === "0") return; 
+
+        const optionDiv = document.createElement("div");
+        optionDiv.classList.add("db-filter-option");
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.classList.add("db-filter-checkbox");
+        checkbox.id = `filter-${jobId}-follower-${id}`; 
+        checkbox.dataset.filterValue = id;
+        checkbox.dataset.filterType = "follower"; 
+        
+        // Setze den Haken basierend auf dem Cache, falls vorhanden
+        if (jobDataCache[jobId]?.activeFilters?.follower?.includes(id)) {
+            checkbox.checked = true;
+        }
+
+        const label = document.createElement("label");
+        label.htmlFor = checkbox.id;
+        label.classList.add("is-txt-16");
+        label.textContent = rangeText;
+        
+        checkbox.addEventListener("change", async () => {
+            await applyAndReloadApplicants(jobId, applicantsListContainer, paginationWrapper);
+        });
+
+        optionDiv.appendChild(checkbox);
+        optionDiv.appendChild(label);
+        followerDropdownList.appendChild(optionDiv);
+    });
+    followerFilterDiv.appendChild(followerDropdownList);
+    filterWrapper.appendChild(followerFilterDiv);
+
+    followerFilterDiv.addEventListener("click", (e) => { // Klick auf den gesamten Trigger-Bereich
+        e.stopPropagation(); 
+        // Schließe andere offene Dropdowns für diesen Job
+        const allDropdowns = filterRow.querySelectorAll('.db-filter-dropdown-list');
+        allDropdowns.forEach(dd => {
+            if (dd !== followerDropdownList) dd.style.display = 'none';
+        });
+        followerDropdownList.style.display = followerDropdownList.style.display === "none" ? "block" : "none";
+    });
+
+    // Hier könnten weitere Filter hinzugefügt werden, analog zum Follower-Filter
+
+    // Schließen, wenn außerhalb des spezifischen Dropdowns geklickt wird
+    document.addEventListener("click", (e) => {
+        if (!followerFilterDiv.contains(e.target)) {
+            followerDropdownList.style.display = "none";
+        }
+        // Füge hier ähnliche Logik für andere Filter hinzu, falls vorhanden
+    });
+    
+    return filterRow;
+}
+
+async function applyAndReloadApplicants(jobId, applicantsListContainer, paginationWrapper) {
+    if (!jobDataCache[jobId] || !jobDataCache[jobId].allItems) {
+        console.warn("DEBUG: applyAndReloadApplicants - Keine Rohdaten im Cache für Job", jobId);
+        return;
+    }
+
+    // Aktive Filter sammeln
+    const activeFollowerFilters = [];
+    const followerCheckboxes = applicantsListContainer.parentElement.querySelectorAll(`.db-filter-checkbox[data-filter-type="follower"]:checked`);
+    followerCheckboxes.forEach(cb => activeFollowerFilters.push(cb.dataset.filterValue));
+
+    jobDataCache[jobId].activeFilters = { follower: activeFollowerFilters };
+    console.log(`DEBUG: Job ${jobId} - Aktive Follower-Filter:`, activeFollowerFilters);
+
+    let filteredItems = jobDataCache[jobId].allItems;
+
+    // Follower-Filter anwenden
+    if (activeFollowerFilters.length > 0) {
+        filteredItems = filteredItems.filter(item => {
+            if (item.error || !item.fieldData) return false; // Fehlerhafte Items nicht berücksichtigen
+            const applicantFollowerId = item.fieldData["creator-follower"];
+            return activeFollowerFilters.includes(applicantFollowerId);
+        });
+    }
+    
+    console.log(`DEBUG: Job ${jobId} - Anzahl Items nach Filterung: ${filteredItems.length}`);
+
+
+    jobDataCache[jobId].sortedAndFilteredItems = sortApplicantsGlobally(filteredItems);
+    
+    // Lade Seite 1 der neu gefilterten und sortierten Liste
+    await loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, paginationWrapper, 1);
 }
 
 
@@ -533,45 +576,36 @@ async function fetchAllApplicantsForJob(jobId, applicantIds) {
     const fetchedItems = [];
     let successfulFetches = 0;
     if (applicantIds.length > 0) {
-        // Um die API-Rate-Limits nicht zu überschreiten, laden wir in Chunks mit Delays
-        // oder sequenziell mit Delays. Für globale Sortierung ist sequenziell mit Delay sicherer.
-        for (const applicantId of applicantIds) {
-            // Ein kleinerer Delay hier, da dies ein einmaliger Ladevorgang pro Job ist.
-            // Das Haupt-Delay ist zwischen den Aktionen des Nutzers (Seitenwechsel, Job öffnen).
-            await delay(API_CALL_DELAY_MS / 2); // Z.B. 275ms
-            const item = await fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId);
-            if (item) { 
+        const promises = applicantIds.map((applicantId, index) => 
+            delay(index * (API_CALL_DELAY_MS / 4)) // Gestaffelte Anfragen, um Burst zu vermeiden
+            .then(() => fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId))
+        );
+        const results = await Promise.all(promises);
+        results.forEach(item => {
+            if (item) {
                 fetchedItems.push(item);
                 if (!item.error) successfulFetches++;
             }
-        }
+        });
     }
     console.log(`DEBUG: fetchAllApplicantsForJob END - Job ID: ${jobId}, ${successfulFetches} von ${applicantIds.length} Items erfolgreich geladen.`);
     return fetchedItems;
 }
 
 function sortApplicantsGlobally(applicantItems) {
-    // Erstelle eine Kopie, um das Original nicht zu verändern, falls es woanders noch gebraucht wird
     return [...applicantItems].sort((a, b) => {
-        // Fehlerobjekte und Objekte ohne fieldData ans Ende sortieren
         const aIsValid = a && a.fieldData && !a.error;
         const bIsValid = b && b.fieldData && !b.error;
 
-        if (aIsValid && !bIsValid) return -1; // a ist gültig, b nicht -> a zuerst
-        if (!aIsValid && bIsValid) return 1;  // b ist gültig, a nicht -> b zuerst
-        if (!aIsValid && !bIsValid) return 0; // beide ungültig -> Reihenfolge egal
+        if (aIsValid && !bIsValid) return -1; 
+        if (!aIsValid && bIsValid) return 1;  
+        if (!aIsValid && !bIsValid) return 0; 
 
-        // Beide sind gültige Items, jetzt nach Plus-Status sortieren
         const aIsPlus = a.fieldData["plus-mitglied"] === true;
         const bIsPlus = b.fieldData["plus-mitglied"] === true;
 
-        if (aIsPlus && !bIsPlus) return -1; // a ist Plus, b nicht -> a zuerst
-        if (!aIsPlus && bIsPlus) return 1;  // b ist Plus, a nicht -> b zuerst
-        
-        // Optional: Sekundäre Sortierung, z.B. nach Name, wenn Plus-Status gleich ist
-        // const nameA = a.fieldData.name || '';
-        // const nameB = b.fieldData.name || '';
-        // return nameA.localeCompare(nameB);
+        if (aIsPlus && !bIsPlus) return -1; 
+        if (!aIsPlus && bIsPlus) return 1;  
         return 0; 
     });
 }
@@ -583,15 +617,39 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, pa
     const mainToggleButton = document.querySelector(`.my-job-item[data-job-id="${jobId}"] .db-table-applicants`);
     if (mainToggleButton) mainToggleButton.style.pointerEvents = 'none';
     
-    let applicantsContentElement = applicantsListContainer.querySelector(".actual-applicants-content");
-    if (!applicantsContentElement) {
-        if (!applicantsListContainer.querySelector(".db-table-header.db-table-applicant")) {
-            const headerElement = createApplicantTableHeaderElement(jobId); // jobId übergeben
+    // Sicherstellen, dass Filter- und Header-Zeile existieren, bevor der Inhaltscontainer erstellt/geleert wird
+    if (!applicantsListContainer.querySelector(".db-table-filter-row")) {
+        const filterRowElement = createFilterRowElement(jobId, applicantsListContainer, paginationWrapper);
+        applicantsListContainer.insertBefore(filterRowElement, applicantsListContainer.firstChild);
+    }
+    if (!applicantsListContainer.querySelector(".db-table-header.db-table-applicant")) {
+        const headerElement = createApplicantTableHeaderElement(); 
+        // Füge Header nach der Filterzeile ein, falls vorhanden, sonst am Anfang
+        const filterRow = applicantsListContainer.querySelector(".db-table-filter-row");
+        if (filterRow && filterRow.nextSibling) {
+            applicantsListContainer.insertBefore(headerElement, filterRow.nextSibling);
+        } else if (filterRow) {
+            applicantsListContainer.appendChild(headerElement); // Sollte nicht passieren, wenn filterRow.nextSibling null ist
+        }
+         else {
             applicantsListContainer.insertBefore(headerElement, applicantsListContainer.firstChild);
         }
+    }
+    
+    let applicantsContentElement = applicantsListContainer.querySelector(".actual-applicants-content");
+    if (!applicantsContentElement) {
         applicantsContentElement = document.createElement("div");
         applicantsContentElement.classList.add("actual-applicants-content");
-        applicantsListContainer.appendChild(applicantsContentElement);
+        // Füge den Inhaltscontainer nach dem Header ein
+        const header = applicantsListContainer.querySelector(".db-table-header.db-table-applicant");
+        if (header && header.nextSibling) {
+             applicantsListContainer.insertBefore(applicantsContentElement, header.nextSibling);
+        } else if (header) {
+            applicantsListContainer.appendChild(applicantsContentElement);
+        }
+         else { // Fallback, falls Header aus irgendeinem Grund nicht da ist
+            applicantsListContainer.appendChild(applicantsContentElement);
+        }
     }
     
     applicantsContentElement.innerHTML = ''; 
@@ -604,7 +662,7 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, pa
 
     const jobCache = jobDataCache[jobId];
     if (!jobCache || !jobCache.sortedAndFilteredItems) {
-        console.error(`DEBUG: Keine sortierten/gefilterten Daten im Cache für Job ${jobId} gefunden. Dies sollte nicht passieren, wenn fetchAllApplicantsForJob vorher gelaufen ist.`);
+        console.error(`DEBUG: Keine sortierten/gefilterten Daten im Cache für Job ${jobId}.`);
         loadingMessage.textContent = 'Fehler: Bewerberdaten konnten nicht geladen werden (Cache-Problem).';
         if (mainToggleButton) mainToggleButton.style.pointerEvents = 'auto';
         return;
@@ -631,7 +689,7 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, pa
                     });
                 });
                 validApplicantsRenderedOnThisPage++;
-            } else if (applicant && applicant.error) { // Fehlerobjekte aus fetchAllApplicantsForJob anzeigen
+            } else if (applicant && applicant.error) { 
                 const errorMsg = document.createElement("p");
                 errorMsg.classList.add("applicants-message");
                 if (applicant.status === 429) {
@@ -651,16 +709,15 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, pa
     if (validApplicantsRenderedOnThisPage === 0 && allSortedAndFilteredItems.length > 0 && pageItems.length > 0) {
         const noDataMsg = document.createElement("p");
         noDataMsg.classList.add("applicants-message");
-        noDataMsg.textContent = "Keine gültigen Bewerberdaten für diese Seite gefunden (möglicherweise Ladefehler für alle auf dieser Seite).";
+        noDataMsg.textContent = "Keine gültigen Bewerberdaten für diese Seite gefunden.";
         applicantsContentElement.appendChild(noDataMsg);
     } else if (allSortedAndFilteredItems.length === 0 && jobCache.allItems && jobCache.allItems.length > 0) {
-        // Es gab ursprünglich IDs, aber nach dem Filtern/Laden ist nichts mehr übrig
         const noMatchMsg = document.createElement("p");
         noMatchMsg.classList.add("applicants-message");
         noMatchMsg.textContent = "Keine Bewerber entsprechen den aktuellen Kriterien oder konnten geladen werden.";
         applicantsContentElement.appendChild(noMatchMsg);
         if(paginationWrapper) paginationWrapper.style.display = "none";
-    } else if (allSortedAndFilteredItems.length === 0) { // Generell keine Bewerber (auch keine initialen IDs)
+    } else if (allSortedAndFilteredItems.length === 0) { 
          const noApplicantsMsg = document.createElement("p");
         noApplicantsMsg.classList.add("applicants-message");
         noApplicantsMsg.textContent = "Für diesen Job liegen keine Bewerbungen vor.";
@@ -671,7 +728,7 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, pa
     await renderPaginationControls(jobId, allSortedAndFilteredItems, applicantsContentElement, paginationWrapper, pageNumber, totalPages);
     
     if (mainToggleButton) mainToggleButton.style.pointerEvents = 'auto'; 
-    applicantsListContainer.dataset.allApplicantsLoaded = 'true'; // Beibehalten, da alle Daten für den Job im Cache sind
+    applicantsListContainer.dataset.allApplicantsLoaded = 'true'; 
 }
 
 
@@ -781,7 +838,7 @@ function renderMyJobsAndApplicants(jobItems) {
         const toggleIconImg = document.createElement("img");
         toggleIconImg.src = "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/682c5e5b84cac09c56cdbebe_angle-down-small.svg";
         toggleIconImg.alt = "Toggle Icon";
-        toggleIconImg.classList.add("db-icon-24", "toggle-icon");
+        toggleIconImg.classList.add("db-icon-24", "toggle-icon"); // Deine Klasse für das Icon
 
         toggleDivElement.appendChild(toggleTextSpan);
         toggleDivElement.appendChild(toggleIconImg);
@@ -793,7 +850,7 @@ function renderMyJobsAndApplicants(jobItems) {
         applicantsListContainer.classList.add("applicants-list-container");
         applicantsListContainer.style.display = "none";
         applicantsListContainer.dataset.jobId = jobItem.id; 
-        applicantsListContainer.dataset.allApplicantsLoaded = 'false'; // Markiert, ob alle Bewerber für diesen Job geladen wurden
+        applicantsListContainer.dataset.allApplicantsLoaded = 'false'; 
 
         jobWrapper.appendChild(applicantsListContainer);
         
@@ -814,27 +871,26 @@ function renderMyJobsAndApplicants(jobItems) {
             if (isHidden) {
                 applicantsListContainer.style.display = "block";
                 toggleTextSpan.textContent = "Bewerberliste ausblenden";
-                toggleIconImg.classList.add("icon-up"); // Klasse für CSS-Rotation hinzufügen
+                toggleIconImg.classList.add("icon-up"); 
 
                 if (!allApplicantsLoaded) { 
                     toggleDivElement.style.pointerEvents = 'none';
+                    
+                    // Sicherstellen, dass der applicantsListContainer leer ist, bevor Lade-Nachricht kommt
+                    applicantsListContainer.innerHTML = ''; // Leert Filter, Header, Content falls schon mal was da war
+                    
                     const loadingAllMsg = document.createElement("p");
                     loadingAllMsg.classList.add("applicants-message");
                     loadingAllMsg.textContent = "Lade alle Bewerberdaten für Sortierung...";
-                    
-                    // Leere den Container und füge die Lade-Nachricht ein
-                    // Der Header wird in loadAndDisplayApplicantsForJob hinzugefügt
-                    const contentWrapper = applicantsListContainer.querySelector('.actual-applicants-content') || applicantsListContainer;
-                    contentWrapper.innerHTML = ''; // Leere vorherigen Inhalt oder Header
-                    contentWrapper.appendChild(loadingAllMsg);
+                    applicantsListContainer.appendChild(loadingAllMsg);
 
 
                     const fetchedItems = await fetchAllApplicantsForJob(jobItem.id, applicantIdsForThisSpecificJob);
                     loadingAllMsg.remove();
 
-                    if (!jobDataCache[jobItem.id]) jobDataCache[jobItem.id] = { activeFilters: {} };
-                    jobDataCache[jobItem.id].allItems = fetchedItems; // Rohdaten für Filterung speichern
-                    jobDataCache[jobItem.id].sortedAndFilteredItems = sortApplicantsGlobally(fetchedItems); // Global sortieren
+                    if (!jobDataCache[jobItem.id]) jobDataCache[jobItem.id] = { activeFilters: { follower: [] } }; // Initialisiere Filter
+                    jobDataCache[jobItem.id].allItems = fetchedItems; 
+                    jobDataCache[jobItem.id].sortedAndFilteredItems = sortApplicantsGlobally(fetchedItems); 
                     
                     applicantsListContainer.dataset.allApplicantsLoaded = 'true';
                     await loadAndDisplayApplicantsForJob(jobItem.id, applicantsListContainer, paginationWrapper, 1);
@@ -973,23 +1029,27 @@ function initializePageSizeSelector() {
                 const openApplicantContainer = document.querySelector('.applicants-list-container[style*="display: block"]');
                 if (openApplicantContainer) {
                     const jobId = openApplicantContainer.dataset.jobId;
-                    // const jobData = allMyJobsData_MJ.find(job => job.id === jobId); // Nicht mehr nötig, da jobDataCache verwendet wird
                     const jobCacheEntry = jobDataCache[jobId];
                     const jobWrapper = openApplicantContainer.closest('.my-job-item');
                     const paginationWrapper = jobWrapper ? jobWrapper.querySelector(".db-table-pagination") : null;
                     const toggleDivElement = jobWrapper ? jobWrapper.querySelector(".db-table-applicants") : null;
 
-                    if (jobCacheEntry && jobCacheEntry.allItems && paginationWrapper && toggleDivElement) { // Prüfe auf allItems im Cache
+                    if (jobCacheEntry && jobCacheEntry.allItems && paginationWrapper && toggleDivElement) { 
                         console.log(`DEBUG: Lade Job ${jobId} mit neuer Seitengröße ${currentApplicantPageSize} neu (Seite 1).`);
                         
                         toggleDivElement.style.pointerEvents = 'none';
                         paginationWrapper.querySelectorAll('.db-pagination-count').forEach(el => el.classList.add("disabled-loading"));
                         
-                        // Sortiere die vorhandenen Rohdaten neu (falls Filter aktiv wären, müssten die auch angewendet werden)
-                        jobCacheEntry.sortedAndFilteredItems = sortApplicantsGlobally(jobCacheEntry.allItems);
-                        // Filterlogik würde hier auch greifen, falls implementiert:
-                        // jobCacheEntry.sortedAndFilteredItems = applyAllActiveFilters(sortApplicantsGlobally(jobCacheEntry.allItems), jobCacheEntry.activeFilters);
-
+                        // Wende aktuelle Filter auf die Rohdaten an und sortiere neu
+                        let itemsToDisplay = jobCacheEntry.allItems;
+                        if (jobCacheEntry.activeFilters.follower && jobCacheEntry.activeFilters.follower.length > 0) {
+                            itemsToDisplay = itemsToDisplay.filter(item => {
+                                if (item.error || !item.fieldData) return false;
+                                const applicantFollowerId = item.fieldData["creator-follower"];
+                                return jobCacheEntry.activeFilters.follower.includes(applicantFollowerId);
+                            });
+                        }
+                        jobCacheEntry.sortedAndFilteredItems = sortApplicantsGlobally(itemsToDisplay);
 
                         loadAndDisplayApplicantsForJob(jobId, openApplicantContainer, paginationWrapper, 1) 
                           .finally(() => {
