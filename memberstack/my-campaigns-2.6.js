@@ -6,7 +6,7 @@ const WORKER_BASE_URL_MJ = "https://bewerbungen.oliver-258.workers.dev/?url="; /
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3; // Anzahl der Skeleton-Job-Zeilen
-const API_CALL_DELAY_MS = 5; // Verzögerung auf 550ms (ca. 109 Anfragen/Minute)
+const API_CALL_DELAY_MS = 550; // WICHTIG: Auf ca. 550ms belassen (ca. 109 Anfragen/Minute) um API-Limits einzuhalten.
 const MAX_ITEMS_PER_BATCH_REQUEST = 100; // Webflow API Limit für item_ids Parameter
 
 let currentWebflowMemberId_MJ = null;
@@ -278,13 +278,17 @@ function createApplicantRowElement(applicantFieldData) {
 
     const profileInfoDiv = document.createElement("div");
     profileInfoDiv.classList.add("db-table-row-item", "justify-left");
-    if (applicantFieldData["user-profile-img"]) {
+    
+    // ANGEPASST: Profilbild-Feld geändert
+    const profileImageField = applicantFieldData["image-thumbnail-small-92px"] || applicantFieldData["user-profile-img"]; // Fallback
+    if (profileImageField) {
         const applicantImg = document.createElement("img");
         applicantImg.classList.add("db-table-img", "is-margin-right-12");
-        applicantImg.src = typeof applicantFieldData["user-profile-img"] === 'string' ? applicantFieldData["user-profile-img"] : applicantFieldData["user-profile-img"]?.url;
+        applicantImg.src = typeof profileImageField === 'string' ? profileImageField : profileImageField?.url;
         applicantImg.alt = applicantFieldData.name || "Bewerberbild";
         profileInfoDiv.appendChild(applicantImg);
     }
+
     const namePlusStatusDiv = document.createElement("div");
     namePlusStatusDiv.classList.add("is-flexbox-vertical");
     const nameSpan = document.createElement("span");
@@ -309,7 +313,7 @@ function createApplicantRowElement(applicantFieldData) {
     // Kategorie
     const categoryCell = document.createElement("div");
     categoryCell.classList.add("db-table-row-item");
-    const categoryTag = document.createElement("span"); // Inneres Span für die Klassen
+    const categoryTag = document.createElement("span"); 
     categoryTag.classList.add("job-tag", "customer");
     categoryTag.textContent = applicantFieldData["creator-main-categorie"] || "K.A.";
     categoryCell.appendChild(categoryTag);
