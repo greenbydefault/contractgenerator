@@ -66,7 +66,7 @@ const MAPPINGS = {
         "48e29cee99112e44c5d7cd505e9f2442": "Videograf",
         "29ad386dd5d90248db0ff689bbbbf68d": "Keine Angabe"
     },
-    sprachen: {
+    sprachen: { // Wird aktuell nicht mehr in der UI angezeigt
         "1c8e60afd27397cecf0172584d642461": "Deutsch",
         "c80924ee660d3514aae61540d9b3d114": "Englisch"
     }
@@ -257,13 +257,14 @@ function createApplicantRowElement(applicantFieldData) {
 
     applicantDiv.addEventListener('click', (event) => {
         if (event.target.closest('a.db-application-option')) {
-            return;
+            return; 
         }
-        const profileUrl = normalizeUrl(applicantFieldData["homepage"]); 
-        if (profileUrl) {
+        const slug = applicantFieldData.slug; 
+        if (slug) {
+            const profileUrl = `https://www.creatorjobs.com/members/${slug}`; 
             window.open(profileUrl, '_blank');
         } else {
-            console.warn("Keine Homepage-URL für Bewerber gefunden:", applicantFieldData.name);
+            console.warn("Kein Slug für Bewerber gefunden, kann Profil nicht öffnen:", applicantFieldData.name);
         }
     });
 
@@ -279,8 +280,7 @@ function createApplicantRowElement(applicantFieldData) {
     const profileInfoDiv = document.createElement("div");
     profileInfoDiv.classList.add("db-table-row-item", "justify-left");
     
-    // ANGEPASST: Profilbild-Feld geändert
-    const profileImageField = applicantFieldData["image-thumbnail-small-92px"] || applicantFieldData["user-profile-img"]; // Fallback
+    const profileImageField = applicantFieldData["image-thumbnail-small-92px"] || applicantFieldData["user-profile-img"]; 
     if (profileImageField) {
         const applicantImg = document.createElement("img");
         applicantImg.classList.add("db-table-img", "is-margin-right-12");
@@ -310,7 +310,6 @@ function createApplicantRowElement(applicantFieldData) {
     locationDiv.textContent = `${city}${bundeslandName !== "K.A." ? `, ${bundeslandName}` : ""}`;
     applicantDiv.appendChild(locationDiv);
 
-    // Kategorie
     const categoryCell = document.createElement("div");
     categoryCell.classList.add("db-table-row-item");
     const categoryTag = document.createElement("span"); 
@@ -319,7 +318,6 @@ function createApplicantRowElement(applicantFieldData) {
     categoryCell.appendChild(categoryTag);
     applicantDiv.appendChild(categoryCell);
 
-    // Creator Typ
     const creatorTypeCell = document.createElement("div");
     creatorTypeCell.classList.add("db-table-row-item");
     const creatorTypeTag = document.createElement("span");
@@ -329,17 +327,16 @@ function createApplicantRowElement(applicantFieldData) {
     creatorTypeCell.appendChild(creatorTypeTag);
     applicantDiv.appendChild(creatorTypeCell);
 
-    // Sprache
-    const spracheCell = document.createElement("div");
-    spracheCell.classList.add("db-table-row-item");
-    const spracheTag = document.createElement("span");
-    spracheTag.classList.add("job-tag", "customer");
-    const spracheId = applicantFieldData["sprache"];
-    spracheTag.textContent = MAPPINGS.sprachen[spracheId] || (spracheId ? spracheId : "K.A.");
-    spracheCell.appendChild(spracheTag);
-    applicantDiv.appendChild(spracheCell);
+    // Sprache entfernt
+    // const spracheCell = document.createElement("div");
+    // spracheCell.classList.add("db-table-row-item");
+    // const spracheTag = document.createElement("span");
+    // spracheTag.classList.add("job-tag", "customer");
+    // const spracheId = applicantFieldData["sprache"];
+    // spracheTag.textContent = MAPPINGS.sprachen[spracheId] || (spracheId ? spracheId : "K.A.");
+    // spracheCell.appendChild(spracheTag);
+    // applicantDiv.appendChild(spracheCell);
 
-    // Social Media
     const socialCell = document.createElement("div");
     socialCell.classList.add("db-table-row-item"); 
     const socialPlatforms = [
@@ -347,7 +344,7 @@ function createApplicantRowElement(applicantFieldData) {
         { key: "tiktok", name: "TikTok", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e99dce86c2b6ba83fe_Tiktok.svg" },
         { key: "youtube", name: "YouTube", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e9b00d0480ffe289dc_YouTube.svg" }
     ];
-    let socialLinksRendered = false;
+    let socialLinksRenderedCount = 0; // Zähler für gerenderte Links
     socialPlatforms.forEach(platform => {
         const platformUrlValue = applicantFieldData[platform.key]; 
         const normalizedPlatformUrl = normalizeUrl(platformUrlValue);
@@ -357,8 +354,9 @@ function createApplicantRowElement(applicantFieldData) {
             socialLink.classList.add("db-application-option", "no-icon", "w-inline-block");
             socialLink.target = "_blank";
             socialLink.rel = "noopener noreferrer";
-            if (socialLinksRendered) { 
-                socialLink.style.marginLeft = "8px"; 
+            if (socialLinksRenderedCount > 0) { // Nur Margin hinzufügen, wenn es nicht das erste Icon ist
+                // Margin wird jetzt nicht mehr per Style gesetzt, sondern sollte über CSS-Klassen erfolgen, falls gewünscht.
+                // socialLink.style.marginLeft = "8px"; // Entfernt
             }
             const iconImg = document.createElement("img");
             iconImg.src = platform.iconUrl;
@@ -366,12 +364,11 @@ function createApplicantRowElement(applicantFieldData) {
             iconImg.classList.add("db-icon-18");
             socialLink.appendChild(iconImg);
             socialCell.appendChild(socialLink);
-            socialLinksRendered = true;
+            socialLinksRenderedCount++;
         }
     });
     applicantDiv.appendChild(socialCell);
 
-    // Follower
     const followerCell = document.createElement("div");
     followerCell.classList.add("db-table-row-item");
     const followerTag = document.createElement("span");
@@ -381,7 +378,6 @@ function createApplicantRowElement(applicantFieldData) {
     followerCell.appendChild(followerTag);
     applicantDiv.appendChild(followerCell);
 
-    // Alter
     const ageCell = document.createElement("div");
     ageCell.classList.add("db-table-row-item");
     const ageTag = document.createElement("span");
@@ -592,7 +588,9 @@ function renderMyJobsAndApplicants(jobItems) {
             
             if (isHidden) { 
                 if (applicantsContainer.dataset.loaded !== 'true') {
-                    await loadAndDisplayApplicantsForJob(jobItem.id, applicantIds, applicantsContainer, toggleDivElement);
+                    // Stelle sicher, dass die korrekten, job-spezifischen applicantIds verwendet werden.
+                    const currentJobApplicantIds = jobItem.fieldData["bewerber"] || [];
+                    await loadAndDisplayApplicantsForJob(jobItem.id, currentJobApplicantIds, applicantsContainer, toggleDivElement);
                 } else {
                     applicantsContainer.style.display = "block";
                 }
