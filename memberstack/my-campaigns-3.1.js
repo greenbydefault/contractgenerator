@@ -10,7 +10,7 @@ const API_CALL_DELAY_MS = 550; // WICHTIG: Auf ca. 550ms belassen (ca. 109 Anfra
 const MAX_ITEMS_PER_BATCH_REQUEST = 100; // Webflow API Limit für item_ids Parameter
 
 let currentWebflowMemberId_MJ = null;
-let allMyJobsData_MJ = []; 
+let allMyJobsData_MJ = [];
 
 // --- Mapping-Konfigurationen ---
 const MAPPINGS = {
@@ -25,7 +25,7 @@ const MAPPINGS = {
         "cc74dfe0b4fe308ac66e11ba55419501": "250.000 - 500.000",
         "24bdb369f9cdb37e28678b8d1fba0308": "500.000 - 1.000.000",
         "0f579a02ba3055cf32347301e34ce262": "1.000.000+",
-        "126e325d19f997cd4158ebd2f6bc43c8": "0" 
+        "126e325d19f997cd4158ebd2f6bc43c8": "0"
     },
     bundeslaender: {
         "ad69af181ec0a76ead7ca0808f9322d5": "Baden-Württemberg",
@@ -45,7 +45,7 @@ const MAPPINGS = {
         "d44e3e9bad2c19f3502da1c8d5832311": "Schleswig-Holstein",
         "070d97b7c9dd6ee1e87625e64029b1f2": "Thüringen"
     },
-    laender: { 
+    laender: {
         "ff0fb336a4f4329e373519e2f4f146d0": "Deutschland",
         "f6cdc4f895b295eda5035ecde8a638bc": "Schweiz",
         "4e353955e21323d2805e89a1b5d2f0ed": "Österreich"
@@ -66,7 +66,7 @@ const MAPPINGS = {
         "48e29cee99112e44c5d7cd505e9f2442": "Videograf",
         "29ad386dd5d90248db0ff689bbbbf68d": "Keine Angabe"
     },
-    sprachen: { 
+    sprachen: {
         "1c8e60afd27397cecf0172584d642461": "Deutsch",
         "c80924ee660d3514aae61540d9b3d114": "Englisch"
     }
@@ -74,8 +74,6 @@ const MAPPINGS = {
 
 // --- Hilfsfunktionen ---
 function buildWorkerUrl_MJ(apiUrl) {
-    // Stellt sicher, dass die Basis-URL mit einem / endet und der apiUrl korrekt angehängt wird.
-    // Der Worker erwartet den Parameter als ?url=...
     const baseUrl = WORKER_BASE_URL_MJ.endsWith('/') ? WORKER_BASE_URL_MJ : WORKER_BASE_URL_MJ + '/';
     return `${baseUrl}?url=${encodeURIComponent(apiUrl)}`;
 }
@@ -95,15 +93,15 @@ function normalizeUrl(url) {
 async function fetchWebflowCollection(collectionId, params = {}) {
     let allItems = [];
     let offset = 0;
-    const limit = 100; 
+    const limit = 100;
     try {
         while (true) {
             const queryParams = new URLSearchParams({ ...params, limit: limit.toString(), offset: offset.toString() }).toString();
             const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?${queryParams}`;
             const workerUrl = buildWorkerUrl_MJ(apiUrl);
-            
+
             console.log(`Fetching collection page: ${apiUrl} via Worker: ${workerUrl}`);
-            await delay(API_CALL_DELAY_MS); 
+            await delay(API_CALL_DELAY_MS);
             const response = await fetch(workerUrl);
 
             if (!response.ok) {
@@ -124,7 +122,7 @@ async function fetchWebflowCollection(collectionId, params = {}) {
         return allItems;
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen der Collection ${collectionId}: ${error.message}`);
-        return []; 
+        return [];
     }
 }
 
@@ -145,11 +143,11 @@ async function fetchWebflowItem(collectionId, itemId) {
             }
             const errorText = await response.text();
             console.error(`API-Fehler beim Abrufen von Item ${itemId} aus Collection ${collectionId}: ${response.status} - ${errorText}`);
-             if (response.status === 429) {
+            if (response.status === 429) {
                 console.warn(`Rate limit getroffen bei Item ${itemId}.`);
                 return { error: true, status: 429, message: "Too Many Requests for item " + itemId, id: itemId };
             }
-            return null; 
+            return null;
         }
         return await response.json();
     } catch (error) {
@@ -162,18 +160,18 @@ async function fetchMultipleWebflowItems(collectionId, itemIds) {
     if (!itemIds || itemIds.length === 0) {
         return [];
     }
-    
+
     const itemIdsString = itemIds.slice(0, MAX_ITEMS_PER_BATCH_REQUEST).join(',');
     const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?item_ids=${itemIdsString}`;
     const workerUrl = buildWorkerUrl_MJ(apiUrl);
 
-    console.log(`Fetching batch of items (IDs: ${itemIdsString.substring(0,150)}...) via Worker: ${workerUrl}`);
-    
+    console.log(`DEBUG: Fetching batch of items. Collection: ${collectionId}. Requested IDs (${itemIds.length}): ${itemIdsString.substring(0, 250)}... Worker URL: ${workerUrl}`);
+
     try {
         const response = await fetch(workerUrl);
         if (!response.ok) {
             const errorText = await response.text();
-            console.error(`API-Fehler beim Batch-Abruf von Items aus Collection ${collectionId} (IDs: ${itemIdsString.substring(0,100)}...): ${response.status} - ${errorText}`);
+            console.error(`API-Fehler beim Batch-Abruf von Items aus Collection ${collectionId} (IDs: ${itemIdsString.substring(0, 100)}...): ${response.status} - ${errorText}`);
             if (response.status === 429) {
                 console.warn(`Rate limit getroffen beim Batch-Abruf.`);
                 return itemIds.map(id => ({ error: true, status: 429, message: `Too Many Requests for batch including item ${id}`, id: id }));
@@ -181,8 +179,21 @@ async function fetchMultipleWebflowItems(collectionId, itemIds) {
             return itemIds.map(id => ({ error: true, status: response.status, message: `API Error for batch including item ${id}`, id: id }));
         }
         const data = await response.json();
-        console.log(`Batch fetch for ${itemIds.length} IDs returned ${data.items ? data.items.length : 0} items.`);
-        return data.items || []; 
+        
+        // --- DEBUGGING LOGS START ---
+        console.log(`DEBUG: Batch fetch for ${itemIds.length} requested IDs returned ${data.items ? data.items.length : 0} items.`);
+        if (data.items && data.items.length > 0) {
+            console.log(`DEBUG: First few returned item IDs: ${data.items.slice(0,5).map(item => item.id).join(', ')}`);
+            if (data.items.length > itemIds.length) {
+                console.warn(`DEBUG: WARNUNG! Mehr Items (${data.items.length}) von API erhalten als angefragt (${itemIds.length}). Dies deutet auf ein Filterproblem hin.`);
+            }
+        } else {
+            console.log(`DEBUG: API returned no items or data.items is undefined/empty.`);
+        }
+        console.log(`DEBUG: Full API response structure for batch fetch (first page if paginated by API):`, JSON.parse(JSON.stringify(data))); // Deep copy for logging
+        // --- DEBUGGING LOGS END ---
+
+        return data.items || [];
     } catch (error) {
         console.error(`❌ Netzwerkfehler oder anderer Fehler beim Batch-Abruf (${collectionId}): ${error.message}`);
         return itemIds.map(id => ({ error: true, status: 'network_error', message: `Network Error for batch including item ${id}`, id: id }));
@@ -258,15 +269,15 @@ function renderMyJobsSkeletonLoader(container, count) {
 function createApplicantRowElement(applicantFieldData) {
     const applicantDiv = document.createElement("div");
     applicantDiv.classList.add("db-table-row", "db-table-applicant", "job-entry");
-    applicantDiv.style.cursor = "pointer"; 
+    applicantDiv.style.cursor = "pointer";
 
     applicantDiv.addEventListener('click', (event) => {
         if (event.target.closest('a.db-application-option')) {
-            return; 
+            return;
         }
-        const slug = applicantFieldData.slug; 
+        const slug = applicantFieldData.slug;
         if (slug) {
-            const profileUrl = `https://www.creatorjobs.com/members/${slug}`; 
+            const profileUrl = `https://www.creatorjobs.com/members/${slug}`;
             window.open(profileUrl, '_blank');
         } else {
             console.warn("Kein Slug für Bewerber gefunden, kann Profil nicht öffnen:", applicantFieldData.name);
@@ -284,8 +295,8 @@ function createApplicantRowElement(applicantFieldData) {
 
     const profileInfoDiv = document.createElement("div");
     profileInfoDiv.classList.add("db-table-row-item", "justify-left");
-    
-    const profileImageField = applicantFieldData["image-thumbnail-small-92px"] || applicantFieldData["user-profile-img"]; 
+
+    const profileImageField = applicantFieldData["image-thumbnail-small-92px"] || applicantFieldData["user-profile-img"];
     if (profileImageField) {
         const applicantImg = document.createElement("img");
         applicantImg.classList.add("db-table-img", "is-margin-right-12");
@@ -298,7 +309,7 @@ function createApplicantRowElement(applicantFieldData) {
     namePlusStatusDiv.classList.add("is-flexbox-vertical");
     const nameSpan = document.createElement("span");
     nameSpan.textContent = applicantFieldData.name || "Unbekannter Bewerber";
-    nameSpan.classList.add("truncate"); 
+    nameSpan.classList.add("truncate");
     namePlusStatusDiv.appendChild(nameSpan);
     const plusStatusSpan = document.createElement("span");
     plusStatusSpan.classList.add("is-txt-tiny");
@@ -317,7 +328,7 @@ function createApplicantRowElement(applicantFieldData) {
 
     const categoryCell = document.createElement("div");
     categoryCell.classList.add("db-table-row-item");
-    const categoryTag = document.createElement("span"); 
+    const categoryTag = document.createElement("span");
     categoryTag.classList.add("job-tag", "customer");
     categoryTag.textContent = applicantFieldData["creator-main-categorie"] || "K.A.";
     categoryCell.appendChild(categoryTag);
@@ -332,17 +343,15 @@ function createApplicantRowElement(applicantFieldData) {
     creatorTypeCell.appendChild(creatorTypeTag);
     applicantDiv.appendChild(creatorTypeCell);
 
-    // Sprache wurde entfernt
-
     const socialCell = document.createElement("div");
-    socialCell.classList.add("db-table-row-item"); 
+    socialCell.classList.add("db-table-row-item");
     const socialPlatforms = [
         { key: "instagram", name: "Instagram", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e8d979b71d2a7e5db3_Instagram.svg" },
         { key: "tiktok", name: "TikTok", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e99dce86c2b6ba83fe_Tiktok.svg" },
         { key: "youtube", name: "YouTube", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e9b00d0480ffe289dc_YouTube.svg" }
     ];
-    socialPlatforms.forEach(platform => { // socialLinksRenderedCount entfernt, da Margin nicht mehr per JS gesetzt wird
-        const platformUrlValue = applicantFieldData[platform.key]; 
+    socialPlatforms.forEach(platform => {
+        const platformUrlValue = applicantFieldData[platform.key];
         const normalizedPlatformUrl = normalizeUrl(platformUrlValue);
         if (normalizedPlatformUrl) {
             const socialLink = document.createElement("a");
@@ -382,29 +391,39 @@ function createApplicantRowElement(applicantFieldData) {
 }
 
 async function loadAndDisplayApplicantsForJob(jobId, applicantIdsForThisJob, applicantsContainerElement, toggleElement) {
-    console.log(`Lade Bewerber für Job ${jobId} (IDs: ${applicantIdsForThisJob.join(', ') || 'keine'})...`);
-    toggleElement.style.pointerEvents = 'none'; 
+    console.log(`DEBUG: loadAndDisplayApplicantsForJob START - Job ID: ${jobId}, Erwartete Bewerber IDs (${applicantIdsForThisJob.length}): ${applicantIdsForThisJob.join(', ') || 'keine'}`);
+    toggleElement.style.pointerEvents = 'none';
     applicantsContainerElement.innerHTML = '<p style="padding: 10px; text-align: center;">Lade Bewerberdaten...</p>';
-    applicantsContainerElement.style.display = "block"; 
+    applicantsContainerElement.style.display = "block";
 
     let allFetchedApplicants = [];
-    
+
     if (applicantIdsForThisJob.length > 0) {
         for (let i = 0; i < applicantIdsForThisJob.length; i += MAX_ITEMS_PER_BATCH_REQUEST) {
             const chunk = applicantIdsForThisJob.slice(i, i + MAX_ITEMS_PER_BATCH_REQUEST);
-            console.log(`Fetching chunk ${Math.floor(i / MAX_ITEMS_PER_BATCH_REQUEST) + 1} for job ${jobId} with ${chunk.length} applicant IDs: ${chunk.join(',')}`);
-            await delay(API_CALL_DELAY_MS); 
+            console.log(`DEBUG: Fetching chunk ${Math.floor(i / MAX_ITEMS_PER_BATCH_REQUEST) + 1} for job ${jobId} with ${chunk.length} applicant IDs: ${chunk.join(',')}`);
+            await delay(API_CALL_DELAY_MS);
             const itemsFromBatch = await fetchMultipleWebflowItems(USER_COLLECTION_ID_MJ, chunk);
             if (itemsFromBatch && itemsFromBatch.length > 0) {
                 allFetchedApplicants.push(...itemsFromBatch);
             } else {
-                console.warn(`Batch-Anfrage für Job ${jobId}, Chunk ${i} lieferte keine Items oder Fehler.`);
+                console.warn(`DEBUG: Batch-Anfrage für Job ${jobId}, Chunk ${i} lieferte keine Items oder Fehler.`);
                 chunk.forEach(id => {
                     allFetchedApplicants.push({ id: id, error: true, message: `Daten für Bewerber ${id} im Batch nicht verfügbar.` });
                 });
             }
         }
     }
+    
+    // --- DEBUGGING LOGS START ---
+    console.log(`DEBUG: loadAndDisplayApplicantsForJob - ROHDATEN von fetchMultipleWebflowItems für Job ${jobId} (vor Sortierung/Filterung):`, JSON.parse(JSON.stringify(allFetchedApplicants)));
+    const receivedValidApplicantDataCount = allFetchedApplicants.filter(app => app && app.fieldData && !app.error).length;
+    console.log(`DEBUG: loadAndDisplayApplicantsForJob - Job ID: ${jobId}. Erwartet: ${applicantIdsForThisJob.length} Bewerber. Empfangen mit gültigen fieldData: ${receivedValidApplicantDataCount}. Empfangen insgesamt (inkl. Fehlerobjekte): ${allFetchedApplicants.length}.`);
+    if (applicantIdsForThisJob.length > 0 && receivedValidApplicantDataCount > applicantIdsForThisJob.length) {
+         console.warn(`DEBUG: loadAndDisplayApplicantsForJob - WARNUNG für Job ${jobId}! Mehr gültige Bewerberdaten (${receivedValidApplicantDataCount}) empfangen als spezifische IDs angefragt (${applicantIdsForThisJob.length}).`);
+    }
+    // --- DEBUGGING LOGS END ---
+
 
     allFetchedApplicants.sort((a, b) => {
         if (a.error || !a.fieldData) return 1;
@@ -413,18 +432,18 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantIdsForThisJob, app
         const bIsPlus = b.fieldData["plus-mitglied"] === true;
         if (aIsPlus && !bIsPlus) return -1;
         if (!aIsPlus && bIsPlus) return 1;
-        return 0; 
+        return 0;
     });
 
-    applicantsContainerElement.innerHTML = ''; 
+    applicantsContainerElement.innerHTML = '';
 
     if (allFetchedApplicants.length > 0) {
         let validApplicantsRendered = 0;
         allFetchedApplicants.forEach(applicant => {
-            if (applicant && applicant.fieldData) { 
+            if (applicant && applicant.fieldData) {
                 applicantsContainerElement.appendChild(createApplicantRowElement(applicant.fieldData));
                 validApplicantsRendered++;
-            } else if (applicant && applicant.error) { 
+            } else if (applicant && applicant.error) {
                 const errorMsg = document.createElement("p");
                 errorMsg.style.color = "orange";
                 errorMsg.style.padding = "5px 0";
@@ -439,60 +458,61 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantIdsForThisJob, app
         if (validApplicantsRendered === 0 && allFetchedApplicants.some(app => app.error)) {
             const someErrorOccurred = allFetchedApplicants.some(app => app.error);
             if (someErrorOccurred && !applicantsContainerElement.querySelector('.specific-error-message')) {
-                 const generalErrorMsg = document.createElement("p");
-                 generalErrorMsg.classList.add('specific-error-message');
-                 generalErrorMsg.textContent = "Einige Bewerberdaten konnten nicht geladen werden.";
-                 generalErrorMsg.style.padding = "10px 0";
-                 applicantsContainerElement.appendChild(generalErrorMsg);
+                const generalErrorMsg = document.createElement("p");
+                generalErrorMsg.classList.add('specific-error-message');
+                generalErrorMsg.textContent = "Einige Bewerberdaten konnten nicht geladen werden.";
+                generalErrorMsg.style.padding = "10px 0";
+                applicantsContainerElement.appendChild(generalErrorMsg);
             }
-        } else if (validApplicantsRendered === 0 && applicantIdsForThisJob.length > 0) { 
+        } else if (validApplicantsRendered === 0 && applicantIdsForThisJob.length > 0) {
             const noDataMsg = document.createElement("p");
-            noDataMsg.textContent = "Keine gültigen Bewerberdaten gefunden.";
+            noDataMsg.textContent = "Keine gültigen Bewerberdaten gefunden, obwohl IDs vorhanden waren."; // Präzisere Nachricht
             noDataMsg.style.padding = "10px 0";
             applicantsContainerElement.appendChild(noDataMsg);
-        } else if (validApplicantsRendered === 0 && applicantIdsForThisJob.length === 0) { 
-             const noApplicantsMsg = document.createElement("p");
+        } else if (validApplicantsRendered === 0 && applicantIdsForThisJob.length === 0) {
+            const noApplicantsMsg = document.createElement("p");
             noApplicantsMsg.textContent = "Für diesen Job liegen keine Bewerbungen vor.";
             noApplicantsMsg.style.padding = "10px 0";
             applicantsContainerElement.appendChild(noApplicantsMsg);
         }
-    } else if (applicantIdsForThisJob.length > 0) { 
+    } else if (applicantIdsForThisJob.length > 0) {
         const errorMsg = document.createElement("p");
-        errorMsg.textContent = "Fehler beim Laden der Bewerberdaten. Keine Daten empfangen.";
+        errorMsg.textContent = "Fehler beim Laden der Bewerberdaten. Keine Daten empfangen, obwohl IDs vorhanden waren."; // Präzisere Nachricht
         errorMsg.style.padding = "10px 0";
         applicantsContainerElement.appendChild(errorMsg);
-    } else { 
+    } else {
         const noApplicantsMsg = document.createElement("p");
         noApplicantsMsg.textContent = "Für diesen Job liegen keine Bewerbungen vor.";
         noApplicantsMsg.style.padding = "10px 0";
         applicantsContainerElement.appendChild(noApplicantsMsg);
     }
 
-    applicantsContainerElement.dataset.loaded = 'true'; 
-    toggleElement.style.pointerEvents = 'auto'; 
+    applicantsContainerElement.dataset.loaded = 'true';
+    toggleElement.style.pointerEvents = 'auto';
+    console.log(`DEBUG: loadAndDisplayApplicantsForJob END - Job ID: ${jobId}`);
 }
 
 
-function renderMyJobsAndApplicants(jobItems) { 
+function renderMyJobsAndApplicants(jobItems) {
     const container = document.getElementById("jobs-list");
     if (!container) {
         console.error("❌ Container 'jobs-list' nicht gefunden.");
         return;
     }
-    container.innerHTML = ""; 
+    container.innerHTML = "";
 
     if (jobItems.length === 0) {
         const noJobsMsg = document.createElement("p");
-        noJobsMsg.textContent = "Du hast noch keine Jobs erstellt oder es wurden keine Jobs gefunden."; 
+        noJobsMsg.textContent = "Du hast noch keine Jobs erstellt oder es wurden keine Jobs gefunden.";
         noJobsMsg.classList.add("job-entry", "visible");
         container.appendChild(noJobsMsg);
         return;
     }
 
     const fragment = document.createDocumentFragment();
-    let globalRateLimitMessageShown = false; 
+    let globalRateLimitMessageShown = false;
 
-    jobItems.forEach(jobItem => { 
+    jobItems.forEach(jobItem => {
         if (jobItem.error && jobItem.status === 429) {
             console.warn(`Job (ID: ${jobItem.id || 'unbekannt'}) konnte wegen Rate Limit nicht geladen werden und wird nicht gerendert.`);
             if (!globalRateLimitMessageShown && !document.getElementById('global-rate-limit-message')) {
@@ -503,11 +523,11 @@ function renderMyJobsAndApplicants(jobItems) {
                 globalRateLimitInfo.style.textAlign = "center";
                 globalRateLimitInfo.style.padding = "10px";
                 globalRateLimitInfo.classList.add("job-entry", "visible");
-                if(container.firstChild) container.insertBefore(globalRateLimitInfo, container.firstChild);
+                if (container.firstChild) container.insertBefore(globalRateLimitInfo, container.firstChild);
                 else container.appendChild(globalRateLimitInfo);
                 globalRateLimitMessageShown = true;
             }
-            return; 
+            return;
         }
 
         const jobFieldData = jobItem.fieldData;
@@ -551,7 +571,7 @@ function renderMyJobsAndApplicants(jobItems) {
         if (jobFieldData["job-status"] === "Beendet") statusTag.classList.add("is-bg-light-red");
         statusCell.appendChild(statusTag);
         jobHeaderDiv.appendChild(statusCell);
-        
+
         const applicantIdsForThisSpecificJob = jobFieldData["bewerber"] || [];
         const applicantsCountCell = document.createElement("div");
         applicantsCountCell.classList.add("db-table-row-item");
@@ -567,22 +587,22 @@ function renderMyJobsAndApplicants(jobItems) {
         toggleDivElement.style.cursor = "pointer";
         toggleButtonRow.appendChild(toggleDivElement);
         jobWrapper.appendChild(toggleButtonRow);
-        
+
         const applicantsContainer = document.createElement("div");
         applicantsContainer.classList.add("applicants-list-container");
-        applicantsContainer.style.display = "none"; 
+        applicantsContainer.style.display = "none";
 
         jobWrapper.appendChild(applicantsContainer);
         fragment.appendChild(jobWrapper);
 
         console.log(`RENDER: Setting up click listener for Job ID ${jobItem.id}. Applicant IDs for this job: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
 
-        toggleDivElement.addEventListener("click", async () => { 
+        toggleDivElement.addEventListener("click", async () => {
             const isHidden = applicantsContainer.style.display === "none";
-            
+
             console.log(`CLICK: Job ID ${jobItem.id}. Current applicantIdsForThisSpecificJob in closure: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
 
-            if (isHidden) { 
+            if (isHidden) {
                 if (applicantsContainer.dataset.loaded !== 'true') {
                     await loadAndDisplayApplicantsForJob(jobItem.id, applicantIdsForThisSpecificJob, applicantsContainer, toggleDivElement);
                 } else {
@@ -604,7 +624,7 @@ function renderMyJobsAndApplicants(jobItems) {
     });
 
     container.appendChild(fragment);
-    
+
     requestAnimationFrame(() => {
         container.querySelectorAll(".my-job-item.job-entry").forEach(entry => entry.classList.add("visible"));
     });
@@ -637,7 +657,7 @@ async function displayMyJobsAndApplicants() {
         }
         console.log(`✅ MyJobs: Webflow Member ID: ${currentWebflowMemberId_MJ}`);
 
-        await delay(API_CALL_DELAY_MS); 
+        await delay(API_CALL_DELAY_MS);
         const currentUserItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, currentWebflowMemberId_MJ);
 
         if (!currentUserItem || (currentUserItem.error && currentUserItem.status !== 429)) {
@@ -650,7 +670,7 @@ async function displayMyJobsAndApplicants() {
             container.innerHTML = `<p class='error-message job-entry visible'>Zu viele Anfragen beim Laden der initialen Benutzerdaten. Bitte versuche es später erneut.</p>`;
             return;
         }
-         if (!currentUserItem.fieldData) {
+        if (!currentUserItem.fieldData) {
             console.error("❌ Benutzerdaten des aktuellen Users (fieldData) nicht gefunden.");
             renderMyJobsAndApplicants([]);
             return;
@@ -668,41 +688,51 @@ async function displayMyJobsAndApplicants() {
         let rateLimitHitDuringJobLoading = false;
         for (const jobId of postedJobIds) {
             console.log(`Fetching job item: ${jobId}`);
-            await delay(API_CALL_DELAY_MS); 
+            await delay(API_CALL_DELAY_MS);
             const jobItem = await fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId);
-            if (jobItem && !jobItem.error) { 
+            if (jobItem && !jobItem.error) {
                 myJobItems.push(jobItem);
             } else if (jobItem && jobItem.error && jobItem.status === 429) {
                 console.warn(`Rate limit für Job ${jobId} getroffen. Job wird nicht geladen.`);
+                myJobItems.push(jobItem); // Füge es trotzdem hinzu, damit es als Fehler gerendert werden kann
                 rateLimitHitDuringJobLoading = true;
             } else {
                 console.warn(`Job ${jobId} konnte nicht geladen werden oder hat keine fieldData.`);
+                 myJobItems.push({id: jobId, error: true, message: `Job ${jobId} konnte nicht geladen werden.`}); // Füge Fehlerobjekt hinzu
             }
         }
-        
+
         console.log("--- Überprüfung der geladenen Job-Daten (myJobItems) ---");
         myJobItems.forEach(job => {
-            console.log(`Job ID: ${job.id}, Name: ${job.fieldData.name}, Bewerber IDs im Job-Objekt: ${JSON.stringify(job.fieldData["bewerber"] || [])}`);
+            if (job.error) {
+                 console.log(`Job ID: ${job.id}, Fehler: ${job.message}`);
+            } else if (job.fieldData) {
+                 console.log(`Job ID: ${job.id}, Name: ${job.fieldData.name}, Bewerber IDs im Job-Objekt: ${JSON.stringify(job.fieldData["bewerber"] || [])}`);
+            } else {
+                 console.log(`Job ID: ${job.id}, Unerwarteter Zustand, keine fieldData und kein expliziter Fehler.`);
+            }
         });
         console.log("-----------------------------------------------------");
 
+        const validJobItems = myJobItems.filter(job => job && job.fieldData && !job.error);
+        console.log(`Successfully loaded ${validJobItems.length} valid jobs out of ${postedJobIds.length} posted by this user.`);
 
-        console.log(`Successfully loaded ${myJobItems.length} valid jobs out of ${postedJobIds.length} posted by this user.`);
-
-        if (myJobItems.length === 0 && postedJobIds.length > 0) {
-            let message = "Keine Jobdaten konnten geladen werden. Möglicherweise gab es Verbindungsprobleme.";
+        if (validJobItems.length === 0 && postedJobIds.length > 0) {
+            let message = "Keine gültigen Jobdaten konnten geladen werden. Möglicherweise gab es Verbindungsprobleme oder die Daten sind fehlerhaft.";
             if (rateLimitHitDuringJobLoading) {
                 message = "Einige oder alle Jobdaten konnten aufgrund von API-Limits nicht geladen werden.";
             }
-             container.innerHTML = `<p class='info-message job-entry visible'>${message}</p>`;
-             return; 
-        } else if (myJobItems.length === 0) {
-            renderMyJobsAndApplicants([]); 
+            container.innerHTML = `<p class='info-message job-entry visible'>${message}</p>`;
+            // Optional: Zeige trotzdem die fehlerhaften Job-Einträge an, wenn gewünscht
+            // renderMyJobsAndApplicants(myJobItems.filter(job => job.error)); 
             return;
+        } else if (myJobItems.length === 0) { // Sollte durch vorherige Checks abgedeckt sein, aber zur Sicherheit
+             renderMyJobsAndApplicants([]);
+             return;
         }
         
-        allMyJobsData_MJ = myJobItems; 
-        renderMyJobsAndApplicants(allMyJobsData_MJ); 
+        allMyJobsData_MJ = myJobItems; // Beinhaltet jetzt auch Jobs mit Fehlern für konsistentes Rendering
+        renderMyJobsAndApplicants(allMyJobsData_MJ);
 
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler in displayMyJobsAndApplicants:", error);
