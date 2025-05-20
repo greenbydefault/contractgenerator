@@ -2,12 +2,13 @@
 
 // 🔧 Konfiguration
 const API_BASE_URL_MJ = "https://api.webflow.com/v2/collections";
-const WORKER_BASE_URL_MJ = "https://meine-kampagnen.oliver-258.workers.dev/"; // ANGEPASST: Neue Worker URL
+const WORKER_BASE_URL_MJ = "https://meine-kampagnen.oliver-258.workers.dev/";
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
-const SKELETON_JOBS_COUNT_MJ = 3; // Anzahl der Skeleton-Job-Zeilen
+const SKELETON_JOBS_COUNT_MJ = 3;
 const API_CALL_DELAY_MS = 550; // WICHTIG: Auf ca. 550ms belassen (ca. 109 Anfragen/Minute) um API-Limits einzuhalten.
-const MAX_ITEMS_PER_BATCH_REQUEST = 100; // Webflow API Limit für item_ids Parameter
+// MAX_ITEMS_PER_BATCH_REQUEST wird nicht mehr für Bewerber benötigt, kann aber für andere Zwecke bleiben.
+const MAX_ITEMS_PER_BATCH_REQUEST = 100; 
 
 let currentWebflowMemberId_MJ = null;
 let allMyJobsData_MJ = [];
@@ -134,12 +135,12 @@ async function fetchWebflowItem(collectionId, itemId) {
     const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/${itemId}/live`;
     const workerUrl = buildWorkerUrl_MJ(apiUrl);
     try {
-        console.log(`Fetching single item: ${apiUrl} via Worker: ${workerUrl}`);
+        // console.log(`Fetching single item: ${apiUrl} via Worker: ${workerUrl}`); // Kann bei vielen Aufrufen zu verbose sein
         const response = await fetch(workerUrl);
         if (!response.ok) {
             if (response.status === 404) {
                 console.warn(`Item ${itemId} in Collection ${collectionId} nicht gefunden (404).`);
-                return null;
+                return { id: itemId, error: true, status: 404, message: `Item ${itemId} not found.` }; // Fehlerobjekt zurückgeben
             }
             const errorText = await response.text();
             console.error(`API-Fehler beim Abrufen von Item ${itemId} aus Collection ${collectionId}: ${response.status} - ${errorText}`);
@@ -147,26 +148,26 @@ async function fetchWebflowItem(collectionId, itemId) {
                 console.warn(`Rate limit getroffen bei Item ${itemId}.`);
                 return { error: true, status: 429, message: "Too Many Requests for item " + itemId, id: itemId };
             }
-            return null;
+            return { id: itemId, error: true, status: response.status, message: `API Error for item ${itemId}: ${errorText}` }; // Allgemeines Fehlerobjekt
         }
         return await response.json();
     } catch (error) {
         console.error(`❌ Netzwerkfehler oder anderer Fehler beim Abrufen des Items (${collectionId}/${itemId}): ${error.message}`);
-        return null;
+        return { id: itemId, error: true, status: 'network_error', message: `Network error for item ${itemId}: ${error.message}` }; // Netzwerkfehlerobjekt
     }
 }
 
+// fetchMultipleWebflowItems wird für Bewerber nicht mehr verwendet, da der item_ids Filter nicht greift.
+// Die Funktion kann für andere Zwecke im Code verbleiben, falls benötigt.
+/*
 async function fetchMultipleWebflowItems(collectionId, itemIds) {
     if (!itemIds || itemIds.length === 0) {
         return [];
     }
-
     const itemIdsString = itemIds.slice(0, MAX_ITEMS_PER_BATCH_REQUEST).join(',');
     const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?item_ids=${itemIdsString}`;
     const workerUrl = buildWorkerUrl_MJ(apiUrl);
-
     console.log(`DEBUG: Fetching batch of items. Collection: ${collectionId}. Requested IDs (${itemIds.length}): ${itemIdsString.substring(0, 250)}... Worker URL: ${workerUrl}`);
-
     try {
         const response = await fetch(workerUrl);
         if (!response.ok) {
@@ -179,8 +180,6 @@ async function fetchMultipleWebflowItems(collectionId, itemIds) {
             return itemIds.map(id => ({ error: true, status: response.status, message: `API Error for batch including item ${id}`, id: id }));
         }
         const data = await response.json();
-        
-        // --- DEBUGGING LOGS START ---
         console.log(`DEBUG: Batch fetch for ${itemIds.length} requested IDs returned ${data.items ? data.items.length : 0} items.`);
         if (data.items && data.items.length > 0) {
             console.log(`DEBUG: First few returned item IDs: ${data.items.slice(0,5).map(item => item.id).join(', ')}`);
@@ -190,16 +189,14 @@ async function fetchMultipleWebflowItems(collectionId, itemIds) {
         } else {
             console.log(`DEBUG: API returned no items or data.items is undefined/empty.`);
         }
-        console.log(`DEBUG: Full API response structure for batch fetch (first page if paginated by API):`, JSON.parse(JSON.stringify(data))); // Deep copy for logging
-        // --- DEBUGGING LOGS END ---
-
+        console.log(`DEBUG: Full API response structure for batch fetch (first page if paginated by API):`, JSON.parse(JSON.stringify(data)));
         return data.items || [];
     } catch (error) {
         console.error(`❌ Netzwerkfehler oder anderer Fehler beim Batch-Abruf (${collectionId}): ${error.message}`);
         return itemIds.map(id => ({ error: true, status: 'network_error', message: `Network Error for batch including item ${id}`, id: id }));
     }
 }
-
+*/
 
 // --- Skeleton Loader ---
 function renderMyJobsSkeletonLoader(container, count) {
@@ -393,36 +390,38 @@ function createApplicantRowElement(applicantFieldData) {
 async function loadAndDisplayApplicantsForJob(jobId, applicantIdsForThisJob, applicantsContainerElement, toggleElement) {
     console.log(`DEBUG: loadAndDisplayApplicantsForJob START - Job ID: ${jobId}, Erwartete Bewerber IDs (${applicantIdsForThisJob.length}): ${applicantIdsForThisJob.join(', ') || 'keine'}`);
     toggleElement.style.pointerEvents = 'none';
-    applicantsContainerElement.innerHTML = '<p style="padding: 10px; text-align: center;">Lade Bewerberdaten...</p>';
+    applicantsContainerElement.innerHTML = '<p style="padding: 10px; text-align: center;">Lade Bewerberdaten einzeln...</p>'; // Geänderte Nachricht
     applicantsContainerElement.style.display = "block";
 
     let allFetchedApplicants = [];
 
     if (applicantIdsForThisJob.length > 0) {
-        for (let i = 0; i < applicantIdsForThisJob.length; i += MAX_ITEMS_PER_BATCH_REQUEST) {
-            const chunk = applicantIdsForThisJob.slice(i, i + MAX_ITEMS_PER_BATCH_REQUEST);
-            console.log(`DEBUG: Fetching chunk ${Math.floor(i / MAX_ITEMS_PER_BATCH_REQUEST) + 1} for job ${jobId} with ${chunk.length} applicant IDs: ${chunk.join(',')}`);
-            await delay(API_CALL_DELAY_MS);
-            const itemsFromBatch = await fetchMultipleWebflowItems(USER_COLLECTION_ID_MJ, chunk);
-            if (itemsFromBatch && itemsFromBatch.length > 0) {
-                allFetchedApplicants.push(...itemsFromBatch);
+        console.log(`DEBUG: Lade ${applicantIdsForThisJob.length} Bewerber einzeln für Job ${jobId}.`);
+        for (const applicantId of applicantIdsForThisJob) {
+            await delay(API_CALL_DELAY_MS); // Delay VOR jedem einzelnen API Call
+            console.log(`DEBUG: Rufe Bewerber ${applicantId} für Job ${jobId} einzeln ab.`);
+            const applicantItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId);
+            if (applicantItem) { // fetchWebflowItem gibt null oder ein Fehlerobjekt zurück, wenn etwas schiefgeht
+                allFetchedApplicants.push(applicantItem);
             } else {
-                console.warn(`DEBUG: Batch-Anfrage für Job ${jobId}, Chunk ${i} lieferte keine Items oder Fehler.`);
-                chunk.forEach(id => {
-                    allFetchedApplicants.push({ id: id, error: true, message: `Daten für Bewerber ${id} im Batch nicht verfügbar.` });
-                });
+                // Sollte durch Fehlerobjekte von fetchWebflowItem abgedeckt sein, aber zur Sicherheit:
+                console.warn(`DEBUG: fetchWebflowItem für ID ${applicantId} gab null zurück.`);
+                allFetchedApplicants.push({ id: applicantId, error: true, message: `Daten für Bewerber ${applicantId} nicht abrufbar (null response).` });
             }
         }
     }
     
-    // --- DEBUGGING LOGS START ---
-    console.log(`DEBUG: loadAndDisplayApplicantsForJob - ROHDATEN von fetchMultipleWebflowItems für Job ${jobId} (vor Sortierung/Filterung):`, JSON.parse(JSON.stringify(allFetchedApplicants)));
+    console.log(`DEBUG: loadAndDisplayApplicantsForJob - ROHDATEN nach individuellem Laden für Job ${jobId}:`, JSON.parse(JSON.stringify(allFetchedApplicants)));
     const receivedValidApplicantDataCount = allFetchedApplicants.filter(app => app && app.fieldData && !app.error).length;
-    console.log(`DEBUG: loadAndDisplayApplicantsForJob - Job ID: ${jobId}. Erwartet: ${applicantIdsForThisJob.length} Bewerber. Empfangen mit gültigen fieldData: ${receivedValidApplicantDataCount}. Empfangen insgesamt (inkl. Fehlerobjekte): ${allFetchedApplicants.length}.`);
+    console.log(`DEBUG: loadAndDisplayApplicantsForJob - Job ID: ${jobId}. Erwartet: ${applicantIdsForThisJob.length} Bewerber. Empfangen mit gültigen fieldData (nach individuellem Laden): ${receivedValidApplicantDataCount}. Empfangen insgesamt (inkl. Fehlerobjekte): ${allFetchedApplicants.length}.`);
+    
+    // Diese Warnung sollte jetzt nicht mehr auftreten, da wir die exakte Anzahl erwarten
     if (applicantIdsForThisJob.length > 0 && receivedValidApplicantDataCount > applicantIdsForThisJob.length) {
-         console.warn(`DEBUG: loadAndDisplayApplicantsForJob - WARNUNG für Job ${jobId}! Mehr gültige Bewerberdaten (${receivedValidApplicantDataCount}) empfangen als spezifische IDs angefragt (${applicantIdsForThisJob.length}).`);
+         console.warn(`DEBUG: loadAndDisplayApplicantsForJob - WARNUNG für Job ${jobId}! Mehr gültige Bewerberdaten (${receivedValidApplicantDataCount}) empfangen als spezifische IDs angefragt (${applicantIdsForThisJob.length}). Dies sollte bei individuellem Laden nicht passieren.`);
     }
-    // --- DEBUGGING LOGS END ---
+     if (applicantIdsForThisJob.length > 0 && receivedValidApplicantDataCount < applicantIdsForThisJob.length) {
+         console.warn(`DEBUG: loadAndDisplayApplicantsForJob - HINWEIS für Job ${jobId}: Weniger gültige Bewerberdaten (${receivedValidApplicantDataCount}) empfangen als spezifische IDs angefragt (${applicantIdsForThisJob.length}). Einige Bewerber konnten nicht geladen werden oder existieren nicht.`);
+    }
 
 
     allFetchedApplicants.sort((a, b) => {
@@ -440,7 +439,7 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantIdsForThisJob, app
     if (allFetchedApplicants.length > 0) {
         let validApplicantsRendered = 0;
         allFetchedApplicants.forEach(applicant => {
-            if (applicant && applicant.fieldData) {
+            if (applicant && applicant.fieldData && !applicant.error) { // Stelle sicher, dass es kein Fehlerobjekt ist
                 applicantsContainerElement.appendChild(createApplicantRowElement(applicant.fieldData));
                 validApplicantsRendered++;
             } else if (applicant && applicant.error) {
@@ -449,38 +448,40 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantIdsForThisJob, app
                 errorMsg.style.padding = "5px 0";
                 if (applicant.status === 429) {
                     errorMsg.textContent = `Bewerberdaten (ID: ${applicant.id}) konnten wegen API-Limits nicht geladen werden.`;
-                } else {
+                } else if (applicant.status === 404) {
+                     errorMsg.textContent = `Bewerber (ID: ${applicant.id}) wurde nicht gefunden.`;
+                }
+                else {
                     errorMsg.textContent = applicant.message || `Daten für Bewerber ${applicant.id || 'unbekannt'} konnten nicht geladen werden.`;
                 }
                 applicantsContainerElement.appendChild(errorMsg);
             }
         });
-        if (validApplicantsRendered === 0 && allFetchedApplicants.some(app => app.error)) {
-            const someErrorOccurred = allFetchedApplicants.some(app => app.error);
-            if (someErrorOccurred && !applicantsContainerElement.querySelector('.specific-error-message')) {
-                const generalErrorMsg = document.createElement("p");
-                generalErrorMsg.classList.add('specific-error-message');
-                generalErrorMsg.textContent = "Einige Bewerberdaten konnten nicht geladen werden.";
-                generalErrorMsg.style.padding = "10px 0";
-                applicantsContainerElement.appendChild(generalErrorMsg);
-            }
-        } else if (validApplicantsRendered === 0 && applicantIdsForThisJob.length > 0) {
-            const noDataMsg = document.createElement("p");
-            noDataMsg.textContent = "Keine gültigen Bewerberdaten gefunden, obwohl IDs vorhanden waren."; // Präzisere Nachricht
-            noDataMsg.style.padding = "10px 0";
-            applicantsContainerElement.appendChild(noDataMsg);
+
+        if (validApplicantsRendered === 0 && applicantIdsForThisJob.length > 0) {
+             if (allFetchedApplicants.some(app => app.error)) {
+                // Fehlermeldungen für einzelne Bewerber wurden bereits angezeigt.
+                // Man könnte hier eine zusätzliche allgemeine Meldung hinzufügen, wenn gewünscht.
+                console.log(`DEBUG: Job ${jobId}: Keine validen Bewerber gerendert, aber es gab Fehler beim Laden einzelner Bewerber.`);
+             } else {
+                // Dieser Fall sollte selten sein, wenn IDs da sind, aber keine Fehler und keine validen Daten.
+                const noDataMsg = document.createElement("p");
+                noDataMsg.textContent = "Keine gültigen Bewerberdaten gefunden, obwohl IDs vorhanden waren und keine Ladefehler auftraten.";
+                noDataMsg.style.padding = "10px 0";
+                applicantsContainerElement.appendChild(noDataMsg);
+             }
         } else if (validApplicantsRendered === 0 && applicantIdsForThisJob.length === 0) {
             const noApplicantsMsg = document.createElement("p");
             noApplicantsMsg.textContent = "Für diesen Job liegen keine Bewerbungen vor.";
             noApplicantsMsg.style.padding = "10px 0";
             applicantsContainerElement.appendChild(noApplicantsMsg);
         }
-    } else if (applicantIdsForThisJob.length > 0) {
+    } else if (applicantIdsForThisJob.length > 0) { // Keine Items in allFetchedApplicants, aber IDs waren da
         const errorMsg = document.createElement("p");
-        errorMsg.textContent = "Fehler beim Laden der Bewerberdaten. Keine Daten empfangen, obwohl IDs vorhanden waren."; // Präzisere Nachricht
+        errorMsg.textContent = "Fehler beim Laden der Bewerberdaten. Keine Daten empfangen, obwohl IDs vorhanden waren (alle Abrufe fehlgeschlagen).";
         errorMsg.style.padding = "10px 0";
         applicantsContainerElement.appendChild(errorMsg);
-    } else {
+    } else { // Keine IDs und keine Items
         const noApplicantsMsg = document.createElement("p");
         noApplicantsMsg.textContent = "Für diesen Job liegen keine Bewerbungen vor.";
         noApplicantsMsg.style.padding = "10px 0";
@@ -513,7 +514,8 @@ function renderMyJobsAndApplicants(jobItems) {
     let globalRateLimitMessageShown = false;
 
     jobItems.forEach(jobItem => {
-        if (jobItem.error && jobItem.status === 429) {
+        // Fehlerbehandlung für Jobs, die aufgrund von Rate Limits nicht geladen werden konnten
+        if (jobItem.error && jobItem.status === 429 && jobItem.message && jobItem.message.startsWith("Too Many Requests for item")) {
             console.warn(`Job (ID: ${jobItem.id || 'unbekannt'}) konnte wegen Rate Limit nicht geladen werden und wird nicht gerendert.`);
             if (!globalRateLimitMessageShown && !document.getElementById('global-rate-limit-message')) {
                 const globalRateLimitInfo = document.createElement("p");
@@ -527,12 +529,24 @@ function renderMyJobsAndApplicants(jobItems) {
                 else container.appendChild(globalRateLimitInfo);
                 globalRateLimitMessageShown = true;
             }
-            return;
+            return; // Job nicht rendern
         }
+        
+        // Behandlung für andere Job-Ladefehler
+        if (jobItem.error && (!jobItem.status || jobItem.status !== 429)) {
+             console.warn(`Job (ID: ${jobItem.id || 'unbekannt'}) konnte nicht geladen werden: ${jobItem.message}. Er wird nicht gerendert.`);
+             // Optional: Eine Platzhalter-Nachricht für diesen spezifischen fehlerhaften Job rendern
+             // const errorJobDiv = document.createElement("div");
+             // errorJobDiv.classList.add("my-job-item", "job-entry", "job-error");
+             // errorJobDiv.textContent = `Job ${jobItem.id || 'unbekannt'} konnte nicht geladen werden.`;
+             // fragment.appendChild(errorJobDiv);
+             return; // Job nicht rendern
+        }
+
 
         const jobFieldData = jobItem.fieldData;
         if (!jobFieldData) {
-            console.warn("Job-Item ohne fieldData übersprungen:", jobItem);
+            console.warn("Job-Item ohne fieldData übersprungen (oder war ein Fehlerobjekt ohne fieldData):", jobItem);
             return;
         }
 
@@ -595,12 +609,12 @@ function renderMyJobsAndApplicants(jobItems) {
         jobWrapper.appendChild(applicantsContainer);
         fragment.appendChild(jobWrapper);
 
-        console.log(`RENDER: Setting up click listener for Job ID ${jobItem.id}. Applicant IDs for this job: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
+        // console.log(`RENDER: Setting up click listener for Job ID ${jobItem.id}. Applicant IDs for this job: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
 
         toggleDivElement.addEventListener("click", async () => {
             const isHidden = applicantsContainer.style.display === "none";
 
-            console.log(`CLICK: Job ID ${jobItem.id}. Current applicantIdsForThisSpecificJob in closure: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
+            // console.log(`CLICK: Job ID ${jobItem.id}. Current applicantIdsForThisSpecificJob in closure: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
 
             if (isHidden) {
                 if (applicantsContainer.dataset.loaded !== 'true') {
@@ -626,7 +640,7 @@ function renderMyJobsAndApplicants(jobItems) {
     container.appendChild(fragment);
 
     requestAnimationFrame(() => {
-        container.querySelectorAll(".my-job-item.job-entry").forEach(entry => entry.classList.add("visible"));
+        container.querySelectorAll(".my-job-item.job-entry:not(.job-error)").forEach(entry => entry.classList.add("visible"));
     });
 }
 
@@ -660,7 +674,7 @@ async function displayMyJobsAndApplicants() {
         await delay(API_CALL_DELAY_MS);
         const currentUserItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, currentWebflowMemberId_MJ);
 
-        if (!currentUserItem || (currentUserItem.error && currentUserItem.status !== 429)) {
+        if (!currentUserItem || (currentUserItem.error && currentUserItem.status !== 429 && currentUserItem.status !== 404) ) { // 404 ist ok, wenn User noch keine Jobs hat
             console.error("❌ Benutzerdaten des aktuellen Users nicht gefunden oder kritischer Fehler beim Abruf.", currentUserItem);
             container.innerHTML = `<p class='error-message job-entry visible'>Benutzerdaten des aktuellen Users konnten nicht geladen werden.</p>`;
             return;
@@ -670,13 +684,13 @@ async function displayMyJobsAndApplicants() {
             container.innerHTML = `<p class='error-message job-entry visible'>Zu viele Anfragen beim Laden der initialen Benutzerdaten. Bitte versuche es später erneut.</p>`;
             return;
         }
-        if (!currentUserItem.fieldData) {
-            console.error("❌ Benutzerdaten des aktuellen Users (fieldData) nicht gefunden.");
-            renderMyJobsAndApplicants([]);
+         if (!currentUserItem.fieldData && !(currentUserItem.error && currentUserItem.status === 404)) { // Wenn kein fieldData UND kein 404 Fehler
+            console.error("❌ Benutzerdaten des aktuellen Users (fieldData) nicht gefunden, obwohl User existiert.", currentUserItem);
+            renderMyJobsAndApplicants([]); // Zeige "keine Jobs" an, da Userdaten unvollständig sind
             return;
         }
-
-        const postedJobIds = currentUserItem.fieldData["posted-jobs"] || [];
+        
+        const postedJobIds = currentUserItem.fieldData ? currentUserItem.fieldData["posted-jobs"] || [] : [];
         console.log(`User hat ${postedJobIds.length} Jobs im Feld 'posted-jobs'.`);
 
         if (postedJobIds.length === 0) {
@@ -685,53 +699,50 @@ async function displayMyJobsAndApplicants() {
         }
 
         let myJobItems = [];
-        let rateLimitHitDuringJobLoading = false;
+        // let rateLimitHitDuringJobLoading = false; // Wird jetzt in renderMyJobsAndApplicants gehandhabt
         for (const jobId of postedJobIds) {
             console.log(`Fetching job item: ${jobId}`);
             await delay(API_CALL_DELAY_MS);
             const jobItem = await fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId);
-            if (jobItem && !jobItem.error) {
+            
+            // jobItem kann ein gültiges Item, ein Fehlerobjekt oder null (bei 404, was hier ein Fehler wäre) sein
+            if (jobItem && jobItem.fieldData && !jobItem.error) {
                 myJobItems.push(jobItem);
-            } else if (jobItem && jobItem.error && jobItem.status === 429) {
-                console.warn(`Rate limit für Job ${jobId} getroffen. Job wird nicht geladen.`);
-                myJobItems.push(jobItem); // Füge es trotzdem hinzu, damit es als Fehler gerendert werden kann
-                rateLimitHitDuringJobLoading = true;
-            } else {
-                console.warn(`Job ${jobId} konnte nicht geladen werden oder hat keine fieldData.`);
-                 myJobItems.push({id: jobId, error: true, message: `Job ${jobId} konnte nicht geladen werden.`}); // Füge Fehlerobjekt hinzu
+            } else if (jobItem && jobItem.error) {
+                 console.warn(`Fehler beim Laden von Job ${jobId}: ${jobItem.message}. Status: ${jobItem.status}`);
+                 myJobItems.push(jobItem); // Füge Fehlerobjekt hinzu, um es später zu behandeln
+            }
+            else { // jobItem ist null oder hat keine fieldData und keinen expliziten Fehler (z.B. 404 für einen Job)
+                console.warn(`Job ${jobId} konnte nicht geladen werden (möglicherweise nicht gefunden oder unerwartete Antwort).`);
+                 myJobItems.push({id: jobId, error: true, status: (jobItem && jobItem.status) || 'unknown_error', message: `Job ${jobId} konnte nicht interpretiert werden.`});
             }
         }
 
         console.log("--- Überprüfung der geladenen Job-Daten (myJobItems) ---");
         myJobItems.forEach(job => {
             if (job.error) {
-                 console.log(`Job ID: ${job.id}, Fehler: ${job.message}`);
+                 console.log(`Job ID: ${job.id}, Fehler: ${job.message}, Status: ${job.status}`);
             } else if (job.fieldData) {
                  console.log(`Job ID: ${job.id}, Name: ${job.fieldData.name}, Bewerber IDs im Job-Objekt: ${JSON.stringify(job.fieldData["bewerber"] || [])}`);
             } else {
-                 console.log(`Job ID: ${job.id}, Unerwarteter Zustand, keine fieldData und kein expliziter Fehler.`);
+                 console.log(`Job ID: ${job.id}, Unerwarteter Zustand, keine fieldData und kein expliziter Fehler (sollte durch obige Logik abgedeckt sein).`);
             }
         });
         console.log("-----------------------------------------------------");
 
         const validJobItems = myJobItems.filter(job => job && job.fieldData && !job.error);
         console.log(`Successfully loaded ${validJobItems.length} valid jobs out of ${postedJobIds.length} posted by this user.`);
-
-        if (validJobItems.length === 0 && postedJobIds.length > 0) {
-            let message = "Keine gültigen Jobdaten konnten geladen werden. Möglicherweise gab es Verbindungsprobleme oder die Daten sind fehlerhaft.";
-            if (rateLimitHitDuringJobLoading) {
-                message = "Einige oder alle Jobdaten konnten aufgrund von API-Limits nicht geladen werden.";
-            }
-            container.innerHTML = `<p class='info-message job-entry visible'>${message}</p>`;
-            // Optional: Zeige trotzdem die fehlerhaften Job-Einträge an, wenn gewünscht
-            // renderMyJobsAndApplicants(myJobItems.filter(job => job.error)); 
-            return;
-        } else if (myJobItems.length === 0) { // Sollte durch vorherige Checks abgedeckt sein, aber zur Sicherheit
-             renderMyJobsAndApplicants([]);
-             return;
-        }
         
-        allMyJobsData_MJ = myJobItems; // Beinhaltet jetzt auch Jobs mit Fehlern für konsistentes Rendering
+        // Die Logik, ob eine Fehlermeldung angezeigt wird, wenn keine validen Jobs geladen wurden,
+        // ist nun primär in renderMyJobsAndApplicants, basierend auf den übergebenen Items.
+        if (myJobItems.length === 0 && postedJobIds.length > 0) {
+             // Dieser Fall sollte selten sein, da wir Fehlerobjekte in myJobItems behalten.
+             // Aber falls doch, eine generische Meldung.
+            container.innerHTML = `<p class='info-message job-entry visible'>Keine Jobdaten konnten geladen oder verarbeitet werden.</p>`;
+            return;
+        }
+
+        allMyJobsData_MJ = myJobItems; 
         renderMyJobsAndApplicants(allMyJobsData_MJ);
 
     } catch (error) {
