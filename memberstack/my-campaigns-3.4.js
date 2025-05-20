@@ -6,12 +6,12 @@ const WORKER_BASE_URL_MJ = "https://meine-kampagnen.oliver-258.workers.dev/";
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3;
-const API_CALL_DELAY_MS = 550; // WICHTIG: Auf ca. 550ms belassen (ca. 109 Anfragen/Minute) um API-Limits einzuhalten.
-// MAX_ITEMS_PER_BATCH_REQUEST wird nicht mehr für Bewerber benötigt, kann aber für andere Zwecke bleiben.
-const MAX_ITEMS_PER_BATCH_REQUEST = 100; 
+const API_CALL_DELAY_MS = 550; 
+// const MAX_ITEMS_PER_BATCH_REQUEST = 100; // Nicht mehr primär für Bewerberladung genutzt
+let currentApplicantPageSize = 15; // Standard-Seitengröße, später anpassbar
 
 let currentWebflowMemberId_MJ = null;
-let allMyJobsData_MJ = [];
+let allMyJobsData_MJ = []; // Speichert die geladenen Job-Items
 
 // --- Mapping-Konfigurationen ---
 const MAPPINGS = {
@@ -91,56 +91,19 @@ function normalizeUrl(url) {
     return `https://${url}`;
 }
 
-async function fetchWebflowCollection(collectionId, params = {}) {
-    let allItems = [];
-    let offset = 0;
-    const limit = 100;
-    try {
-        while (true) {
-            const queryParams = new URLSearchParams({ ...params, limit: limit.toString(), offset: offset.toString() }).toString();
-            const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?${queryParams}`;
-            const workerUrl = buildWorkerUrl_MJ(apiUrl);
-
-            console.log(`Fetching collection page: ${apiUrl} via Worker: ${workerUrl}`);
-            await delay(API_CALL_DELAY_MS);
-            const response = await fetch(workerUrl);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`API-Fehler (Collection ${collectionId}, Offset ${offset}): ${response.status} - ${errorText}`);
-                if (response.status === 429) {
-                    console.warn(`Rate limit getroffen bei Collection fetch.`);
-                }
-                throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
-            }
-            const data = await response.json();
-            allItems = allItems.concat(data.items || []);
-            if ((data.items && data.items.length < limit) || !data.items || data.items.length === 0) {
-                break;
-            }
-            offset += limit;
-        }
-        return allItems;
-    } catch (error) {
-        console.error(`❌ Fehler beim Abrufen der Collection ${collectionId}: ${error.message}`);
-        return [];
-    }
-}
-
 async function fetchWebflowItem(collectionId, itemId) {
     if (!itemId) {
         console.warn(`Ungültige Item-ID für Collection ${collectionId} übergeben.`);
-        return null;
+        return null; // Rückgabe null, damit der Aufrufer dies prüfen kann
     }
     const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/${itemId}/live`;
     const workerUrl = buildWorkerUrl_MJ(apiUrl);
     try {
-        // console.log(`Fetching single item: ${apiUrl} via Worker: ${workerUrl}`); // Kann bei vielen Aufrufen zu verbose sein
         const response = await fetch(workerUrl);
         if (!response.ok) {
             if (response.status === 404) {
                 console.warn(`Item ${itemId} in Collection ${collectionId} nicht gefunden (404).`);
-                return { id: itemId, error: true, status: 404, message: `Item ${itemId} not found.` }; // Fehlerobjekt zurückgeben
+                return { id: itemId, error: true, status: 404, message: `Item ${itemId} not found.` };
             }
             const errorText = await response.text();
             console.error(`API-Fehler beim Abrufen von Item ${itemId} aus Collection ${collectionId}: ${response.status} - ${errorText}`);
@@ -148,55 +111,14 @@ async function fetchWebflowItem(collectionId, itemId) {
                 console.warn(`Rate limit getroffen bei Item ${itemId}.`);
                 return { error: true, status: 429, message: "Too Many Requests for item " + itemId, id: itemId };
             }
-            return { id: itemId, error: true, status: response.status, message: `API Error for item ${itemId}: ${errorText}` }; // Allgemeines Fehlerobjekt
+            return { id: itemId, error: true, status: response.status, message: `API Error for item ${itemId}: ${errorText}` };
         }
         return await response.json();
     } catch (error) {
         console.error(`❌ Netzwerkfehler oder anderer Fehler beim Abrufen des Items (${collectionId}/${itemId}): ${error.message}`);
-        return { id: itemId, error: true, status: 'network_error', message: `Network error for item ${itemId}: ${error.message}` }; // Netzwerkfehlerobjekt
+        return { id: itemId, error: true, status: 'network_error', message: `Network error for item ${itemId}: ${error.message}` };
     }
 }
-
-// fetchMultipleWebflowItems wird für Bewerber nicht mehr verwendet, da der item_ids Filter nicht greift.
-// Die Funktion kann für andere Zwecke im Code verbleiben, falls benötigt.
-/*
-async function fetchMultipleWebflowItems(collectionId, itemIds) {
-    if (!itemIds || itemIds.length === 0) {
-        return [];
-    }
-    const itemIdsString = itemIds.slice(0, MAX_ITEMS_PER_BATCH_REQUEST).join(',');
-    const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?item_ids=${itemIdsString}`;
-    const workerUrl = buildWorkerUrl_MJ(apiUrl);
-    console.log(`DEBUG: Fetching batch of items. Collection: ${collectionId}. Requested IDs (${itemIds.length}): ${itemIdsString.substring(0, 250)}... Worker URL: ${workerUrl}`);
-    try {
-        const response = await fetch(workerUrl);
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`API-Fehler beim Batch-Abruf von Items aus Collection ${collectionId} (IDs: ${itemIdsString.substring(0, 100)}...): ${response.status} - ${errorText}`);
-            if (response.status === 429) {
-                console.warn(`Rate limit getroffen beim Batch-Abruf.`);
-                return itemIds.map(id => ({ error: true, status: 429, message: `Too Many Requests for batch including item ${id}`, id: id }));
-            }
-            return itemIds.map(id => ({ error: true, status: response.status, message: `API Error for batch including item ${id}`, id: id }));
-        }
-        const data = await response.json();
-        console.log(`DEBUG: Batch fetch for ${itemIds.length} requested IDs returned ${data.items ? data.items.length : 0} items.`);
-        if (data.items && data.items.length > 0) {
-            console.log(`DEBUG: First few returned item IDs: ${data.items.slice(0,5).map(item => item.id).join(', ')}`);
-            if (data.items.length > itemIds.length) {
-                console.warn(`DEBUG: WARNUNG! Mehr Items (${data.items.length}) von API erhalten als angefragt (${itemIds.length}). Dies deutet auf ein Filterproblem hin.`);
-            }
-        } else {
-            console.log(`DEBUG: API returned no items or data.items is undefined/empty.`);
-        }
-        console.log(`DEBUG: Full API response structure for batch fetch (first page if paginated by API):`, JSON.parse(JSON.stringify(data)));
-        return data.items || [];
-    } catch (error) {
-        console.error(`❌ Netzwerkfehler oder anderer Fehler beim Batch-Abruf (${collectionId}): ${error.message}`);
-        return itemIds.map(id => ({ error: true, status: 'network_error', message: `Network Error for batch including item ${id}`, id: id }));
-    }
-}
-*/
 
 // --- Skeleton Loader ---
 function renderMyJobsSkeletonLoader(container, count) {
@@ -221,18 +143,18 @@ function renderMyJobsSkeletonLoader(container, count) {
         skeletonPayment.classList.add("skeleton-element", "skeleton-text", "skeleton-text-short");
         paymentDiv.appendChild(skeletonPayment);
         jobHeader.appendChild(paymentDiv);
-        const skeletonPlaceholder1 = document.createElement("div");
-        skeletonPlaceholder1.classList.add("db-table-row-item");
+        const placeholder1 = document.createElement("div"); // Renamed from skeletonPlaceholder1
+        placeholder1.classList.add("db-table-row-item");
         const skeletonText1 = document.createElement("div");
         skeletonText1.classList.add("skeleton-element", "skeleton-text", "skeleton-text-medium");
-        skeletonPlaceholder1.appendChild(skeletonText1);
-        jobHeader.appendChild(skeletonPlaceholder1);
-        const skeletonPlaceholder2 = document.createElement("div");
-        skeletonPlaceholder2.classList.add("db-table-row-item");
+        placeholder1.appendChild(skeletonText1);
+        jobHeader.appendChild(placeholder1);
+        const placeholder2 = document.createElement("div"); // Renamed from skeletonPlaceholder2
+        placeholder2.classList.add("db-table-row-item");
         const skeletonText2 = document.createElement("div");
         skeletonText2.classList.add("skeleton-element", "skeleton-text", "skeleton-text-short");
-        skeletonPlaceholder2.appendChild(skeletonText2);
-        jobHeader.appendChild(skeletonPlaceholder2);
+        placeholder2.appendChild(skeletonText2);
+        jobHeader.appendChild(placeholder2);
         const categoryDiv = document.createElement("div");
         categoryDiv.classList.add("db-table-row-item");
         const skeletonCategory = document.createElement("div");
@@ -252,12 +174,13 @@ function renderMyJobsSkeletonLoader(container, count) {
         applicantsCountDiv.appendChild(skeletonApplicantsCount);
         jobHeader.appendChild(applicantsCountDiv);
         jobWrapper.appendChild(jobHeader);
-        const skeletonToggleRow = document.createElement("div");
-        skeletonToggleRow.classList.add("applicants-toggle-row-skeleton", "skeleton-element");
-        skeletonToggleRow.style.height = "30px";
-        skeletonToggleRow.style.width = "150px";
-        skeletonToggleRow.style.margin = "10px auto";
-        jobWrapper.appendChild(skeletonToggleRow);
+        // Skeleton für Pagination-Bereich (optional, aber gut für UX)
+        const skeletonPaginationRow = document.createElement("div");
+        skeletonPaginationRow.classList.add("applicants-toggle-row-skeleton", "skeleton-element"); // Wiederverwendung der Klasse
+        skeletonPaginationRow.style.height = "30px";
+        skeletonPaginationRow.style.width = "200px"; // Etwas breiter für Paginierung
+        skeletonPaginationRow.style.margin = "10px auto";
+        jobWrapper.appendChild(skeletonPaginationRow);
         container.appendChild(jobWrapper);
     }
 }
@@ -387,44 +310,102 @@ function createApplicantRowElement(applicantFieldData) {
     return applicantDiv;
 }
 
-async function loadAndDisplayApplicantsForJob(jobId, applicantIdsForThisJob, applicantsContainerElement, toggleElement) {
-    console.log(`DEBUG: loadAndDisplayApplicantsForJob START - Job ID: ${jobId}, Erwartete Bewerber IDs (${applicantIdsForThisJob.length}): ${applicantIdsForThisJob.join(', ') || 'keine'}`);
-    toggleElement.style.pointerEvents = 'none';
-    applicantsContainerElement.innerHTML = '<p style="padding: 10px; text-align: center;">Lade Bewerberdaten einzeln...</p>'; // Geänderte Nachricht
-    applicantsContainerElement.style.display = "block";
+async function renderPaginationControls(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, currentPage, totalPages) {
+    if (!paginationWrapper) {
+        console.warn(`DEBUG: Kein Pagination Wrapper für Job ${jobId} gefunden.`);
+        return;
+    }
+    paginationWrapper.innerHTML = ''; // Bestehende Controls löschen
 
-    let allFetchedApplicants = [];
+    if (totalPages <= 1) { // Keine Controls nötig, wenn nur eine Seite oder keine Seiten
+        return;
+    }
 
-    if (applicantIdsForThisJob.length > 0) {
-        console.log(`DEBUG: Lade ${applicantIdsForThisJob.length} Bewerber einzeln für Job ${jobId}.`);
-        for (const applicantId of applicantIdsForThisJob) {
-            await delay(API_CALL_DELAY_MS); // Delay VOR jedem einzelnen API Call
-            console.log(`DEBUG: Rufe Bewerber ${applicantId} für Job ${jobId} einzeln ab.`);
+    // "Zurück" Button
+    const prevButton = document.createElement("a");
+    prevButton.href = "#"; // Für Webflow-Styling, JS verhindert Standardaktion
+    prevButton.classList.add("db-pagination-count", "button-prev"); // Eigene Klasse für Styling
+    prevButton.textContent = "Zurück";
+    if (currentPage === 1) {
+        prevButton.classList.add("disabled"); // Klasse für deaktiviertes Aussehen
+        prevButton.style.pointerEvents = "none"; // Klick verhindern
+        prevButton.style.opacity = "0.5";
+    } else {
+        prevButton.addEventListener("click", async (e) => {
+            e.preventDefault();
+            prevButton.style.pointerEvents = "none"; // Klick während des Ladens verhindern
+            prevButton.textContent = "Lade...";
+            await loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, currentPage - 1);
+        });
+    }
+    paginationWrapper.appendChild(prevButton);
+
+    // Seitenanzeige (z.B. "Seite 1 von 3")
+    const pageInfo = document.createElement("div");
+    pageInfo.classList.add("db-pagination-count", "page-info"); // Eigene Klasse für Styling
+    pageInfo.textContent = `Seite ${currentPage} von ${totalPages}`;
+    pageInfo.style.margin = "0 10px"; // Etwas Abstand
+    paginationWrapper.appendChild(pageInfo);
+
+    // "Weiter" Button
+    const nextButton = document.createElement("a");
+    nextButton.href = "#";
+    nextButton.classList.add("db-pagination-count", "button-next"); // Eigene Klasse für Styling
+    nextButton.textContent = "Weiter";
+    if (currentPage === totalPages) {
+        nextButton.classList.add("disabled");
+        nextButton.style.pointerEvents = "none";
+        nextButton.style.opacity = "0.5";
+    } else {
+        nextButton.addEventListener("click", async (e) => {
+            e.preventDefault();
+            nextButton.style.pointerEvents = "none";
+            nextButton.textContent = "Lade...";
+            await loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, currentPage + 1);
+        });
+    }
+    paginationWrapper.appendChild(nextButton);
+}
+
+
+async function loadAndDisplayApplicantsForJob(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, pageNumber = 1) {
+    console.log(`DEBUG: loadAndDisplayApplicantsForJob START - Job ID: ${jobId}, Page: ${pageNumber}, PageSize: ${currentApplicantPageSize}`);
+    
+    // Haupt-Toggle-Button während des Ladens deaktivieren (falls er noch nicht deaktiviert ist)
+    const mainToggleButton = document.querySelector(`.my-job-item [data-job-id="${jobId}"] .db-table-applicants`);
+    if (mainToggleButton) mainToggleButton.style.pointerEvents = 'none';
+
+
+    applicantsContainerElement.innerHTML = ''; // Leere den Container für die neue Seite
+    applicantsContainerElement.dataset.currentPage = pageNumber;
+
+
+    const loadingMessage = document.createElement("p");
+    loadingMessage.classList.add("applicants-message");
+    loadingMessage.style.padding = "20px";
+    loadingMessage.style.textAlign = "center";
+    loadingMessage.textContent = `Lade Bewerber (Seite ${pageNumber})...`;
+    applicantsContainerElement.appendChild(loadingMessage);
+
+    const offset = (pageNumber - 1) * currentApplicantPageSize;
+    const idsToFetch = allApplicantIdsForThisJob.slice(offset, offset + currentApplicantPageSize);
+    let fetchedApplicantsDetails = [];
+
+    if (idsToFetch.length > 0) {
+        console.log(`DEBUG: Lade Seite ${pageNumber} für Job ${jobId}. Offset: ${offset}, Anzahl: ${idsToFetch.length}. IDs: ${idsToFetch.join(', ')}`);
+        for (const applicantId of idsToFetch) {
+            await delay(API_CALL_DELAY_MS);
             const applicantItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId);
-            if (applicantItem) { // fetchWebflowItem gibt null oder ein Fehlerobjekt zurück, wenn etwas schiefgeht
-                allFetchedApplicants.push(applicantItem);
-            } else {
-                // Sollte durch Fehlerobjekte von fetchWebflowItem abgedeckt sein, aber zur Sicherheit:
-                console.warn(`DEBUG: fetchWebflowItem für ID ${applicantId} gab null zurück.`);
-                allFetchedApplicants.push({ id: applicantId, error: true, message: `Daten für Bewerber ${applicantId} nicht abrufbar (null response).` });
-            }
+            if (applicantItem) { // fetchWebflowItem gibt immer ein Objekt zurück (Item oder Fehlerobjekt)
+                fetchedApplicantsDetails.push(applicantItem);
+            } 
+            // Der Fall, dass applicantItem null ist, sollte durch fetchWebflowItem nicht mehr auftreten
         }
     }
-    
-    console.log(`DEBUG: loadAndDisplayApplicantsForJob - ROHDATEN nach individuellem Laden für Job ${jobId}:`, JSON.parse(JSON.stringify(allFetchedApplicants)));
-    const receivedValidApplicantDataCount = allFetchedApplicants.filter(app => app && app.fieldData && !app.error).length;
-    console.log(`DEBUG: loadAndDisplayApplicantsForJob - Job ID: ${jobId}. Erwartet: ${applicantIdsForThisJob.length} Bewerber. Empfangen mit gültigen fieldData (nach individuellem Laden): ${receivedValidApplicantDataCount}. Empfangen insgesamt (inkl. Fehlerobjekte): ${allFetchedApplicants.length}.`);
-    
-    // Diese Warnung sollte jetzt nicht mehr auftreten, da wir die exakte Anzahl erwarten
-    if (applicantIdsForThisJob.length > 0 && receivedValidApplicantDataCount > applicantIdsForThisJob.length) {
-         console.warn(`DEBUG: loadAndDisplayApplicantsForJob - WARNUNG für Job ${jobId}! Mehr gültige Bewerberdaten (${receivedValidApplicantDataCount}) empfangen als spezifische IDs angefragt (${applicantIdsForThisJob.length}). Dies sollte bei individuellem Laden nicht passieren.`);
-    }
-     if (applicantIdsForThisJob.length > 0 && receivedValidApplicantDataCount < applicantIdsForThisJob.length) {
-         console.warn(`DEBUG: loadAndDisplayApplicantsForJob - HINWEIS für Job ${jobId}: Weniger gültige Bewerberdaten (${receivedValidApplicantDataCount}) empfangen als spezifische IDs angefragt (${applicantIdsForThisJob.length}). Einige Bewerber konnten nicht geladen werden oder existieren nicht.`);
-    }
 
+    loadingMessage.remove(); 
 
-    allFetchedApplicants.sort((a, b) => {
+    fetchedApplicantsDetails.sort((a, b) => {
         if (a.error || !a.fieldData) return 1;
         if (b.error || !b.fieldData) return -1;
         const aIsPlus = a.fieldData["plus-mitglied"] === true;
@@ -433,64 +414,60 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantIdsForThisJob, app
         if (!aIsPlus && bIsPlus) return 1;
         return 0;
     });
-
-    applicantsContainerElement.innerHTML = '';
-
-    if (allFetchedApplicants.length > 0) {
-        let validApplicantsRendered = 0;
-        allFetchedApplicants.forEach(applicant => {
-            if (applicant && applicant.fieldData && !applicant.error) { // Stelle sicher, dass es kein Fehlerobjekt ist
-                applicantsContainerElement.appendChild(createApplicantRowElement(applicant.fieldData));
-                validApplicantsRendered++;
-            } else if (applicant && applicant.error) {
-                const errorMsg = document.createElement("p");
-                errorMsg.style.color = "orange";
-                errorMsg.style.padding = "5px 0";
-                if (applicant.status === 429) {
-                    errorMsg.textContent = `Bewerberdaten (ID: ${applicant.id}) konnten wegen API-Limits nicht geladen werden.`;
-                } else if (applicant.status === 404) {
-                     errorMsg.textContent = `Bewerber (ID: ${applicant.id}) wurde nicht gefunden.`;
-                }
-                else {
-                    errorMsg.textContent = applicant.message || `Daten für Bewerber ${applicant.id || 'unbekannt'} konnten nicht geladen werden.`;
-                }
-                applicantsContainerElement.appendChild(errorMsg);
+    
+    let validApplicantsRenderedOnThisPage = 0;
+    fetchedApplicantsDetails.forEach(applicant => {
+        if (applicant && applicant.fieldData && !applicant.error) {
+            const applicantRow = createApplicantRowElement(applicant.fieldData);
+            applicantsContainerElement.appendChild(applicantRow);
+            requestAnimationFrame(() => { // Fade-in für neue Zeilen
+                applicantRow.style.opacity = 0;
+                requestAnimationFrame(() => {
+                    applicantRow.style.transition = "opacity 0.3s ease-in-out";
+                    applicantRow.style.opacity = 1;
+                });
+            });
+            validApplicantsRenderedOnThisPage++;
+        } else if (applicant && applicant.error) {
+            const errorMsg = document.createElement("p");
+            errorMsg.classList.add("applicants-message");
+            errorMsg.style.color = "orange";
+            errorMsg.style.padding = "5px 0";
+            errorMsg.style.textAlign = "center";
+            if (applicant.status === 429) {
+                errorMsg.textContent = `Bewerberdaten (ID: ${applicant.id}) konnten wegen API-Limits nicht geladen werden.`;
+            } else if (applicant.status === 404) {
+                errorMsg.textContent = `Bewerber (ID: ${applicant.id}) wurde nicht gefunden.`;
+            } else {
+                errorMsg.textContent = applicant.message || `Daten für Bewerber ${applicant.id || 'unbekannt'} konnten nicht geladen werden.`;
             }
-        });
-
-        if (validApplicantsRendered === 0 && applicantIdsForThisJob.length > 0) {
-             if (allFetchedApplicants.some(app => app.error)) {
-                // Fehlermeldungen für einzelne Bewerber wurden bereits angezeigt.
-                // Man könnte hier eine zusätzliche allgemeine Meldung hinzufügen, wenn gewünscht.
-                console.log(`DEBUG: Job ${jobId}: Keine validen Bewerber gerendert, aber es gab Fehler beim Laden einzelner Bewerber.`);
-             } else {
-                // Dieser Fall sollte selten sein, wenn IDs da sind, aber keine Fehler und keine validen Daten.
-                const noDataMsg = document.createElement("p");
-                noDataMsg.textContent = "Keine gültigen Bewerberdaten gefunden, obwohl IDs vorhanden waren und keine Ladefehler auftraten.";
-                noDataMsg.style.padding = "10px 0";
-                applicantsContainerElement.appendChild(noDataMsg);
-             }
-        } else if (validApplicantsRendered === 0 && applicantIdsForThisJob.length === 0) {
-            const noApplicantsMsg = document.createElement("p");
-            noApplicantsMsg.textContent = "Für diesen Job liegen keine Bewerbungen vor.";
-            noApplicantsMsg.style.padding = "10px 0";
-            applicantsContainerElement.appendChild(noApplicantsMsg);
+            applicantsContainerElement.appendChild(errorMsg);
         }
-    } else if (applicantIdsForThisJob.length > 0) { // Keine Items in allFetchedApplicants, aber IDs waren da
-        const errorMsg = document.createElement("p");
-        errorMsg.textContent = "Fehler beim Laden der Bewerberdaten. Keine Daten empfangen, obwohl IDs vorhanden waren (alle Abrufe fehlgeschlagen).";
-        errorMsg.style.padding = "10px 0";
-        applicantsContainerElement.appendChild(errorMsg);
-    } else { // Keine IDs und keine Items
+    });
+    
+    console.log(`DEBUG: Job ${jobId}, Seite ${pageNumber}: ${validApplicantsRenderedOnThisPage} Bewerber gerendert.`);
+
+    if (validApplicantsRenderedOnThisPage === 0 && allApplicantIdsForThisJob.length > 0 && idsToFetch.length > 0) {
+        const noDataMsg = document.createElement("p");
+        noDataMsg.classList.add("applicants-message");
+        noDataMsg.textContent = "Keine gültigen Bewerberdaten für diese Seite gefunden.";
+        noDataMsg.style.padding = "10px 0";
+        noDataMsg.style.textAlign = "center";
+        applicantsContainerElement.appendChild(noDataMsg);
+    } else if (allApplicantIdsForThisJob.length === 0) {
         const noApplicantsMsg = document.createElement("p");
+        noApplicantsMsg.classList.add("applicants-message");
         noApplicantsMsg.textContent = "Für diesen Job liegen keine Bewerbungen vor.";
         noApplicantsMsg.style.padding = "10px 0";
+        noApplicantsMsg.style.textAlign = "center";
         applicantsContainerElement.appendChild(noApplicantsMsg);
     }
-
-    applicantsContainerElement.dataset.loaded = 'true';
-    toggleElement.style.pointerEvents = 'auto';
-    console.log(`DEBUG: loadAndDisplayApplicantsForJob END - Job ID: ${jobId}`);
+    
+    const totalPages = Math.ceil(allApplicantIdsForThisJob.length / currentApplicantPageSize);
+    await renderPaginationControls(jobId, allApplicantIdsForThisJob, applicantsContainerElement, paginationWrapper, pageNumber, totalPages);
+    
+    if (mainToggleButton) mainToggleButton.style.pointerEvents = 'auto'; // Haupt-Toggle wieder aktivieren
+    applicantsContainerElement.dataset.initialPageLoaded = 'true'; // Markieren, dass die erste Seite geladen wurde (oder eine Seite)
 }
 
 
@@ -514,8 +491,7 @@ function renderMyJobsAndApplicants(jobItems) {
     let globalRateLimitMessageShown = false;
 
     jobItems.forEach(jobItem => {
-        // Fehlerbehandlung für Jobs, die aufgrund von Rate Limits nicht geladen werden konnten
-        if (jobItem.error && jobItem.status === 429 && jobItem.message && jobItem.message.startsWith("Too Many Requests for item")) {
+        if (jobItem.error && jobItem.status === 429) { 
             console.warn(`Job (ID: ${jobItem.id || 'unbekannt'}) konnte wegen Rate Limit nicht geladen werden und wird nicht gerendert.`);
             if (!globalRateLimitMessageShown && !document.getElementById('global-rate-limit-message')) {
                 const globalRateLimitInfo = document.createElement("p");
@@ -529,31 +505,27 @@ function renderMyJobsAndApplicants(jobItems) {
                 else container.appendChild(globalRateLimitInfo);
                 globalRateLimitMessageShown = true;
             }
-            return; // Job nicht rendern
+            return; 
         }
         
-        // Behandlung für andere Job-Ladefehler
-        if (jobItem.error && (!jobItem.status || jobItem.status !== 429)) {
+        if (jobItem.error) { 
              console.warn(`Job (ID: ${jobItem.id || 'unbekannt'}) konnte nicht geladen werden: ${jobItem.message}. Er wird nicht gerendert.`);
-             // Optional: Eine Platzhalter-Nachricht für diesen spezifischen fehlerhaften Job rendern
-             // const errorJobDiv = document.createElement("div");
-             // errorJobDiv.classList.add("my-job-item", "job-entry", "job-error");
-             // errorJobDiv.textContent = `Job ${jobItem.id || 'unbekannt'} konnte nicht geladen werden.`;
-             // fragment.appendChild(errorJobDiv);
-             return; // Job nicht rendern
+             return; 
         }
-
 
         const jobFieldData = jobItem.fieldData;
         if (!jobFieldData) {
-            console.warn("Job-Item ohne fieldData übersprungen (oder war ein Fehlerobjekt ohne fieldData):", jobItem);
+            console.warn("Job-Item ohne fieldData übersprungen:", jobItem);
             return;
         }
 
         const jobWrapper = document.createElement("div");
         jobWrapper.classList.add("my-job-item", "job-entry");
+        jobWrapper.dataset.jobId = jobItem.id; // Job-ID am Wrapper speichern
+
         const jobHeaderDiv = document.createElement("div");
         jobHeaderDiv.classList.add("db-table-row", "db-table-my-job");
+        
         const jobInfoDataCell = document.createElement("div");
         jobInfoDataCell.classList.add("db-table-row-item", "justify-left");
         if (jobFieldData["job-image"]?.url || jobFieldData["job-image"]) {
@@ -568,14 +540,17 @@ function renderMyJobsAndApplicants(jobItems) {
         jobNameSpan.textContent = jobFieldData.name || "Unbenannter Job";
         jobInfoDataCell.appendChild(jobNameSpan);
         jobHeaderDiv.appendChild(jobInfoDataCell);
+
         const paymentCell = document.createElement("div");
         paymentCell.classList.add("db-table-row-item");
         paymentCell.textContent = jobFieldData["job-payment"] ? `${jobFieldData["job-payment"]} €` : "K.A.";
         jobHeaderDiv.appendChild(paymentCell);
+
         const categoryCell = document.createElement("div");
         categoryCell.classList.add("db-table-row-item");
         categoryCell.textContent = jobFieldData["industrie-kategorie"] || "K.A.";
         jobHeaderDiv.appendChild(categoryCell);
+
         const statusCell = document.createElement("div");
         statusCell.classList.add("db-table-row-item");
         const statusTag = document.createElement("div");
@@ -594,10 +569,10 @@ function renderMyJobsAndApplicants(jobItems) {
 
         jobWrapper.appendChild(jobHeaderDiv);
         const toggleButtonRow = document.createElement("div");
-        toggleButtonRow.classList.add("applicants-toggle-row");
+        toggleButtonRow.classList.add("applicants-toggle-row"); // Behält die Klasse für Styling
         const toggleDivElement = document.createElement("div");
-        toggleDivElement.classList.add("db-table-applicants");
-        toggleDivElement.innerHTML = `Bewerberliste <span class="toggle-icon">▼</span>`;
+        toggleDivElement.classList.add("db-table-applicants"); // Deine Klasse für den Klick-Bereich
+        toggleDivElement.innerHTML = `Bewerberliste anzeigen <span class="toggle-icon">▼</span>`;
         toggleDivElement.style.cursor = "pointer";
         toggleButtonRow.appendChild(toggleDivElement);
         jobWrapper.appendChild(toggleButtonRow);
@@ -605,34 +580,42 @@ function renderMyJobsAndApplicants(jobItems) {
         const applicantsContainer = document.createElement("div");
         applicantsContainer.classList.add("applicants-list-container");
         applicantsContainer.style.display = "none";
+        applicantsContainer.dataset.jobId = jobItem.id; 
+        applicantsContainer.dataset.initialPageLoaded = 'false'; // Wichtig für Erstladung
 
         jobWrapper.appendChild(applicantsContainer);
-        fragment.appendChild(jobWrapper);
+        
+        // Finde den von Webflow vorbereiteten Pagination-Wrapper
+        // Annahme: Er ist ein direktes Kind von jobWrapper oder zumindest leicht auffindbar.
+        // Wenn er nicht existiert, wird er dynamisch erstellt.
+        let paginationWrapper = jobWrapper.querySelector(".db-table-pagination");
+        if (!paginationWrapper) {
+            console.warn(`Kein .db-table-pagination für Job ${jobItem.id} in Webflow gefunden. Erstelle dynamisch.`);
+            paginationWrapper = document.createElement("div");
+            paginationWrapper.classList.add("db-table-pagination");
+            jobWrapper.appendChild(paginationWrapper); // Füge ihn am Ende des JobWrappers hinzu
+        }
+        paginationWrapper.style.display = "none"; // Initial ausblenden
 
-        // console.log(`RENDER: Setting up click listener for Job ID ${jobItem.id}. Applicant IDs for this job: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
+        fragment.appendChild(jobWrapper);
 
         toggleDivElement.addEventListener("click", async () => {
             const isHidden = applicantsContainer.style.display === "none";
-
-            // console.log(`CLICK: Job ID ${jobItem.id}. Current applicantIdsForThisSpecificJob in closure: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
+            const initialPageLoaded = applicantsContainer.dataset.initialPageLoaded === 'true';
 
             if (isHidden) {
-                if (applicantsContainer.dataset.loaded !== 'true') {
-                    await loadAndDisplayApplicantsForJob(jobItem.id, applicantIdsForThisSpecificJob, applicantsContainer, toggleDivElement);
-                } else {
-                    applicantsContainer.style.display = "block";
+                applicantsContainer.style.display = "block";
+                paginationWrapper.style.display = "flex"; // Oder "block", je nach gewünschtem Layout
+                toggleDivElement.innerHTML = `Bewerberliste ausblenden <span class="toggle-icon">▲</span>`;
+                if (!initialPageLoaded) { 
+                    toggleDivElement.style.pointerEvents = 'none';
+                    await loadAndDisplayApplicantsForJob(jobItem.id, applicantIdsForThisSpecificJob, applicantsContainer, paginationWrapper, 1);
+                    toggleDivElement.style.pointerEvents = 'auto';
                 }
             } else {
                 applicantsContainer.style.display = "none";
-            }
-            toggleDivElement.querySelector(".toggle-icon").textContent = applicantsContainer.style.display === "none" ? "▼" : "▲";
-
-            if (applicantsContainer.style.display === "block") {
-                const applicantEntries = applicantsContainer.querySelectorAll(".job-entry");
-                applicantEntries.forEach(entry => entry.classList.remove("visible"));
-                requestAnimationFrame(() => {
-                    applicantEntries.forEach(entry => entry.classList.add("visible"));
-                });
+                paginationWrapper.style.display = "none";
+                toggleDivElement.innerHTML = `Bewerberliste anzeigen <span class="toggle-icon">▼</span>`;
             }
         });
     });
@@ -674,7 +657,7 @@ async function displayMyJobsAndApplicants() {
         await delay(API_CALL_DELAY_MS);
         const currentUserItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, currentWebflowMemberId_MJ);
 
-        if (!currentUserItem || (currentUserItem.error && currentUserItem.status !== 429 && currentUserItem.status !== 404) ) { // 404 ist ok, wenn User noch keine Jobs hat
+        if (!currentUserItem || (currentUserItem.error && currentUserItem.status !== 429 && currentUserItem.status !== 404) ) {
             console.error("❌ Benutzerdaten des aktuellen Users nicht gefunden oder kritischer Fehler beim Abruf.", currentUserItem);
             container.innerHTML = `<p class='error-message job-entry visible'>Benutzerdaten des aktuellen Users konnten nicht geladen werden.</p>`;
             return;
@@ -684,9 +667,9 @@ async function displayMyJobsAndApplicants() {
             container.innerHTML = `<p class='error-message job-entry visible'>Zu viele Anfragen beim Laden der initialen Benutzerdaten. Bitte versuche es später erneut.</p>`;
             return;
         }
-         if (!currentUserItem.fieldData && !(currentUserItem.error && currentUserItem.status === 404)) { // Wenn kein fieldData UND kein 404 Fehler
+         if (!currentUserItem.fieldData && !(currentUserItem.error && currentUserItem.status === 404)) { 
             console.error("❌ Benutzerdaten des aktuellen Users (fieldData) nicht gefunden, obwohl User existiert.", currentUserItem);
-            renderMyJobsAndApplicants([]); // Zeige "keine Jobs" an, da Userdaten unvollständig sind
+            renderMyJobsAndApplicants([]); 
             return;
         }
         
@@ -699,22 +682,16 @@ async function displayMyJobsAndApplicants() {
         }
 
         let myJobItems = [];
-        // let rateLimitHitDuringJobLoading = false; // Wird jetzt in renderMyJobsAndApplicants gehandhabt
         for (const jobId of postedJobIds) {
             console.log(`Fetching job item: ${jobId}`);
             await delay(API_CALL_DELAY_MS);
             const jobItem = await fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId);
             
-            // jobItem kann ein gültiges Item, ein Fehlerobjekt oder null (bei 404, was hier ein Fehler wäre) sein
-            if (jobItem && jobItem.fieldData && !jobItem.error) {
+            if (jobItem) { 
                 myJobItems.push(jobItem);
-            } else if (jobItem && jobItem.error) {
-                 console.warn(`Fehler beim Laden von Job ${jobId}: ${jobItem.message}. Status: ${jobItem.status}`);
-                 myJobItems.push(jobItem); // Füge Fehlerobjekt hinzu, um es später zu behandeln
-            }
-            else { // jobItem ist null oder hat keine fieldData und keinen expliziten Fehler (z.B. 404 für einen Job)
-                console.warn(`Job ${jobId} konnte nicht geladen werden (möglicherweise nicht gefunden oder unerwartete Antwort).`);
-                 myJobItems.push({id: jobId, error: true, status: (jobItem && jobItem.status) || 'unknown_error', message: `Job ${jobId} konnte nicht interpretiert werden.`});
+            } else { 
+                console.warn(`Job ${jobId} führte zu einer unerwarteten null-Antwort von fetchWebflowItem.`);
+                 myJobItems.push({id: jobId, error: true, status: 'fetch_null_error', message: `Unerwartete null-Antwort für Job ${jobId}.`});
             }
         }
 
@@ -725,19 +702,12 @@ async function displayMyJobsAndApplicants() {
             } else if (job.fieldData) {
                  console.log(`Job ID: ${job.id}, Name: ${job.fieldData.name}, Bewerber IDs im Job-Objekt: ${JSON.stringify(job.fieldData["bewerber"] || [])}`);
             } else {
-                 console.log(`Job ID: ${job.id}, Unerwarteter Zustand, keine fieldData und kein expliziter Fehler (sollte durch obige Logik abgedeckt sein).`);
+                 console.log(`Job ID: ${job.id}, Unerwarteter Zustand (weder fieldData noch error-Property). Item:`, job);
             }
         });
         console.log("-----------------------------------------------------");
-
-        const validJobItems = myJobItems.filter(job => job && job.fieldData && !job.error);
-        console.log(`Successfully loaded ${validJobItems.length} valid jobs out of ${postedJobIds.length} posted by this user.`);
         
-        // Die Logik, ob eine Fehlermeldung angezeigt wird, wenn keine validen Jobs geladen wurden,
-        // ist nun primär in renderMyJobsAndApplicants, basierend auf den übergebenen Items.
-        if (myJobItems.length === 0 && postedJobIds.length > 0) {
-             // Dieser Fall sollte selten sein, da wir Fehlerobjekte in myJobItems behalten.
-             // Aber falls doch, eine generische Meldung.
+        if (myJobItems.length === 0 && postedJobIds.length > 0) { // Sollte nur passieren, wenn alle Job-Fetches fehlschlagen
             container.innerHTML = `<p class='info-message job-entry visible'>Keine Jobdaten konnten geladen oder verarbeitet werden.</p>`;
             return;
         }
@@ -754,4 +724,47 @@ async function displayMyJobsAndApplicants() {
 }
 
 // --- Initialisierung ---
-window.addEventListener("DOMContentLoaded", displayMyJobsAndApplicants);
+// Event Listener für die Auswahl der Seitengröße (Beispiel)
+function initializePageSizeSelector() {
+    const pageSizeSelector = document.getElementById('job-applicants-page-size-selector'); // ID deines Select-Elements
+    if (pageSizeSelector) {
+        pageSizeSelector.value = currentApplicantPageSize; // Initialwert setzen
+        pageSizeSelector.addEventListener('change', (event) => {
+            const newSize = parseInt(event.target.value, 10);
+            if (newSize === 15 || newSize === 25) {
+                currentApplicantPageSize = newSize;
+                console.log(`DEBUG: Seitengröße geändert auf ${currentApplicantPageSize}`);
+                // Wenn ein Job geöffnet ist, dessen Bewerberliste angezeigt wird, müsste diese neu geladen werden.
+                // Dies erfordert, den aktuell geöffneten Job-Container zu finden und dessen Paginierung neu zu starten.
+                // Fürs Erste wird die neue Seitengröße beim nächsten Öffnen eines Jobs oder beim Blättern verwendet.
+                // Um es sofort anzuwenden, wenn ein Job offen ist:
+                const openApplicantContainer = document.querySelector('.applicants-list-container[style*="display: block"]');
+                if (openApplicantContainer) {
+                    const jobId = openApplicantContainer.dataset.jobId;
+                    const jobData = allMyJobsData_MJ.find(job => job.id === jobId);
+                    const jobWrapper = openApplicantContainer.closest('.my-job-item');
+                    const paginationWrapper = jobWrapper ? jobWrapper.querySelector(".db-table-pagination") : null;
+
+                    if (jobData && jobData.fieldData && jobData.fieldData.bewerber && paginationWrapper) {
+                        console.log(`DEBUG: Lade Job ${jobId} mit neuer Seitengröße neu.`);
+                        // Wichtig: Haupt-Toggle-Text und Zustand korrekt handhaben
+                        const toggleDivElement = jobWrapper.querySelector(".db-table-applicants");
+                        if(toggleDivElement) toggleDivElement.style.pointerEvents = 'none';
+                        
+                        loadAndDisplayApplicantsForJob(jobId, jobData.fieldData.bewerber, openApplicantContainer, paginationWrapper, 1)
+                          .finally(() => {
+                            if(toggleDivElement) toggleDivElement.style.pointerEvents = 'auto';
+                          });
+                    }
+                }
+            }
+        });
+    } else {
+        console.warn("DEBUG: Element für Seitengrößenauswahl nicht gefunden. Nutze Standard: " + currentApplicantPageSize);
+    }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+    initializePageSizeSelector(); // Initialisiere den Page-Size-Selector
+    displayMyJobsAndApplicants(); // Lade dann die Jobs
+});
