@@ -6,7 +6,7 @@ const WORKER_BASE_URL_MJ = "https://bewerbungen.oliver-258.workers.dev/?url="; /
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3; // Anzahl der Skeleton-Job-Zeilen
-const API_CALL_DELAY_MS = 5; // WICHTIG: Auf ca. 550ms belassen (ca. 109 Anfragen/Minute) um API-Limits einzuhalten.
+const API_CALL_DELAY_MS = 15; // WICHTIG: Auf ca. 550ms belassen (ca. 109 Anfragen/Minute) um API-Limits einzuhalten.
 const MAX_ITEMS_PER_BATCH_REQUEST = 100; // Webflow API Limit für item_ids Parameter
 
 let currentWebflowMemberId_MJ = null;
@@ -66,7 +66,7 @@ const MAPPINGS = {
         "48e29cee99112e44c5d7cd505e9f2442": "Videograf",
         "29ad386dd5d90248db0ff689bbbbf68d": "Keine Angabe"
     },
-    sprachen: { // Wird aktuell nicht mehr in der UI angezeigt
+    sprachen: { 
         "1c8e60afd27397cecf0172584d642461": "Deutsch",
         "c80924ee660d3514aae61540d9b3d114": "Englisch"
     }
@@ -163,7 +163,7 @@ async function fetchMultipleWebflowItems(collectionId, itemIds) {
     const apiUrl = `${API_BASE_URL_MJ}/${collectionId}/items/live?item_ids=${itemIdsString}`;
     const workerUrl = buildWorkerUrl_MJ(apiUrl);
 
-    console.log(`Fetching batch of items for job (first few IDs: ${itemIds.slice(0,3).join(',')}...): ${apiUrl}`);
+    console.log(`Fetching batch of items (IDs: ${itemIdsString.substring(0,150)}...): ${apiUrl}`); // Log gekürzt für Lesbarkeit
     
     try {
         const response = await fetch(workerUrl);
@@ -337,7 +337,7 @@ function createApplicantRowElement(applicantFieldData) {
         { key: "tiktok", name: "TikTok", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e99dce86c2b6ba83fe_Tiktok.svg" },
         { key: "youtube", name: "YouTube", iconUrl: "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/640219e9b00d0480ffe289dc_YouTube.svg" }
     ];
-    let socialLinksRenderedCount = 0; 
+    // let socialLinksRenderedCount = 0; // Nicht mehr benötigt für Margin
     socialPlatforms.forEach(platform => {
         const platformUrlValue = applicantFieldData[platform.key]; 
         const normalizedPlatformUrl = normalizeUrl(platformUrlValue);
@@ -347,14 +347,14 @@ function createApplicantRowElement(applicantFieldData) {
             socialLink.classList.add("db-application-option", "no-icon", "w-inline-block");
             socialLink.target = "_blank";
             socialLink.rel = "noopener noreferrer";
-            // Margin-left wurde entfernt
+            // socialLink.style.marginLeft = "8px"; // Entfernt
             const iconImg = document.createElement("img");
             iconImg.src = platform.iconUrl;
             iconImg.alt = `${platform.name} Profil`;
             iconImg.classList.add("db-icon-18");
             socialLink.appendChild(iconImg);
             socialCell.appendChild(socialLink);
-            socialLinksRenderedCount++;
+            // socialLinksRenderedCount++; // Nicht mehr benötigt für Margin
         }
     });
     applicantDiv.appendChild(socialCell);
@@ -381,7 +381,6 @@ function createApplicantRowElement(applicantFieldData) {
 }
 
 async function loadAndDisplayApplicantsForJob(jobId, applicantIdsForThisJob, applicantsContainerElement, toggleElement) {
-    // Wichtig: applicantIdsForThisJob sind die spezifischen IDs für DIESEN Job
     console.log(`Lade Bewerber für Job ${jobId} (IDs: ${applicantIdsForThisJob.join(', ') || 'keine'})...`);
     toggleElement.style.pointerEvents = 'none'; 
     applicantsContainerElement.innerHTML = '<p style="padding: 10px; text-align: center;">Lade Bewerberdaten...</p>';
@@ -492,7 +491,7 @@ function renderMyJobsAndApplicants(jobItems) {
     const fragment = document.createDocumentFragment();
     let globalRateLimitMessageShown = false; 
 
-    jobItems.forEach(jobItem => { // jobItem ist hier das spezifische Job-Objekt für jede Iteration
+    jobItems.forEach(jobItem => { 
         if (jobItem.error && jobItem.status === 429) {
             console.warn(`Job (ID: ${jobItem.id || 'unbekannt'}) konnte wegen Rate Limit nicht geladen werden und wird nicht gerendert.`);
             if (!globalRateLimitMessageShown && !document.getElementById('global-rate-limit-message')) {
@@ -552,7 +551,6 @@ function renderMyJobsAndApplicants(jobItems) {
         statusCell.appendChild(statusTag);
         jobHeaderDiv.appendChild(statusCell);
         
-        // Wichtig: applicantIdsForThisSpecificJob wird hier korrekt aus dem aktuellen jobItem geholt.
         const applicantIdsForThisSpecificJob = jobFieldData["bewerber"] || [];
         const applicantsCountCell = document.createElement("div");
         applicantsCountCell.classList.add("db-table-row-item");
@@ -576,12 +574,18 @@ function renderMyJobsAndApplicants(jobItems) {
         jobWrapper.appendChild(applicantsContainer);
         fragment.appendChild(jobWrapper);
 
+        // Hinzugefügtes Logging zur Überprüfung der IDs beim Erstellen des Event Listeners
+        console.log(`RENDER: Setting up click listener for Job ID ${jobItem.id}. Applicant IDs for this job: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
+
         toggleDivElement.addEventListener("click", async () => { 
             const isHidden = applicantsContainer.style.display === "none";
             
+            // Hinzugefügtes Logging beim Klick
+            console.log(`CLICK: Job ID ${jobItem.id}. Current applicantIdsForThisSpecificJob in closure: ${JSON.stringify(applicantIdsForThisSpecificJob)}`);
+
+
             if (isHidden) { 
                 if (applicantsContainer.dataset.loaded !== 'true') {
-                    // Hier werden die job-spezifischen applicantIdsForThisSpecificJob verwendet.
                     await loadAndDisplayApplicantsForJob(jobItem.id, applicantIdsForThisSpecificJob, applicantsContainer, toggleDivElement);
                 } else {
                     applicantsContainer.style.display = "block";
@@ -678,6 +682,14 @@ async function displayMyJobsAndApplicants() {
             }
         }
         
+        // Hinzugefügtes Logging zur Überprüfung der Bewerber-IDs pro Job
+        console.log("--- Überprüfung der geladenen Job-Daten (myJobItems) ---");
+        myJobItems.forEach(job => {
+            console.log(`Job ID: ${job.id}, Name: ${job.fieldData.name}, Bewerber IDs im Job-Objekt: ${JSON.stringify(job.fieldData["bewerber"] || [])}`);
+        });
+        console.log("-----------------------------------------------------");
+
+
         console.log(`Successfully loaded ${myJobItems.length} valid jobs out of ${postedJobIds.length} posted by this user.`);
 
         if (myJobItems.length === 0 && postedJobIds.length > 0) {
