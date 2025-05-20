@@ -6,7 +6,7 @@ const WORKER_BASE_URL_MJ = "https://bewerbungen.oliver-258.workers.dev/?url="; /
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3; // Anzahl der Skeleton-Job-Zeilen
-const API_CALL_DELAY_MS = 250; // NEU: Verzögerung zwischen API-Aufrufen in Millisekunden (z.B. 250ms = 4 Anfragen/Sekunde)
+const API_CALL_DELAY_MS = 50; // NEU: Verzögerung zwischen API-Aufrufen in Millisekunden (z.B. 250ms = 4 Anfragen/Sekunde)
 
 let currentWebflowMemberId_MJ = null;
 let allMyJobsData_MJ = []; // Speichert alle geladenen eigenen Jobs mit Bewerbern
