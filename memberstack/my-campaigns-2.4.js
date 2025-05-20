@@ -6,10 +6,9 @@ const WORKER_BASE_URL_MJ = "https://bewerbungen.oliver-258.workers.dev/?url="; /
 const JOB_COLLECTION_ID_MJ = "6448faf9c5a8a17455c05525"; // Deine Job Collection ID
 const USER_COLLECTION_ID_MJ = "6448faf9c5a8a15f6cc05526"; // Deine User Collection ID (für den eingeloggten User und Bewerber)
 const SKELETON_JOBS_COUNT_MJ = 3; // Anzahl der Skeleton-Job-Zeilen
-const API_CALL_DELAY_MS = 25; // Verzögerung auf 550ms (ca. 109 Anfragen/Minute)
+const API_CALL_DELAY_MS = 5; // Verzögerung auf 550ms (ca. 109 Anfragen/Minute)
 
 let currentWebflowMemberId_MJ = null;
-// allMyJobsData_MJ speichert jetzt nur noch die Job-Daten, Bewerber werden bei Bedarf geladen.
 let allMyJobsData_MJ = []; 
 
 // --- Mapping-Konfigurationen ---
@@ -25,7 +24,7 @@ const MAPPINGS = {
         "cc74dfe0b4fe308ac66e11ba55419501": "250.000 - 500.000",
         "24bdb369f9cdb37e28678b8d1fba0308": "500.000 - 1.000.000",
         "0f579a02ba3055cf32347301e34ce262": "1.000.000+",
-        "126e325d19f997cd4158ebd2f6bc43c8": "0" // ANGEPASST von "Follower (spez.)"
+        "126e325d19f997cd4158ebd2f6bc43c8": "0" 
     },
     bundeslaender: {
         "ad69af181ec0a76ead7ca0808f9322d5": "Baden-Württemberg",
@@ -45,7 +44,7 @@ const MAPPINGS = {
         "d44e3e9bad2c19f3502da1c8d5832311": "Schleswig-Holstein",
         "070d97b7c9dd6ee1e87625e64029b1f2": "Thüringen"
     },
-    laender: {
+    laender: { // Wird aktuell nicht mehr in der UI angezeigt, aber für Vollständigkeit belassen
         "ff0fb336a4f4329e373519e2f4f146d0": "Deutschland",
         "f6cdc4f895b295eda5035ecde8a638bc": "Schweiz",
         "4e353955e21323d2805e89a1b5d2f0ed": "Österreich"
@@ -222,6 +221,22 @@ function renderMyJobsSkeletonLoader(container, count) {
 function createApplicantRowElement(applicantFieldData) {
     const applicantDiv = document.createElement("div");
     applicantDiv.classList.add("db-table-row", "db-table-applicant", "job-entry");
+    applicantDiv.style.cursor = "pointer"; // Mauszeiger als Hinweis für Klickbarkeit
+
+    // Event Listener für die gesamte Zeile, um zum Profil zu navigieren
+    applicantDiv.addEventListener('click', (event) => {
+        // Verhindere die Navigation, wenn auf einen Link (z.B. Social Media Icon) geklickt wurde
+        if (event.target.closest('a.db-application-option')) {
+            return;
+        }
+        const profileUrl = normalizeUrl(applicantFieldData["homepage"]); // Annahme: homepage ist die Profil-URL
+        if (profileUrl) {
+            window.open(profileUrl, '_blank');
+        } else {
+            console.warn("Keine Homepage-URL für Bewerber gefunden:", applicantFieldData.name);
+        }
+    });
+
 
     if (typeof MAPPINGS === 'undefined') {
         console.error("❌ MAPPINGS-Objekt ist nicht definiert.");
@@ -245,7 +260,7 @@ function createApplicantRowElement(applicantFieldData) {
     namePlusStatusDiv.classList.add("is-flexbox-vertical");
     const nameSpan = document.createElement("span");
     nameSpan.textContent = applicantFieldData.name || "Unbekannter Bewerber";
-    nameSpan.classList.add("truncate"); // ANGEPASST: Klasse hinzugefügt
+    nameSpan.classList.add("truncate"); 
     namePlusStatusDiv.appendChild(nameSpan);
     const plusStatusSpan = document.createElement("span");
     plusStatusSpan.classList.add("is-txt-tiny");
@@ -259,24 +274,24 @@ function createApplicantRowElement(applicantFieldData) {
     const city = applicantFieldData["user-city-2"] || "K.A.";
     const bundeslandId = applicantFieldData["bundesland-option"];
     const bundeslandName = MAPPINGS.bundeslaender[bundeslandId] || (bundeslandId ? bundeslandId : "K.A.");
-    const landId = applicantFieldData["creator-land"];
-    const landName = MAPPINGS.laender[landId] || (landId ? landId : "");
-    locationDiv.textContent = `${city}${bundeslandName !== "K.A." ? `, ${bundeslandName}` : ""}${landName ? `, ${landName}` : ""}`;
+    // Land wird nicht mehr angezeigt: const landId = applicantFieldData["creator-land"];
+    // const landName = MAPPINGS.laender[landId] || (landId ? landId : "");
+    locationDiv.textContent = `${city}${bundeslandName !== "K.A." ? `, ${bundeslandName}` : ""}`;
     applicantDiv.appendChild(locationDiv);
 
     const categoryDivElement = document.createElement("div");
-    categoryDivElement.classList.add("db-table-row-item");
+    categoryDivElement.classList.add("db-table-row-item", "job-tag", "customer"); // Klasse hinzugefügt
     categoryDivElement.textContent = applicantFieldData["creator-main-categorie"] || "K.A.";
     applicantDiv.appendChild(categoryDivElement);
 
     const creatorTypeDiv = document.createElement("div");
-    creatorTypeDiv.classList.add("db-table-row-item");
+    creatorTypeDiv.classList.add("db-table-row-item", "job-tag", "customer"); // Klasse hinzugefügt
     const creatorTypeId = applicantFieldData["creator-type"];
     creatorTypeDiv.textContent = MAPPINGS.creatorTypen[creatorTypeId] || (creatorTypeId ? creatorTypeId : "K.A.");
     applicantDiv.appendChild(creatorTypeDiv);
 
     const spracheDiv = document.createElement("div");
-    spracheDiv.classList.add("db-table-row-item");
+    spracheDiv.classList.add("db-table-row-item", "job-tag", "customer"); // Klasse hinzugefügt
     const spracheId = applicantFieldData["sprache"];
     spracheDiv.textContent = MAPPINGS.sprachen[spracheId] || (spracheId ? spracheId : "K.A.");
     applicantDiv.appendChild(spracheDiv);
@@ -318,13 +333,13 @@ function createApplicantRowElement(applicantFieldData) {
     applicantDiv.appendChild(socialDiv);
 
     const followerDiv = document.createElement("div");
-    followerDiv.classList.add("db-table-row-item");
+    followerDiv.classList.add("db-table-row-item", "job-tag", "customer"); // Klasse hinzugefügt
     const followerId = applicantFieldData["creator-follower"];
     followerDiv.textContent = MAPPINGS.followerRanges[followerId] || (followerId ? followerId : "K.A.");
     applicantDiv.appendChild(followerDiv);
 
     const ageDiv = document.createElement("div");
-    ageDiv.classList.add("db-table-row-item");
+    ageDiv.classList.add("db-table-row-item", "job-tag", "customer"); // Klasse hinzugefügt
     const ageId = applicantFieldData["creator-age"];
     ageDiv.textContent = MAPPINGS.altersgruppen[ageId] || (ageId ? ageId : "K.A.");
     applicantDiv.appendChild(ageDiv);
@@ -358,6 +373,20 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantIds, applicantsCon
             }
         }
     }
+
+    // Sortiere Bewerber: Plus-Mitglieder zuerst
+    fetchedApplicantsData.sort((a, b) => {
+        // Fehlerobjekte oder Objekte ohne fieldData nach hinten sortieren
+        if (a.error || !a.fieldData) return 1;
+        if (b.error || !b.fieldData) return -1;
+
+        const aIsPlus = a.fieldData["plus-mitglied"] === true;
+        const bIsPlus = b.fieldData["plus-mitglied"] === true;
+
+        if (aIsPlus && !bIsPlus) return -1; // a (Plus) kommt vor b (Standard)
+        if (!aIsPlus && bIsPlus) return 1;  // b (Plus) kommt vor a (Standard)
+        return 0; // Reihenfolge beibehalten, wenn beide gleichen Status haben
+    });
 
     applicantsContainerElement.innerHTML = ''; 
 
