@@ -151,7 +151,6 @@ function renderMyJobsSkeletonLoader(container, count) {
         jobHeader.appendChild(placeholder1);
         const placeholder2 = document.createElement("div");
         placeholder2.classList.add("db-table-row-item");
-        // Placeholder for future columns or adjustments
         jobHeader.appendChild(placeholder2);
         const categoryDiv = document.createElement("div");
         categoryDiv.classList.add("db-table-row-item");
@@ -182,76 +181,60 @@ function renderMyJobsSkeletonLoader(container, count) {
     }
 }
 
-
-// --- NEUE FUNKTION: Match Score Berechnung ---
-/**
- * Calculates a match score between an applicant and job requirements.
- * @param {object} applicantFieldData - The applicant's data from Webflow.
- * @param {object} jobFieldData - The job's requirement data from Webflow.
- * @param {object} allMappings - The global MAPPINGS object.
- * @returns {object} An object containing { score: percentageScore, details: criteriaDetails, rawScore, maxScore }.
- */
+// --- Match Score Berechnung ---
 function calculateMatchScore(applicantFieldData, jobFieldData, allMappings) {
     if (!applicantFieldData || !jobFieldData) {
-        return { score: 0, details: {}, rawScore: 0, maxScore: 0 }; // Return 0 if data is missing
+        return { score: 0, details: {}, rawScore: 0, maxScore: 0 };
     }
 
     let totalScore = 0;
     let maxScorePossible = 0;
-    const criteriaEvaluationDetails = {};
+    const criteriaEvaluationDetails = {}; // Beibehalten für potenzielle zukünftige Debugging-Zwecke, auch wenn Tooltip weg ist
 
-    // Define criteria, their Webflow field IDs (for the JOB), and points.
-    // IMPORTANT: Adjust 'jobField' to your actual Webflow field IDs in the Job Collection.
     const scoringCriteria = [
         {
             name: "Kategorie",
-            jobField: "industrie-kategorie", // Job's main category (e.g., text field)
-            applicantField: "creator-main-categorie", // Applicant's main category (text field)
+            jobField: "industrie-kategorie",
+            applicantField: "creator-main-categorie",
             points: 20,
-            type: "exactStringMatch" // Case-insensitive string match
+            type: "exactStringMatch"
         },
         {
             name: "Creator Typ",
-            // NEW JOB FIELD (Example): Assume 'job-required-creator-types' is a multi-reference field in Jobs
-            // linking to the same Option Collection as applicant's 'creator-type'.
             jobField: "job-required-creator-types",
-            applicantField: "creator-type", // Applicant's 'creator-type' (single Option ID)
+            applicantField: "creator-type",
             points: 25,
-            type: "idInJobArray", // Checks if applicant's ID is in the job's array of required IDs
+            type: "idInJobArray",
             mappingName: "creatorTypen"
         },
         {
             name: "Standort (Bundesland)",
-            // NEW JOB FIELD (Example): Assume 'job-required-bundeslaender' is a multi-reference field in Jobs
             jobField: "job-required-bundeslaender",
-            applicantField: "bundesland-option", // Applicant's 'bundesland-option' (single Option ID)
+            applicantField: "bundesland-option",
             points: 15,
             type: "idInJobArray",
             mappingName: "bundeslaender"
         },
         {
             name: "Follower",
-            // NEW JOB FIELD (Example): Assume 'job-required-follower-id' is a single-reference field in Jobs
             jobField: "job-required-follower-id",
-            applicantField: "creator-follower", // Applicant's 'creator-follower' (single Option ID)
+            applicantField: "creator-follower",
             points: 15,
             type: "exactIdMatch"
         },
         {
             name: "Alter",
-            // NEW JOB FIELD (Example): Assume 'job-required-age-id' is a single-reference field in Jobs
             jobField: "job-required-age-id",
-            applicantField: "creator-age", // Applicant's 'creator-age' (single Option ID)
+            applicantField: "creator-age",
             points: 10,
             type: "exactIdMatch"
         },
         {
             name: "Sprachen",
-            // NEW JOB FIELD (Example): Assume 'job-required-sprachen-ids' is a multi-reference field in Jobs
             jobField: "job-required-sprachen-ids",
-            applicantField: "sprachen", // Applicant's 'sprachen' (array of Option IDs)
+            applicantField: "sprachen",
             points: 15,
-            type: "anyIdOverlapInArrays", // Checks for any common language ID
+            type: "anyIdOverlapInArrays",
             mappingName: "sprachen"
         }
     ];
@@ -263,7 +246,6 @@ function calculateMatchScore(applicantFieldData, jobFieldData, allMappings) {
         let applicantAttributeValue = applicantFieldData[criterion.applicantField];
         let isMatch = false;
 
-        // Ensure values are not undefined before processing
         const jobValExists = jobRequirementValue !== undefined && jobRequirementValue !== null;
         const appValExists = applicantAttributeValue !== undefined && applicantAttributeValue !== null;
 
@@ -280,12 +262,12 @@ function calculateMatchScore(applicantFieldData, jobFieldData, allMappings) {
                         isMatch = true;
                     }
                     break;
-                case "idInJobArray": // Job has an array of required IDs, applicant has one ID.
+                case "idInJobArray":
                     if (Array.isArray(jobRequirementValue) && jobRequirementValue.includes(applicantAttributeValue)) {
                         isMatch = true;
                     }
                     break;
-                case "anyIdOverlapInArrays": // Both job and applicant might have arrays of IDs.
+                case "anyIdOverlapInArrays":
                     const jobArray = Array.isArray(jobRequirementValue) ? jobRequirementValue : (jobRequirementValue ? [jobRequirementValue] : []);
                     const appArray = Array.isArray(applicantAttributeValue) ? applicantAttributeValue : (applicantAttributeValue ? [applicantAttributeValue] : []);
                     if (appArray.some(appId => jobArray.includes(appId))) {
@@ -299,12 +281,10 @@ function calculateMatchScore(applicantFieldData, jobFieldData, allMappings) {
             criterionAchievedPoints = criterion.points;
             totalScore += criterion.points;
         }
-
-        // For tooltip: get human-readable values
+        // Details für Debugging beibehalten, auch ohne Tooltip
         const mappingForCriterion = criterion.mappingName ? allMappings[criterion.mappingName] : null;
         let jobDisplayValues = jobValExists ? (Array.isArray(jobRequirementValue) ? jobRequirementValue.map(id => mappingForCriterion?.[id] || id) : (mappingForCriterion?.[jobRequirementValue] || jobRequirementValue)) : "N/A";
         let appDisplayValues = appValExists ? (Array.isArray(applicantAttributeValue) ? applicantAttributeValue.map(id => mappingForCriterion?.[id] || id) : (mappingForCriterion?.[applicantAttributeValue] || applicantAttributeValue)) : "N/A";
-
 
         criteriaEvaluationDetails[criterion.name] = {
             matched: isMatch,
@@ -318,7 +298,7 @@ function calculateMatchScore(applicantFieldData, jobFieldData, allMappings) {
     const percentageScore = maxScorePossible > 0 ? Math.round((totalScore / maxScorePossible) * 100) : 0;
     return {
         score: percentageScore,
-        details: criteriaEvaluationDetails,
+        details: criteriaEvaluationDetails, // Beibehalten für Debugging
         rawScore: totalScore,
         maxScore: maxScorePossible
     };
@@ -326,16 +306,16 @@ function calculateMatchScore(applicantFieldData, jobFieldData, allMappings) {
 
 
 // --- Rendering-Funktionen ---
-// MODIFIED: createApplicantRowElement to accept full applicant item (with score) and job details for tooltip
 function createApplicantRowElement(applicantItemWithScoreInfo, jobFieldDataForTooltip, allMappings) {
-    const applicantFieldData = applicantItemWithScoreInfo.fieldData; // Original applicant data
-    const matchInfo = applicantItemWithScoreInfo.matchInfo;         // Calculated score object {score, details, rawScore, maxScore}
+    const applicantFieldData = applicantItemWithScoreInfo.fieldData;
+    const matchInfo = applicantItemWithScoreInfo.matchInfo;
 
     const applicantDiv = document.createElement("div");
     applicantDiv.classList.add("db-table-row", "db-table-applicant", "job-entry");
 
     applicantDiv.addEventListener('click', (event) => {
-        if (event.target.closest('a.db-application-option') || event.target.closest('.match-score-cell')) { // Prevent row click if score or social icon clicked
+        // Verhindert Klick auf Zeile, wenn Score-Indikator oder Social Icon geklickt wird
+        if (event.target.closest('a.db-application-option') || event.target.closest('.score-circle-indicator')) {
             return;
         }
         const slug = applicantFieldData.slug;
@@ -355,57 +335,63 @@ function createApplicantRowElement(applicantItemWithScoreInfo, jobFieldDataForTo
         return applicantDiv;
     }
 
-    // --- Match Score Cell (NEW) ---
-    const matchScoreCell = document.createElement("div");
-    matchScoreCell.classList.add("db-table-row-item", "match-score-cell"); // Class for styling
+    // --- Match Score Cell (MODIFIED) ---
+    const scoreCellContainer = document.createElement("div");
+    // Entferne 'match-score-cell', behalte 'db-table-row-item' für die Layout-Konsistenz
+    scoreCellContainer.classList.add("db-table-row-item");
+    // Zentriere den Inhalt der Zelle (den Kreis)
+    scoreCellContainer.style.display = "flex";
+    scoreCellContainer.style.justifyContent = "center";
+    scoreCellContainer.style.alignItems = "center";
+
 
     const scoreValue = matchInfo ? matchInfo.score : 0;
-
     const scoreCircle = document.createElement("div");
-    scoreCircle.classList.add("score-circle-indicator"); // Use this class for styling the circle
+    scoreCircle.classList.add("score-circle-indicator"); // Diese Klasse wird für Webflow-Styling verwendet
 
-    let scoreColor = "#e0e0e0"; // Default/low score grey
-    if (scoreValue >= 80) scoreColor = "#4CAF50"; // Green for high (e.g., 80-100)
-    else if (scoreValue >= 60) scoreColor = "#FFC107"; // Orange for medium (e.g., 60-79)
-    else if (scoreValue > 0) scoreColor = "#FF9800"; // Lighter orange for lower-medium
+    let scoreColor = "#e0e0e0"; // Hellgrau für niedrige Scores oder 0
+    let progressColor = "#4CAF50"; // Grün für hohe Scores (Standard)
 
-    // Apply styles for the circle (can be enhanced with SVG/conic-gradient via CSS)
-    scoreCircle.style.width = "40px";
-    scoreCircle.style.height = "40px";
-    scoreCircle.style.borderRadius = "50%";
-    scoreCircle.style.backgroundColor = scoreColor;
+    if (scoreValue >= 80) {
+        progressColor = "#4CAF50"; // Grün
+    } else if (scoreValue >= 60) {
+        progressColor = "#FFC107"; // Orange
+    } else if (scoreValue > 0) {
+        progressColor = "#FF9800"; // Dunkleres Orange
+    } else { // scoreValue === 0
+        progressColor = "#e0e0e0"; // Wenn Score 0 ist, ist der Progress auch grau
+    }
+    
+    // Basis-Styling für den Kreis (Größe, Textausrichtung)
+    // Das detaillierte Styling des Fortschrittsrings sollte via Webflow CSS erfolgen.
+    // Hier setzen wir nur die dynamischen Teile.
+    scoreCircle.style.width = "40px"; // Breite des Kreises
+    scoreCircle.style.height = "40px"; // Höhe des Kreises
+    scoreCircle.style.borderRadius = "50%"; // Macht es rund
+    scoreCircle.style.position = "relative"; // Für die Positionierung des Textes
     scoreCircle.style.display = "flex";
     scoreCircle.style.justifyContent = "center";
     scoreCircle.style.alignItems = "center";
-    scoreCircle.style.color = "white";
-    scoreCircle.style.fontWeight = "bold";
-    scoreCircle.style.fontSize = "14px";
-    scoreCircle.style.cursor = "default"; // Indicate it's not directly clickable for row action
+    scoreCircle.style.cursor = "default";
+
+    // Hintergrund mit conic-gradient für den Fortschrittsring-Effekt
+    // Der erste Farbwert ist die Fortschrittsfarbe, der zweite die Hintergrundfarbe des Rings
+    // Der Prozentsatz bestimmt, wie weit die Fortschrittsfarbe geht.
+    const degree = (scoreValue / 100) * 360;
+    scoreCircle.style.background = `conic-gradient(${progressColor} ${degree}deg, #efefef ${degree}deg 360deg)`;
+
 
     const scoreText = document.createElement("span");
     scoreText.textContent = `${scoreValue}`;
-    scoreCircle.appendChild(scoreText);
-    matchScoreCell.appendChild(scoreCircle);
+    // Styling für den Text im Kreis (kann auch in Webflow erfolgen)
+    scoreText.style.color = "#333"; // Dunkler Text für bessere Lesbarkeit auf hellem Hintergrund
+    scoreText.style.fontWeight = "bold";
+    scoreText.style.fontSize = "14px";
+    scoreText.style.position = "absolute"; // Um sicherzustellen, dass er zentriert ist
 
-    // Tooltip for score details
-    if (matchInfo && matchInfo.details) {
-        const tooltip = document.createElement("div");
-        tooltip.classList.add("score-tooltip-details"); // Style this with CSS
-        let tooltipHTML = `<strong>Match Breakdown (Score: ${matchInfo.rawScore}/${matchInfo.maxScore})</strong><hr>`;
-        for (const criterionName in matchInfo.details) {
-            const detail = matchInfo.details[criterionName];
-            tooltipHTML += `<p><strong>${criterionName}</strong> (${detail.pointsAwarded}/${detail.maxPoints} Pkt):<br>`;
-            tooltipHTML += `  Job: <small>${JSON.stringify(detail.jobRequirement).replace(/"/g, '')}</small><br>`;
-            tooltipHTML += `  Bewerber: <small>${JSON.stringify(detail.applicantValue).replace(/"/g, '')}</small><br>`;
-            tooltipHTML += `  <em>${detail.matched ? 'Passt ✅' : 'Passt nicht ❌'}</em></p>`;
-        }
-        tooltip.innerHTML = tooltipHTML;
-        matchScoreCell.appendChild(tooltip);
-        matchScoreCell.style.position = "relative"; // For tooltip positioning
-        matchScoreCell.addEventListener('mouseenter', () => tooltip.style.display = 'block');
-        matchScoreCell.addEventListener('mouseleave', () => tooltip.style.display = 'none');
-    }
-    applicantDiv.appendChild(matchScoreCell);
+    scoreCircle.appendChild(scoreText);
+    scoreCellContainer.appendChild(scoreCircle); // Füge den Kreis zum Container hinzu
+    applicantDiv.appendChild(scoreCellContainer); // Füge den Container zur Zeile hinzu
 
 
     const profileInfoDiv = document.createElement("div");
@@ -435,7 +421,7 @@ function createApplicantRowElement(applicantItemWithScoreInfo, jobFieldDataForTo
     locationDiv.classList.add("db-table-row-item");
     const city = applicantFieldData["user-city-2"] || "K.A.";
     const bundeslandId = applicantFieldData["bundesland-option"];
-    const bundeslandName = allMappings.bundeslaender[bundeslandId] || (bundeslandId ? bundeslandId.substring(0,10)+'...' : "K.A."); // Use allMappings
+    const bundeslandName = allMappings.bundeslaender[bundeslandId] || (bundeslandId ? bundeslandId.substring(0,10)+'...' : "K.A.");
     locationDiv.textContent = `${city}${bundeslandName !== "K.A." ? `, ${bundeslandName}` : ""}`;
     applicantDiv.appendChild(locationDiv);
 
@@ -452,7 +438,7 @@ function createApplicantRowElement(applicantItemWithScoreInfo, jobFieldDataForTo
     const creatorTypeTag = document.createElement("span");
     creatorTypeTag.classList.add("job-tag", "customer");
     const creatorTypeId = applicantFieldData["creator-type"];
-    creatorTypeTag.textContent = allMappings.creatorTypen[creatorTypeId] || (creatorTypeId ? creatorTypeId.substring(0,10)+'...' : "K.A."); // Use allMappings
+    creatorTypeTag.textContent = allMappings.creatorTypen[creatorTypeId] || (creatorTypeId ? creatorTypeId.substring(0,10)+'...' : "K.A.");
     creatorTypeCell.appendChild(creatorTypeTag);
     applicantDiv.appendChild(creatorTypeCell);
 
@@ -487,7 +473,7 @@ function createApplicantRowElement(applicantItemWithScoreInfo, jobFieldDataForTo
     const followerTag = document.createElement("span");
     followerTag.classList.add("job-tag", "customer");
     const followerId = applicantFieldData["creator-follower"];
-    followerTag.textContent = allMappings.followerRanges[followerId] || (followerId ? followerId.substring(0,10)+'...' : "K.A."); // Use allMappings
+    followerTag.textContent = allMappings.followerRanges[followerId] || (followerId ? followerId.substring(0,10)+'...' : "K.A.");
     followerCell.appendChild(followerTag);
     applicantDiv.appendChild(followerCell);
 
@@ -496,30 +482,27 @@ function createApplicantRowElement(applicantItemWithScoreInfo, jobFieldDataForTo
     const ageTag = document.createElement("span");
     ageTag.classList.add("job-tag", "customer");
     const ageId = applicantFieldData["creator-age"];
-    ageTag.textContent = allMappings.altersgruppen[ageId] || (ageId ? ageId.substring(0,10)+'...' : "K.A."); // Use allMappings
+    ageTag.textContent = allMappings.altersgruppen[ageId] || (ageId ? ageId.substring(0,10)+'...' : "K.A.");
     ageCell.appendChild(ageTag);
     applicantDiv.appendChild(ageCell);
 
     return applicantDiv;
 }
 
-// MODIFIED: Added "Match" column
 function createApplicantTableHeaderElement() {
     const headerDiv = document.createElement("div");
     headerDiv.classList.add("db-table-header", "db-table-applicant");
 
-    const columns = ["Match", "Creator", "Location", "Kategorie", "Creator Type", "Social Media", "Follower", "Alter"]; // Added "Match"
+    const columns = ["Match", "Creator", "Location", "Kategorie", "Creator Type", "Social Media", "Follower", "Alter"];
     columns.forEach((colText, index) => {
         const colDiv = document.createElement("div");
         colDiv.classList.add("db-table-row-item");
-        if (index === 0) { // Style for "Match" column header
+        if (index === 0) {
             colDiv.style.textAlign = "center";
         }
-        if (index === 1) { // Style for "Creator" column to make it wider if needed
-             colDiv.style.flexGrow = "1.5"; // Example: make Creator column wider
+        if (index === 1) {
+             colDiv.style.flexGrow = "1.5";
         }
-
-
         const textSpan = document.createElement("span");
         textSpan.classList.add("is-txt-16", "is-txt-bold");
         textSpan.textContent = colText;
@@ -529,66 +512,51 @@ function createApplicantTableHeaderElement() {
     return headerDiv;
 }
 
-
 function createFilterRowElement(jobId, applicantsListContainer, paginationWrapper) {
     const filterRow = document.createElement("div");
     filterRow.classList.add("db-table-filter-row");
-
     const filterWrapper = document.createElement("div");
     filterWrapper.classList.add("db-table-filter-row-wrapper");
     filterRow.appendChild(filterWrapper);
-
-    // --- Follower Filter ---
     const followerFilterDiv = document.createElement("div");
     followerFilterDiv.classList.add("db-individual-filter-trigger");
-
     const followerFilterText = document.createElement("span");
     followerFilterText.classList.add("is-txt-16");
     followerFilterText.textContent = "Follower";
     followerFilterDiv.appendChild(followerFilterText);
-
     const followerFilterIcon = document.createElement("img");
     followerFilterIcon.src = "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/682c5e5b84cac09c56cdbebe_angle-down-small.svg";
     followerFilterIcon.classList.add("db-icon-18");
     followerFilterDiv.appendChild(followerFilterIcon);
-
     const followerDropdownList = document.createElement("div");
     followerDropdownList.classList.add("db-filter-dropdown-list");
     followerDropdownList.style.display = "none";
-
     Object.entries(MAPPINGS.followerRanges).forEach(([id, rangeText]) => {
         if (rangeText === "0") return;
-
         const optionDiv = document.createElement("div");
         optionDiv.classList.add("db-filter-option");
-
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.classList.add("db-filter-checkbox");
         checkbox.id = `filter-${jobId}-follower-${id}`;
         checkbox.dataset.filterValue = id;
         checkbox.dataset.filterType = "follower";
-
         if (jobDataCache[jobId]?.activeFilters?.follower?.includes(id)) {
             checkbox.checked = true;
         }
-
         const label = document.createElement("label");
         label.htmlFor = checkbox.id;
         label.classList.add("is-txt-16");
         label.textContent = rangeText;
-
         checkbox.addEventListener("change", async () => {
             await applyAndReloadApplicants(jobId, applicantsListContainer, paginationWrapper);
         });
-
         optionDiv.appendChild(checkbox);
         optionDiv.appendChild(label);
         followerDropdownList.appendChild(optionDiv);
     });
     followerFilterDiv.appendChild(followerDropdownList);
     filterWrapper.appendChild(followerFilterDiv);
-
     followerFilterDiv.addEventListener("click", (e) => {
         e.stopPropagation();
         const allDropdowns = filterRow.querySelectorAll('.db-filter-dropdown-list');
@@ -597,32 +565,25 @@ function createFilterRowElement(jobId, applicantsListContainer, paginationWrappe
         });
         followerDropdownList.style.display = followerDropdownList.style.display === "none" ? "block" : "none";
     });
-
     document.addEventListener("click", (e) => {
         if (!followerFilterDiv.contains(e.target)) {
             followerDropdownList.style.display = "none";
         }
     });
-
     return filterRow;
 }
 
-// MODIFIED: To use jobDetails from cache for sorting
 async function applyAndReloadApplicants(jobId, applicantsListContainer, paginationWrapper) {
     if (!jobDataCache[jobId] || !jobDataCache[jobId].allItems) {
         console.warn("DEBUG: applyAndReloadApplicants - Keine Rohdaten im Cache für Job", jobId);
         return;
     }
-
     const activeFollowerFilters = [];
     const followerCheckboxes = applicantsListContainer.parentElement.querySelectorAll(`.db-filter-checkbox[data-filter-type="follower"]:checked`);
     followerCheckboxes.forEach(cb => activeFollowerFilters.push(cb.dataset.filterValue));
-
     jobDataCache[jobId].activeFilters = { follower: activeFollowerFilters };
     console.log(`DEBUG: Job ${jobId} - Aktive Follower-Filter:`, activeFollowerFilters);
-
     let filteredItems = jobDataCache[jobId].allItems;
-
     if (activeFollowerFilters.length > 0) {
         filteredItems = filteredItems.filter(item => {
             if (item.error || !item.fieldData) return false;
@@ -630,32 +591,22 @@ async function applyAndReloadApplicants(jobId, applicantsListContainer, paginati
             return activeFollowerFilters.includes(applicantFollowerId);
         });
     }
-
     console.log(`DEBUG: Job ${jobId} - Anzahl Items nach Filterung: ${filteredItems.length}`);
-
     const jobDetails = jobDataCache[jobId]?.jobDetails;
     if (!jobDetails) {
         console.error(`DEBUG: Job ${jobId} - Job-Details nicht im Cache gefunden für Sortierung bei Filteranwendung.`);
-        // Fallback: Sort without match score or show error
         jobDataCache[jobId].sortedAndFilteredItems = sortApplicantsGlobally(filteredItems, null, MAPPINGS);
     } else {
         jobDataCache[jobId].sortedAndFilteredItems = sortApplicantsGlobally(filteredItems, jobDetails, MAPPINGS);
     }
-
     await loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, paginationWrapper, 1);
 }
 
-
 async function renderPaginationControls(jobId, displayedItemsArray, applicantsContentElement, paginationWrapper, currentPage, totalPages) {
-    if (!paginationWrapper) {
-        return;
-    }
+    if (!paginationWrapper) return;
     paginationWrapper.innerHTML = '';
     paginationWrapper.style.display = totalPages <= 1 ? "none" : "flex";
-
-    if (totalPages <= 1) {
-        return;
-    }
+    if (totalPages <= 1) return;
 
     const prevButton = document.createElement("a");
     prevButton.href = "#";
@@ -676,33 +627,25 @@ async function renderPaginationControls(jobId, displayedItemsArray, applicantsCo
 
     const MAX_VISIBLE_PAGES = 5;
     let startPage, endPage;
-
     if (totalPages <= MAX_VISIBLE_PAGES) {
-        startPage = 1;
-        endPage = totalPages;
+        startPage = 1; endPage = totalPages;
     } else {
         const maxPagesBeforeCurrentPage = Math.floor(MAX_VISIBLE_PAGES / 2);
         const maxPagesAfterCurrentPage = Math.ceil(MAX_VISIBLE_PAGES / 2) - 1;
         if (currentPage <= maxPagesBeforeCurrentPage) {
-            startPage = 1;
-            endPage = MAX_VISIBLE_PAGES;
+            startPage = 1; endPage = MAX_VISIBLE_PAGES;
         } else if (currentPage + maxPagesAfterCurrentPage >= totalPages) {
-            startPage = totalPages - MAX_VISIBLE_PAGES + 1;
-            endPage = totalPages;
+            startPage = totalPages - MAX_VISIBLE_PAGES + 1; endPage = totalPages;
         } else {
-            startPage = currentPage - maxPagesBeforeCurrentPage;
-            endPage = currentPage + maxPagesAfterCurrentPage;
+            startPage = currentPage - maxPagesBeforeCurrentPage; endPage = currentPage + maxPagesAfterCurrentPage;
         }
     }
 
     if (startPage > 1) {
         const firstPageLink = document.createElement("a");
-        firstPageLink.href = "#";
-        firstPageLink.classList.add("db-pagination-count");
-        firstPageLink.textContent = "1";
+        firstPageLink.href = "#"; firstPageLink.classList.add("db-pagination-count"); firstPageLink.textContent = "1";
         firstPageLink.addEventListener("click", async (e) => {
-            e.preventDefault();
-            if (firstPageLink.classList.contains("disabled-loading") || firstPageLink.classList.contains("current")) return;
+            e.preventDefault(); if (firstPageLink.classList.contains("disabled-loading") || firstPageLink.classList.contains("current")) return;
             paginationWrapper.querySelectorAll('.db-pagination-count:not(.ellipsis)').forEach(el => el.classList.add("disabled-loading"));
             firstPageLink.textContent = "...";
             await loadAndDisplayApplicantsForJob(jobId, applicantsContentElement.parentElement, paginationWrapper, 1);
@@ -710,23 +653,19 @@ async function renderPaginationControls(jobId, displayedItemsArray, applicantsCo
         paginationWrapper.appendChild(firstPageLink);
         if (startPage > 2) {
             const ellipsisSpan = document.createElement("span");
-            ellipsisSpan.classList.add("db-pagination-count", "ellipsis");
-            ellipsisSpan.textContent = "...";
+            ellipsisSpan.classList.add("db-pagination-count", "ellipsis"); ellipsisSpan.textContent = "...";
             paginationWrapper.appendChild(ellipsisSpan);
         }
     }
 
     for (let i = startPage; i <= endPage; i++) {
         const pageLink = document.createElement("a");
-        pageLink.href = "#";
-        pageLink.classList.add("db-pagination-count");
-        pageLink.textContent = i;
+        pageLink.href = "#"; pageLink.classList.add("db-pagination-count"); pageLink.textContent = i;
         if (i === currentPage) {
             pageLink.classList.add("current");
         } else {
             pageLink.addEventListener("click", async (e) => {
-                e.preventDefault();
-                if (pageLink.classList.contains("disabled-loading")) return;
+                e.preventDefault(); if (pageLink.classList.contains("disabled-loading")) return;
                 paginationWrapper.querySelectorAll('.db-pagination-count:not(.ellipsis)').forEach(el => el.classList.add("disabled-loading"));
                 pageLink.textContent = "...";
                 await loadAndDisplayApplicantsForJob(jobId, applicantsContentElement.parentElement, paginationWrapper, i);
@@ -738,17 +677,13 @@ async function renderPaginationControls(jobId, displayedItemsArray, applicantsCo
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
             const ellipsisSpan = document.createElement("span");
-            ellipsisSpan.classList.add("db-pagination-count", "ellipsis");
-            ellipsisSpan.textContent = "...";
+            ellipsisSpan.classList.add("db-pagination-count", "ellipsis"); ellipsisSpan.textContent = "...";
             paginationWrapper.appendChild(ellipsisSpan);
         }
         const lastPageLink = document.createElement("a");
-        lastPageLink.href = "#";
-        lastPageLink.classList.add("db-pagination-count");
-        lastPageLink.textContent = totalPages;
+        lastPageLink.href = "#"; lastPageLink.classList.add("db-pagination-count"); lastPageLink.textContent = totalPages;
         lastPageLink.addEventListener("click", async (e) => {
-            e.preventDefault();
-            if (lastPageLink.classList.contains("disabled-loading") || lastPageLink.classList.contains("current")) return;
+            e.preventDefault(); if (lastPageLink.classList.contains("disabled-loading") || lastPageLink.classList.contains("current")) return;
             paginationWrapper.querySelectorAll('.db-pagination-count:not(.ellipsis)').forEach(el => el.classList.add("disabled-loading"));
             lastPageLink.textContent = "...";
             await loadAndDisplayApplicantsForJob(jobId, applicantsContentElement.parentElement, paginationWrapper, totalPages);
@@ -757,17 +692,13 @@ async function renderPaginationControls(jobId, displayedItemsArray, applicantsCo
     }
 
     const nextButton = document.createElement("a");
-    nextButton.href = "#";
-    nextButton.classList.add("db-pagination-count", "button-next");
-    nextButton.textContent = "Weiter";
+    nextButton.href = "#"; nextButton.classList.add("db-pagination-count", "button-next"); nextButton.textContent = "Weiter";
     if (currentPage === totalPages) {
         nextButton.classList.add("disabled");
     } else {
         nextButton.addEventListener("click", async (e) => {
-            e.preventDefault();
-            if (nextButton.classList.contains("disabled-loading")) return;
-            nextButton.classList.add("disabled-loading");
-            nextButton.textContent = "Lade...";
+            e.preventDefault(); if (nextButton.classList.contains("disabled-loading")) return;
+            nextButton.classList.add("disabled-loading"); nextButton.textContent = "Lade...";
             await loadAndDisplayApplicantsForJob(jobId, applicantsContentElement.parentElement, paginationWrapper, currentPage + 1);
         });
     }
@@ -780,7 +711,7 @@ async function fetchAllApplicantsForJob(jobId, applicantIds) {
     let successfulFetches = 0;
     if (applicantIds.length > 0) {
         const promises = applicantIds.map((applicantId, index) =>
-            delay(index * (API_CALL_DELAY_MS / 2)) // Slightly increased delay staggering
+            delay(index * (API_CALL_DELAY_MS / 2))
             .then(() => fetchWebflowItem(USER_COLLECTION_ID_MJ, applicantId))
         );
         const results = await Promise.all(promises);
@@ -795,21 +726,12 @@ async function fetchAllApplicantsForJob(jobId, applicantIds) {
     return fetchedItems;
 }
 
-// MODIFIED: sortApplicantsGlobally to use match score
-/**
- * Sorts applicants, primarily by match score (desc), then by Plus status.
- * @param {Array<object>} applicantItems - Array of applicant items from Webflow.
- * @param {object|null} jobFieldData - The job's requirement data. If null, sorts without match score.
- * @param {object} allMappings - The global MAPPINGS object.
- * @returns {Array<object>} Sorted array of applicant items, with 'matchInfo' attached to each.
- */
 function sortApplicantsGlobally(applicantItems, jobFieldData, allMappings) {
     const itemsWithScore = applicantItems.map(applicant => {
-        let matchInfo = { score: -1, details: {}, rawScore: 0, maxScore: 0 }; // Default for errors or no job data
+        let matchInfo = { score: -1, details: {}, rawScore: 0, maxScore: 0 };
         if (jobFieldData && applicant && applicant.fieldData && !applicant.error) {
             matchInfo = calculateMatchScore(applicant.fieldData, jobFieldData, allMappings);
         } else if (applicant && applicant.fieldData && !applicant.error && !jobFieldData) {
-            // If no jobFieldData, we can't calculate a meaningful score, but keep applicant valid
              matchInfo = { score: 0, details: {note: "Job data missing for scoring"}, rawScore: 0, maxScore: 0 };
         }
         return { ...applicant, matchInfo };
@@ -818,34 +740,24 @@ function sortApplicantsGlobally(applicantItems, jobFieldData, allMappings) {
     return itemsWithScore.sort((a, b) => {
         const aIsValid = a && a.fieldData && !a.error;
         const bIsValid = b && b.fieldData && !b.error;
-
         if (aIsValid && !bIsValid) return -1;
         if (!aIsValid && bIsValid) return 1;
         if (!aIsValid && !bIsValid) return 0;
-
-        // Primary sort: matchScore (descending)
         if (b.matchInfo.score !== a.matchInfo.score) {
             return b.matchInfo.score - a.matchInfo.score;
         }
-
-        // Secondary sort: plus-mitglied (Plus members first)
         const aIsPlus = a.fieldData["plus-mitglied"] === true;
         const bIsPlus = b.fieldData["plus-mitglied"] === true;
         if (aIsPlus && !bIsPlus) return -1;
         if (!aIsPlus && bIsPlus) return 1;
-
-        // Tertiary sort: applicant name (ascending) for consistent order if scores and plus status are same
         const nameA = a.fieldData.name || "";
         const nameB = b.fieldData.name || "";
         return nameA.localeCompare(nameB);
     });
 }
 
-
-// MODIFIED: To pass jobDetails to createApplicantRowElement
 async function loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, paginationWrapper, pageNumber = 1) {
     console.log(`DEBUG: loadAndDisplayApplicantsForJob START - Job ID: ${jobId}, Page: ${pageNumber}`);
-
     const mainToggleButton = document.querySelector(`.my-job-item[data-job-id="${jobId}"] .db-table-applicants`);
     if (mainToggleButton) mainToggleButton.style.pointerEvents = 'none';
 
@@ -881,7 +793,6 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, pa
 
     applicantsContentElement.innerHTML = '';
     applicantsListContainer.dataset.currentPage = pageNumber;
-
     const loadingMessage = document.createElement("p");
     loadingMessage.classList.add("applicants-message");
     loadingMessage.textContent = `Lade Bewerber (Seite ${pageNumber})...`;
@@ -894,27 +805,21 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, pa
         if (mainToggleButton) mainToggleButton.style.pointerEvents = 'auto';
         return;
     }
-    // --- Get Job Details for creating applicant rows ---
     const jobDetailsForRows = jobCache.jobDetails;
     if (!jobDetailsForRows) {
         console.warn(`DEBUG: Job-Details für Job ${jobId} nicht im Cache beim Rendern der Bewerberzeilen.`);
-        // You might want to display a specific message if job details are missing,
-        // as scoring might not be accurate or tooltips won't have job context.
     }
-
 
     const allSortedAndFilteredItems = jobCache.sortedAndFilteredItems;
     const totalPages = Math.ceil(allSortedAndFilteredItems.length / currentApplicantPageSize);
     const offset = (pageNumber - 1) * currentApplicantPageSize;
     const pageItems = allSortedAndFilteredItems.slice(offset, offset + currentApplicantPageSize);
-
     loadingMessage.remove();
 
     let validApplicantsRenderedOnThisPage = 0;
     if (pageItems.length > 0) {
-        pageItems.forEach(applicantItemWithScore => { // This item now includes 'matchInfo'
+        pageItems.forEach(applicantItemWithScore => {
             if (applicantItemWithScore && applicantItemWithScore.fieldData && !applicantItemWithScore.error) {
-                // Pass the full applicantItem (which has fieldData and matchInfo), jobDetails, and MAPPINGS
                 const applicantRow = createApplicantRowElement(applicantItemWithScore, jobDetailsForRows, MAPPINGS);
                 applicantsContentElement.appendChild(applicantRow);
                 requestAnimationFrame(() => {
@@ -941,7 +846,6 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, pa
     }
 
     console.log(`DEBUG: Job ${jobId}, Seite ${pageNumber}: ${validApplicantsRenderedOnThisPage} Bewerber gerendert aus ${pageItems.length} Items für diese Seite.`);
-
     if (validApplicantsRenderedOnThisPage === 0 && allSortedAndFilteredItems.length > 0 && pageItems.length > 0) {
         const noDataMsg = document.createElement("p");
         noDataMsg.classList.add("applicants-message");
@@ -962,11 +866,9 @@ async function loadAndDisplayApplicantsForJob(jobId, applicantsListContainer, pa
     }
 
     await renderPaginationControls(jobId, allSortedAndFilteredItems, applicantsContentElement, paginationWrapper, pageNumber, totalPages);
-
     if (mainToggleButton) mainToggleButton.style.pointerEvents = 'auto';
-    applicantsListContainer.dataset.allApplicantsLoaded = 'true'; // This flag might need re-evaluation if filters change often
+    applicantsListContainer.dataset.allApplicantsLoaded = 'true';
 }
-
 
 function renderMyJobsAndApplicants(jobItems) {
     const container = document.getElementById("jobs-list");
@@ -975,7 +877,6 @@ function renderMyJobsAndApplicants(jobItems) {
         return;
     }
     container.innerHTML = "";
-
     if (jobItems.length === 0) {
         const noJobsMsg = document.createElement("p");
         noJobsMsg.textContent = "Du hast noch keine Jobs erstellt oder es wurden keine Jobs gefunden.";
@@ -986,7 +887,6 @@ function renderMyJobsAndApplicants(jobItems) {
 
     const fragment = document.createDocumentFragment();
     let globalRateLimitMessageShown = false;
-
     jobItems.forEach(jobItem => {
         if (jobItem.error && jobItem.status === 429) {
             console.warn(`Job (ID: ${jobItem.id || 'unbekannt'}) konnte wegen Rate Limit nicht geladen werden und wird nicht gerendert.`);
@@ -1001,12 +901,10 @@ function renderMyJobsAndApplicants(jobItems) {
             }
             return;
         }
-
         if (jobItem.error) {
             console.warn(`Job (ID: ${jobItem.id || 'unbekannt'}) konnte nicht geladen werden: ${jobItem.message}. Er wird nicht gerendert.`);
             return;
         }
-
         const jobFieldData = jobItem.fieldData;
         if (!jobFieldData) {
             console.warn("Job-Item ohne fieldData übersprungen:", jobItem);
@@ -1016,10 +914,8 @@ function renderMyJobsAndApplicants(jobItems) {
         const jobWrapper = document.createElement("div");
         jobWrapper.classList.add("my-job-item", "job-entry");
         jobWrapper.dataset.jobId = jobItem.id;
-
         const jobHeaderDiv = document.createElement("div");
         jobHeaderDiv.classList.add("db-table-row", "db-table-my-job");
-
         const jobInfoDataCell = document.createElement("div");
         jobInfoDataCell.classList.add("db-table-row-item", "justify-left");
         if (jobFieldData["job-image"]?.url || jobFieldData["job-image"]) {
@@ -1034,17 +930,14 @@ function renderMyJobsAndApplicants(jobItems) {
         jobNameSpan.textContent = jobFieldData.name || "Unbenannter Job";
         jobInfoDataCell.appendChild(jobNameSpan);
         jobHeaderDiv.appendChild(jobInfoDataCell);
-
         const paymentCell = document.createElement("div");
         paymentCell.classList.add("db-table-row-item");
         paymentCell.textContent = jobFieldData["job-payment"] ? `${jobFieldData["job-payment"]} €` : "K.A.";
         jobHeaderDiv.appendChild(paymentCell);
-
         const categoryCell = document.createElement("div");
         categoryCell.classList.add("db-table-row-item");
-        categoryCell.textContent = jobFieldData["industrie-kategorie"] || "K.A."; // This is used for matching
+        categoryCell.textContent = jobFieldData["industrie-kategorie"] || "K.A.";
         jobHeaderDiv.appendChild(categoryCell);
-
         const statusCell = document.createElement("div");
         statusCell.classList.add("db-table-row-item");
         const statusTag = document.createElement("div");
@@ -1054,42 +947,33 @@ function renderMyJobsAndApplicants(jobItems) {
         if (jobFieldData["job-status"] === "Beendet") statusTag.classList.add("is-bg-light-red");
         statusCell.appendChild(statusTag);
         jobHeaderDiv.appendChild(statusCell);
-
         const applicantIdsForThisSpecificJob = jobFieldData["bewerber"] || [];
         const applicantsCountCell = document.createElement("div");
         applicantsCountCell.classList.add("db-table-row-item");
         applicantsCountCell.textContent = `Bewerber: ${applicantIdsForThisSpecificJob.length}`;
         jobHeaderDiv.appendChild(applicantsCountCell);
-
         jobWrapper.appendChild(jobHeaderDiv);
         const toggleButtonRow = document.createElement("div");
         toggleButtonRow.classList.add("applicants-toggle-row");
         const toggleDivElement = document.createElement("div");
         toggleDivElement.classList.add("db-table-applicants");
-
         const toggleTextSpan = document.createElement("span");
         toggleTextSpan.classList.add("is-txt-16");
         toggleTextSpan.textContent = "Bewerberliste anzeigen";
-
         const toggleIconImg = document.createElement("img");
         toggleIconImg.src = "https://cdn.prod.website-files.com/63db7d558cd2e4be56cd7e2f/682c5e5b84cac09c56cdbebe_angle-down-small.svg";
         toggleIconImg.alt = "Toggle Icon";
         toggleIconImg.classList.add("db-icon-24", "toggle-icon");
-
         toggleDivElement.appendChild(toggleTextSpan);
         toggleDivElement.appendChild(toggleIconImg);
-
         toggleButtonRow.appendChild(toggleDivElement);
         jobWrapper.appendChild(toggleButtonRow);
-
         const applicantsListContainer = document.createElement("div");
         applicantsListContainer.classList.add("applicants-list-container");
         applicantsListContainer.style.display = "none";
         applicantsListContainer.dataset.jobId = jobItem.id;
         applicantsListContainer.dataset.allApplicantsLoaded = 'false';
-
         jobWrapper.appendChild(applicantsListContainer);
-
         let paginationWrapper = jobWrapper.querySelector(".db-table-pagination");
         if (!paginationWrapper) {
             paginationWrapper = document.createElement("div");
@@ -1097,29 +981,20 @@ function renderMyJobsAndApplicants(jobItems) {
             jobWrapper.appendChild(paginationWrapper);
         }
         paginationWrapper.style.display = "none";
-
         fragment.appendChild(jobWrapper);
 
         toggleDivElement.addEventListener("click", async () => {
             const isHidden = applicantsListContainer.style.display === "none";
-            // const allApplicantsLoaded = applicantsListContainer.dataset.allApplicantsLoaded === 'true'; // Re-evaluate if this flag is still useful with dynamic sorting/filtering
-
             if (isHidden) {
                 applicantsListContainer.style.display = "block";
                 toggleTextSpan.textContent = "Bewerberliste ausblenden";
                 toggleIconImg.classList.add("icon-up");
-
-                // Always fetch/re-process if not already cached or if job details might have changed (though not handled here)
-                // Store job details in cache if not already present or if an update is needed
                 if (!jobDataCache[jobItem.id] || !jobDataCache[jobItem.id].jobDetails) {
                      if (!jobDataCache[jobItem.id]) {
                         jobDataCache[jobItem.id] = { activeFilters: { follower: [] } };
                      }
-                     jobDataCache[jobItem.id].jobDetails = jobFieldData; // Store current job's fieldData
+                     jobDataCache[jobItem.id].jobDetails = jobFieldData;
                 }
-
-
-                // Check if all applicant items for this job are already in cache
                 if (!jobDataCache[jobItem.id].allItems || jobDataCache[jobItem.id].allItems.length !== applicantIdsForThisSpecificJob.length) {
                     toggleDivElement.style.pointerEvents = 'none';
                     applicantsListContainer.innerHTML = '';
@@ -1127,22 +1002,18 @@ function renderMyJobsAndApplicants(jobItems) {
                     loadingAllMsg.classList.add("applicants-message");
                     loadingAllMsg.textContent = "Lade alle Bewerberdaten für Sortierung...";
                     applicantsListContainer.appendChild(loadingAllMsg);
-
                     const fetchedItems = await fetchAllApplicantsForJob(jobItem.id, applicantIdsForThisSpecificJob);
                     loadingAllMsg.remove();
                     jobDataCache[jobItem.id].allItems = fetchedItems;
                 }
-                // Always re-sort and filter based on current job details and filters
                 jobDataCache[jobItem.id].sortedAndFilteredItems = sortApplicantsGlobally(
                     jobDataCache[jobItem.id].allItems,
-                    jobDataCache[jobItem.id].jobDetails, // Use cached/current job details
+                    jobDataCache[jobItem.id].jobDetails,
                     MAPPINGS
                 );
-
-                applicantsListContainer.dataset.allApplicantsLoaded = 'true'; // Indicates base data is loaded
+                applicantsListContainer.dataset.allApplicantsLoaded = 'true';
                 await loadAndDisplayApplicantsForJob(jobItem.id, applicantsListContainer, paginationWrapper, 1);
                 toggleDivElement.style.pointerEvents = 'auto';
-
             } else {
                 applicantsListContainer.style.display = "none";
                 paginationWrapper.style.display = "none";
@@ -1151,9 +1022,7 @@ function renderMyJobsAndApplicants(jobItems) {
             }
         });
     });
-
     container.appendChild(fragment);
-
     requestAnimationFrame(() => {
         container.querySelectorAll(".my-job-item.job-entry:not(.job-error)").forEach(entry => entry.classList.add("visible"));
     });
@@ -1185,7 +1054,6 @@ async function displayMyJobsAndApplicants() {
             return;
         }
         console.log(`✅ MyJobs: Webflow Member ID: ${currentWebflowMemberId_MJ}`);
-
         await delay(API_CALL_DELAY_MS);
         const currentUserItem = await fetchWebflowItem(USER_COLLECTION_ID_MJ, currentWebflowMemberId_MJ);
 
@@ -1207,7 +1075,6 @@ async function displayMyJobsAndApplicants() {
 
         const postedJobIds = currentUserItem.fieldData ? currentUserItem.fieldData["posted-jobs"] || [] : [];
         console.log(`User hat ${postedJobIds.length} Jobs im Feld 'posted-jobs'.`);
-
         if (postedJobIds.length === 0) {
             renderMyJobsAndApplicants([]);
             return;
@@ -1218,7 +1085,6 @@ async function displayMyJobsAndApplicants() {
             console.log(`Fetching job item: ${jobId}`);
             await delay(API_CALL_DELAY_MS);
             const jobItem = await fetchWebflowItem(JOB_COLLECTION_ID_MJ, jobId);
-
             if (jobItem) {
                 myJobItems.push(jobItem);
             } else {
@@ -1233,8 +1099,6 @@ async function displayMyJobsAndApplicants() {
                 console.log(`Job ID: ${job.id}, Fehler: ${job.message}, Status: ${job.status}`);
             } else if (job.fieldData) {
                 console.log(`Job ID: ${job.id}, Name: ${job.fieldData.name}, Bewerber IDs im Job-Objekt: ${JSON.stringify(job.fieldData["bewerber"] || [])}`);
-                // Log new job requirement fields if they exist for debugging
-                // console.log(`   Job Requirements (example): Creator Types - ${JSON.stringify(job.fieldData["job-required-creator-types"])}`);
             } else {
                 console.log(`Job ID: ${job.id}, Unerwarteter Zustand (weder fieldData noch error-Property). Item:`, job);
             }
@@ -1245,10 +1109,8 @@ async function displayMyJobsAndApplicants() {
             container.innerHTML = `<p class='info-message job-entry visible'>Keine Jobdaten konnten geladen oder verarbeitet werden.</p>`;
             return;
         }
-
         allMyJobsData_MJ = myJobItems;
         renderMyJobsAndApplicants(allMyJobsData_MJ);
-
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler in displayMyJobsAndApplicants:", error);
         if (container) {
@@ -1268,7 +1130,6 @@ function initializePageSizeSelector() {
                 const oldSize = currentApplicantPageSize;
                 currentApplicantPageSize = newSize;
                 console.log(`DEBUG: Seitengröße geändert von ${oldSize} auf ${currentApplicantPageSize}`);
-
                 const openApplicantContainer = document.querySelector('.applicants-list-container[style*="display: block"]');
                 if (openApplicantContainer) {
                     const jobId = openApplicantContainer.dataset.jobId;
@@ -1276,14 +1137,10 @@ function initializePageSizeSelector() {
                     const jobWrapper = openApplicantContainer.closest('.my-job-item');
                     const paginationWrapper = jobWrapper ? jobWrapper.querySelector(".db-table-pagination") : null;
                     const toggleDivElement = jobWrapper ? jobWrapper.querySelector(".db-table-applicants") : null;
-
                     if (jobCacheEntry && jobCacheEntry.allItems && paginationWrapper && toggleDivElement && jobCacheEntry.jobDetails) {
                         console.log(`DEBUG: Lade Job ${jobId} mit neuer Seitengröße ${currentApplicantPageSize} neu (Seite 1).`);
-
                         toggleDivElement.style.pointerEvents = 'none';
                         paginationWrapper.querySelectorAll('.db-pagination-count').forEach(el => el.classList.add("disabled-loading"));
-
-                        // Re-filter and re-sort with new page size logic (sorting already done by score)
                         let itemsToDisplay = jobCacheEntry.allItems;
                         if (jobCacheEntry.activeFilters.follower && jobCacheEntry.activeFilters.follower.length > 0) {
                             itemsToDisplay = itemsToDisplay.filter(item => {
@@ -1292,9 +1149,7 @@ function initializePageSizeSelector() {
                                 return jobCacheEntry.activeFilters.follower.includes(applicantFollowerId);
                             });
                         }
-                        // Re-sort with potentially new set of filtered items
                         jobCacheEntry.sortedAndFilteredItems = sortApplicantsGlobally(itemsToDisplay, jobCacheEntry.jobDetails, MAPPINGS);
-
                         loadAndDisplayApplicantsForJob(jobId, openApplicantContainer, paginationWrapper, 1)
                             .finally(() => {
                                 if (toggleDivElement) toggleDivElement.style.pointerEvents = 'auto';
@@ -1311,55 +1166,5 @@ function initializePageSizeSelector() {
 window.addEventListener("DOMContentLoaded", () => {
     initializePageSizeSelector();
     displayMyJobsAndApplicants();
-
-    // NEW: Add CSS for score circle and tooltip
-    const style = document.createElement('style');
-    style.textContent = `
-        .match-score-cell {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative; /* For tooltip positioning */
-        }
-        .score-circle-indicator {
-            /* Styles are applied inline via JS for dynamic color */
-            /* Base styles can be here if needed */
-        }
-        .score-tooltip-details {
-            display: none;
-            position: absolute;
-            bottom: 105%; /* Position above the score cell */
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #333;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            z-index: 1000; /* Ensure it's above other elements */
-            width: 280px; /* Adjust as needed */
-            font-size: 11px;
-            line-height: 1.5;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-            text-align: left;
-        }
-        .score-tooltip-details strong { color: #FFC107; }
-        .score-tooltip-details hr { border-top: 1px solid #555; margin: 4px 0; }
-        .score-tooltip-details p { margin: 5px 0; }
-        .score-tooltip-details small { color: #ccc; }
-
-        /* Adjust table layout if necessary for the new "Match" column */
-        .db-table-applicant {
-            /* If using grid, ensure your template-columns account for the new column */
-            /* Example: grid-template-columns: 70px repeat(7, 1fr); */
-        }
-        .db-table-header.db-table-applicant .db-table-row-item:first-child,
-        .db-table-row.db-table-applicant .db-table-row-item.match-score-cell {
-             flex-basis: 70px !important; /* Ensure enough space for the score circle */
-             flex-grow: 0 !important;
-             flex-shrink: 0 !important;
-             padding-left: 5px;
-             padding-right: 5px;
-        }
-    `;
-    document.head.appendChild(style);
+    // Dynamisch hinzugefügtes CSS wurde entfernt. Styling erfolgt via Webflow.
 });
