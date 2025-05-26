@@ -74,7 +74,7 @@ async function fetchJobData(jobId) {
 
 async function fetchIndividualJobsInBatches(appIds, batchSize = 100, delayBetweenBatches = 1000) { 
     console.log(`Starting fetch of ${appIds.length} jobs with individual GET requests. Batch size: ${batchSize}, Delay: ${delayBetweenBatches}ms.`);
-    if (batchSize > 20 && delayBetweenBatches < (batchSize * 50) ) { // Adjusted warning threshold
+    if (batchSize > 20 && delayBetweenBatches < (batchSize * 50) ) { 
         console.warn(`WARNING: Batch configuration (Size: ${batchSize}, Delay: ${delayBetweenBatches}ms) might exceed Webflow Rate Limits!`);
     }
     const allResults = []; 
@@ -320,12 +320,13 @@ async function renderJobApplicantImages(jobData, collListElement) {
     let imagesDisplayedCount = 0;
     collListElement.innerHTML = ''; // Clear previous images for this job row
 
-    for (const creatorId of applicantIds) {
+    for (const creatorId of applicantIds) { // Process applicants one by one
         if (imagesDisplayedCount >= MAX_APPLICANT_IMAGES) {
             break; 
         }
 
-        const creatorResult = await fetchCollectionItem(USER_COLLECTION_ID, creatorId);
+        // Await the fetch for each creator to make it sequential if not cached
+        const creatorResult = await fetchCollectionItem(USER_COLLECTION_ID, creatorId); 
         
         let imageUrl;
         let creatorName = 'Creator';
@@ -364,52 +365,57 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
 
     console.log(`[renderJobs for ${targetListId}] Items after tab filter (jobsToProcessPrimaryFilter): ${jobsToProcessPrimaryFilter.length}`);
 
-    const showJobActiveFilter = document.getElementById("job-status-active-filter")?.checked;
-    const showJobClosedFilter = document.getElementById("job-status-closed-filter")?.checked;
-    const showAppPendingFilter = document.getElementById("application-status-pending-filter")?.checked;
-    const showAppAcceptedFilter = document.getElementById("application-status-accepted-filter")?.checked;
-    const showAppRejectedFilter = document.getElementById("application-status-rejected-filter")?.checked;
+    let currentFilteredList = [...jobsToProcessPrimaryFilter];
+
+    // 1. Search Filter
     const searchTermNormalized = currentSearchTerm.toLowerCase().trim();
+    if (searchTermNormalized) {
+        currentFilteredList = currentFilteredList.filter(({ jobData }) => {
+            if (!jobData || jobData.error) return false;
+            return (jobData["name"] || "").toLowerCase().includes(searchTermNormalized);
+        });
+    }
+    console.log(`[renderJobs for ${targetListId}] Items after search filter: ${currentFilteredList.length}`);
 
-    let filteredJobs = jobsToProcessPrimaryFilter.filter(({ jobData }) => { 
-        if (!jobData || jobData.error) return false; 
-        
-        // 1. Search Filter
-        if (searchTermNormalized) {
-            const jobName = (jobData["name"] || "").toLowerCase();
-            if (!jobName.includes(searchTermNormalized)) return false;
-        }
+    // 2. Job Status Filter (Active/Closed)
+    const jobStatusActive = document.getElementById("job-status-active-filter")?.checked;
+    const jobStatusClosed = document.getElementById("job-status-closed-filter")?.checked;
 
-        // 2. Job Status Filter (Active/Closed)
-        const jobEndDate = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
-        const now = new Date();
-        const isJobCurrentlyActive = jobEndDate && jobEndDate >= now;
-        
-        if (showJobActiveFilter && !showJobClosedFilter) { 
-            if (!isJobCurrentlyActive) return false;
-        } else if (!showJobActiveFilter && showJobClosedFilter) { 
-            if (isJobCurrentlyActive) return false;
-        } else if (showJobActiveFilter && showJobClosedFilter) {
-            // Both checked, no filtering on job status
-        }
-        // If neither job status checkbox is checked, this filter is bypassed.
-        
-        // 3. Application Status Filter (Pending/Accepted/Rejected)
-        const currentApplicationStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
-        const appStatusFiltersActive = showAppPendingFilter || showAppAcceptedFilter || showAppRejectedFilter;
+    if (jobStatusActive && !jobStatusClosed) { 
+        currentFilteredList = currentFilteredList.filter(({ jobData }) => {
+            if (!jobData || jobData.error) return false;
+            const jobEndDate = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
+            return jobEndDate && jobEndDate >= new Date();
+        });
+    } else if (!jobStatusActive && jobStatusClosed) { 
+        currentFilteredList = currentFilteredList.filter(({ jobData }) => {
+            if (!jobData || jobData.error) return false;
+            const jobEndDate = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
+            // Consider jobs without an end date as not 'actively closed' unless explicitly defined.
+            // For "Closed", we usually mean the deadline has passed.
+            return jobEndDate && jobEndDate < new Date(); 
+        });
+    } // If both or neither are checked, no filtering by this specific job status criterion.
+    console.log(`[renderJobs for ${targetListId}] Items after job status filter: ${currentFilteredList.length}`);
+    
+    // 3. Application Status Filter (Pending/Accepted/Rejected)
+    const appStatusPending = document.getElementById("application-status-pending-filter")?.checked;
+    const appStatusAccepted = document.getElementById("application-status-accepted-filter")?.checked;
+    const appStatusRejected = document.getElementById("application-status-rejected-filter")?.checked;
+    
+    if (appStatusPending || appStatusAccepted || appStatusRejected) {
+        currentFilteredList = currentFilteredList.filter(({ jobData }) => {
+            if (!jobData || jobData.error) return false;
+            const currentAppStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
+            if (appStatusPending && currentAppStatus === "Ausstehend") return true;
+            if (appStatusAccepted && currentAppStatus === "Angenommen") return true;
+            if (appStatusRejected && currentAppStatus === "Abgelehnt") return true;
+            return false; 
+        });
+    }
+    console.log(`[renderJobs for ${targetListId}] Items after application status filter: ${currentFilteredList.length}`);
 
-        if (appStatusFiltersActive) { 
-            let passesAppStatus = false;
-            if (showAppPendingFilter && currentApplicationStatus === "Ausstehend") passesAppStatus = true;
-            if (showAppAcceptedFilter && currentApplicationStatus === "Angenommen") passesAppStatus = true;
-            if (showAppRejectedFilter && currentApplicationStatus === "Abgelehnt") passesAppStatus = true;
-            if (!passesAppStatus) return false; 
-        }
-        return true; 
-    });
-
-    console.log(`[renderJobs for ${targetListId}] Items after secondary filters (checkboxes/search): ${filteredJobs.length}`);
-
+    const filteredJobs = currentFilteredList; // Final list after all filters
 
     let sortedJobs = [...filteredJobs];
     if (activeSortCriteria && activeSortCriteria.key) {
