@@ -14,7 +14,7 @@ let currentWebflowMemberId = null;
 let activeSortCriteria = null;
 let currentSearchTerm = "";
 
-// 🛠️ Hilfsfunktionen (mostly unchanged from Script 2)
+// 🛠️ Hilfsfunktionen
 function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
@@ -49,19 +49,32 @@ async function fetchJobData(jobId) {
     }
 }
 
+/**
+ * Berechnet den Countdown bis zur Deadline und formatiert ihn.
+ * @param {string} endDate - Das Enddatum als ISO-String.
+ * @returns {object} Ein Objekt mit `text` (formatierter Countdown) und `isExpired` (boolean).
+ */
 function calculateDeadlineCountdown(endDate) {
-    if (!endDate) return "N/A";
+    if (!endDate) return { text: "N/A", isExpired: false };
     const now = new Date();
     const deadline = new Date(endDate);
     const diff = deadline - now;
-    if (diff <= 0) return "Abgelaufen";
-    const minutes = Math.floor(diff / (1000 * 60));
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    if (days > 0) return `Endet in ${days} Tag(en)`;
-    if (hours > 0) return `Endet in ${hours} Stunde(n)`;
-    return `Endet in ${minutes} Minute(n)`;
+
+    if (diff <= 0) return { text: "Abgelaufen", isExpired: true };
+
+    const minutesTotal = Math.floor(diff / (1000 * 60));
+    const hoursTotal = Math.floor(minutesTotal / 60);
+    const daysTotal = Math.floor(hoursTotal / 24);
+
+    if (daysTotal > 0) {
+        return { text: `${daysTotal} Tag${daysTotal > 1 ? 'e' : ''}`, isExpired: false };
+    }
+    if (hoursTotal > 0) {
+        return { text: `${hoursTotal} Stunde${hoursTotal > 1 ? 'n' : ''}`, isExpired: false };
+    }
+    return { text: `${minutesTotal} Minute${minutesTotal > 1 ? 'n' : ''}`, isExpired: false };
 }
+
 
 function getApplicationStatusForFilter(jobData, memberId) {
     if (!jobData || jobData.error) return "Ausstehend";
@@ -74,7 +87,7 @@ function getApplicationStatusForFilter(jobData, memberId) {
     return "Ausstehend";
 }
 
-// 💀 Skeleton Loader rendern (unchanged)
+// 💀 Skeleton Loader rendern
 function renderSkeletonLoader(container, count) {
     container.innerHTML = "";
     const fieldSkeletons = [
@@ -113,33 +126,27 @@ function renderSkeletonLoader(container, count) {
     }
 }
 
-// 📄 NEU: Pagination Controls rendern (adaptiert von Script 1)
+// 📄 NEU: Pagination Controls rendern
 function renderPaginationControls(paginationContainerElement, currentPageNum, totalPagesNum) {
     if (!paginationContainerElement) {
         console.warn("Pagination container not found.");
         return;
     }
-    paginationContainerElement.innerHTML = ''; // Clear existing controls
+    paginationContainerElement.innerHTML = ''; 
     paginationContainerElement.style.display = totalPagesNum <= 1 ? "none" : "flex";
 
     if (totalPagesNum <= 1) {
         return;
     }
 
-    // Helper function to handle page change
     async function handlePageChange(newPage) {
-        // Optional: Add visual feedback for loading
         const buttons = paginationContainerElement.querySelectorAll('.db-pagination-count');
         buttons.forEach(btn => btn.classList.add('disabled-loading'));
         
         currentPage = newPage;
-        renderJobs(allJobResults, currentWebflowMemberId); // renderJobs uses global currentPage
-
-        // Optional: Remove visual feedback after loading (though renderJobs will rebuild pagination)
-        // buttons.forEach(btn => btn.classList.remove('disabled-loading'));
+        renderJobs(allJobResults, currentWebflowMemberId);
     }
 
-    // Previous Button
     const prevButton = document.createElement("a");
     prevButton.href = "#";
     prevButton.classList.add("db-pagination-count", "button-prev");
@@ -156,7 +163,6 @@ function renderPaginationControls(paginationContainerElement, currentPageNum, to
     }
     paginationContainerElement.appendChild(prevButton);
 
-    // Page Number Links
     let startPage, endPage;
     if (totalPagesNum <= MAX_VISIBLE_PAGES_MJ) {
         startPage = 1;
@@ -237,7 +243,6 @@ function renderPaginationControls(paginationContainerElement, currentPageNum, to
         paginationContainerElement.appendChild(lastPageLink);
     }
 
-    // Next Button
     const nextButton = document.createElement("a");
     nextButton.href = "#";
     nextButton.classList.add("db-pagination-count", "button-next");
@@ -256,16 +261,15 @@ function renderPaginationControls(paginationContainerElement, currentPageNum, to
 }
 
 
-// 🖨️ Jobs rendern (MODIFIZIERT für Pagination)
+// 🖨️ Jobs rendern
 function renderJobs(jobsToProcess, webflowMemberId) {
     const appContainer = document.getElementById("application-list");
     if (!appContainer) {
         console.error("❌ Element 'application-list' nicht gefunden.");
         return;
     }
-    appContainer.innerHTML = ""; // Clear previous items for the new page
+    appContainer.innerHTML = ""; 
 
-    // Filterlogik
     const showJobActiveFilter = document.getElementById("job-status-active-filter")?.checked;
     const showJobClosedFilter = document.getElementById("job-status-closed-filter")?.checked;
     const showAppPendingFilter = document.getElementById("application-status-pending-filter")?.checked;
@@ -274,7 +278,7 @@ function renderJobs(jobsToProcess, webflowMemberId) {
     const searchTermNormalized = currentSearchTerm.toLowerCase().trim();
 
     let filteredJobs = jobsToProcess.filter(({ jobData }) => {
-        if (!jobData || jobData.error) return false; // Skip jobs with errors or no data
+        if (!jobData || jobData.error) return false;
 
         if (searchTermNormalized) {
             const jobName = (jobData["name"] || "").toLowerCase();
@@ -300,7 +304,6 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         return applicationStatusPasses;
     });
 
-    // Sortierlogik
     let sortedJobs = [...filteredJobs];
     if (activeSortCriteria && activeSortCriteria.key) {
         sortedJobs.sort((a, b) => {
@@ -348,13 +351,12 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         appContainer.appendChild(noJobsMessage);
     } else {
         const fragment = document.createDocumentFragment();
-        jobsToShowOnPage.forEach(({ jobData }) => { // jobData comes from the structure { appId, jobData }
+        jobsToShowOnPage.forEach(({ jobData }) => {
             if (!jobData || jobData.error) {
                  console.warn("Skipping job due to error or no data:", jobData);
-                 return; // Skip rendering if jobData is problematic
+                 return;
             }
             const jobLink = document.createElement("a");
-            // Use jobData.slug (which we ensured is top-level during fetchJobData)
             jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug || jobData.id || ''}`;
             jobLink.target = "_blank";
             jobLink.style.textDecoration = "none";
@@ -370,10 +372,10 @@ function renderJobs(jobsToProcess, webflowMemberId) {
             jobImage.src = jobData["job-image"]?.url || jobData["job-image"] || "https://via.placeholder.com/80x80?text=Job";
             jobImage.alt = jobData["name"] || "Job Bild";
             jobInfoDiv.appendChild(jobImage);
-            const jobName = document.createElement("span");
-            jobName.classList.add("truncate", "job-title");
-            jobName.textContent = jobData["name"] || "Unbekannter Job";
-            jobInfoDiv.appendChild(jobName);
+            const jobNameSpan = document.createElement("span");
+            jobNameSpan.classList.add("truncate", "job-title");
+            jobNameSpan.textContent = jobData["name"] || "Unbekannter Job";
+            jobInfoDiv.appendChild(jobNameSpan);
             jobDiv.appendChild(jobInfoDiv);
 
             const fields = [
@@ -385,15 +387,21 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                 const value = jobData[field.key];
                 const fieldDiv = document.createElement("div");
                 fieldDiv.classList.add("db-table-row-item", `item-${field.key}`);
-                const fieldText = document.createElement("span");
+                const fieldText = document.createElement("span"); 
+
                 if (field.key === "job-payment") {
-                    fieldText.classList.add("db-job-tag-txt");
+                    fieldText.classList.add("job-tag", "customer");
                     fieldText.textContent = value ? `${value} €` : "N/A";
                 } else if (field.key === "job-date-end") {
-                    fieldText.classList.add("db-job-tag-txt");
-                    fieldText.textContent = calculateDeadlineCountdown(value); // Use helper
+                    const deadlineInfo = calculateDeadlineCountdown(value);
+                    fieldText.classList.add("job-tag"); 
+                    if (deadlineInfo.isExpired) {
+                        fieldText.classList.add("is-bg-light-red");
+                    }
+                    fieldText.textContent = deadlineInfo.text;
                 } else if (field.key === "fertigstellung-content") {
-                    fieldText.classList.add("db-job-tag-txt");
+                    // Änderung hier: Klassen anpassen
+                    fieldText.classList.add("job-tag", "customer"); 
                     if (value) {
                         const date = new Date(value);
                         fieldText.textContent = !isNaN(date.getTime()) ? `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}` : "N/A";
@@ -417,12 +425,15 @@ function renderJobs(jobsToProcess, webflowMemberId) {
                     else if (appStatus === "Abgelehnt") { statusDiv.classList.add("is-bg-light-red"); statusTextInner.textContent = "Abgelehnt"; }
                     else { statusDiv.classList.add("is-bg-light-blue"); statusTextInner.textContent = "Ausstehend"; }
                     statusDiv.appendChild(statusTextInner); fieldDiv.appendChild(statusDiv);
-                } else { // Should not happen with defined fields
+                } else { 
                     fieldText.classList.add("db-job-tag-txt");
                     fieldText.textContent = value || "Nicht verfügbar";
                 }
+
                 if (field.key !== "job-status" && field.key !== "application-status") {
-                    if (fieldText.textContent || fieldText.classList.contains("db-job-tag-txt")) { fieldDiv.appendChild(fieldText); }
+                    if (fieldText.textContent || fieldText.classList.length > 0) { 
+                         fieldDiv.appendChild(fieldText);
+                    }
                 }
                 jobDiv.appendChild(fieldDiv);
             });
@@ -436,36 +447,35 @@ function renderJobs(jobsToProcess, webflowMemberId) {
         });
     }
 
-    // Render pagination controls
-    // Ensure you have a div with id="pagination-controls-container" in your HTML
     const paginationContainer = document.getElementById("pagination-controls-container") || createPaginationContainer();
     renderPaginationControls(paginationContainer, currentPage, totalPages);
 }
 
-// Helper to create pagination container if it doesn't exist (optional, better to have it in HTML)
 function createPaginationContainer() {
     let container = document.getElementById("pagination-controls-container");
     if (!container) {
         container = document.createElement("div");
         container.id = "pagination-controls-container";
-        container.className = "db-table-pagination"; // Add class for styling
-        // Try to append it after the application list or at a sensible place
+        container.className = "db-table-pagination"; 
         const appList = document.getElementById("application-list");
         if (appList && appList.parentNode) {
             appList.parentNode.insertBefore(container, appList.nextSibling);
         } else {
-            document.body.appendChild(container); // Fallback
+            document.body.appendChild(container); 
         }
     }
     return container;
 }
-
 
 // Initialisierungsfunktion
 async function initializeUserApplications() {
     const appContainer = document.getElementById("application-list");
     if (!appContainer) { console.error("FEHLER: App-Container 'application-list' nicht im DOM gefunden."); return; }
     renderSkeletonLoader(appContainer, JOBS_PER_PAGE);
+
+    // Element für die Anzeige der Bewerbungsanzahl finden
+    const itemCountElement = document.querySelector('[data-db-table-item-count]');
+
 
     try {
         if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
@@ -483,8 +493,12 @@ async function initializeUserApplications() {
         if (applications.length > 0) {
             const jobPromises = applications.map(appId => fetchJobData(appId).then(jobDataResponse => ({ appId, jobData: jobDataResponse })));
             allJobResults = await Promise.all(jobPromises);
-            // Filter out jobs that had errors during fetch or have no actual data
-            allJobResults = allJobResults.filter(job => job.jobData && !job.jobData.error && Object.keys(job.jobData).length > 2); // Check for more than just id/error keys
+            allJobResults = allJobResults.filter(job => job.jobData && !job.jobData.error && Object.keys(job.jobData).length > 2);
+            
+            // Anzahl der Bewerbungen aktualisieren
+            if (itemCountElement) {
+                itemCountElement.textContent = allJobResults.length;
+            }
             
             currentPage = 1;
             renderJobs(allJobResults, currentWebflowMemberId);
@@ -494,8 +508,14 @@ async function initializeUserApplications() {
             noJobsMessage.textContent = "Keine abgeschlossenen Bewerbungen gefunden oder keine Jobs zum Anzeigen.";
             noJobsMessage.classList.add('job-entry', 'visible');
             appContainer.appendChild(noJobsMessage);
+            
+            // Anzahl der Bewerbungen auf 0 setzen, wenn keine vorhanden sind
+            if (itemCountElement) {
+                itemCountElement.textContent = "0";
+            }
+
             const paginationContainer = document.getElementById("pagination-controls-container") || createPaginationContainer();
-            paginationContainer.innerHTML = ""; // Clear pagination if no jobs
+            paginationContainer.innerHTML = "";
         }
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler beim Laden der Bewerbungen:", error);
@@ -504,6 +524,10 @@ async function initializeUserApplications() {
         errorMessage.innerHTML = `❌ Es ist ein Fehler aufgetreten: ${error.message}. Bitte versuchen Sie es später erneut.`;
         errorMessage.classList.add('job-entry', 'visible');
         appContainer.appendChild(errorMessage);
+        // Bei Fehler auch die Anzahl der Bewerbungen ggf. auf 0 setzen oder Fehlermeldung
+        if (itemCountElement) {
+            itemCountElement.textContent = "0"; // Oder eine andere Fehleranzeige
+        }
     }
 }
 
@@ -536,7 +560,7 @@ function setupEventListeners() {
     }).filter(cb => cb !== null);
 
     function handleInteraction() {
-        currentPage = 1; // Reset to first page on filter/sort/search change
+        currentPage = 1;
         renderJobs(allJobResults, currentWebflowMemberId);
     }
 
@@ -558,7 +582,6 @@ function setupEventListeners() {
                     }
                 });
             } else {
-                // If unchecking the currently active sort, clear it
                 if (activeSortCriteria &&
                     activeSortCriteria.key === targetCheckbox.dataset.sortKey &&
                     activeSortCriteria.direction === targetCheckbox.dataset.sortDirection) {
@@ -590,6 +613,5 @@ function setupEventListeners() {
 window.addEventListener("DOMContentLoaded", () => {
     initializeUserApplications();
     setupEventListeners();
-    // Ensure pagination container exists or is created
     createPaginationContainer();
 });
