@@ -14,6 +14,9 @@ let currentWebflowMemberId = null;
 let activeSortCriteria = null;
 let currentSearchTerm = "";
 
+// NEU: Cache für Creator-Daten (insbesondere Profilbilder)
+const creatorDataCache = {};
+
 const TABS_CONFIG = [
     { id: "alle", listContainerId: "application-list-container", listId: "application-list", name: "Alle", filterFn: (jobData, memberId) => true },
     { id: "abgelehnt", listContainerId: "application-list-rejected-container", listId: "application-list-rejected", name: "Abgelehnt", filterFn: (jobData, memberId) => getApplicationStatusForFilter(jobData, memberId) === "Abgelehnt" },
@@ -28,6 +31,12 @@ function buildWorkerUrl(apiUrl) {
 }
 
 async function fetchCollectionItem(collectionId, itemId) { 
+    // Prüfe zuerst den Cache, wenn es sich um die USER_COLLECTION_ID handelt
+    if (collectionId === USER_COLLECTION_ID && creatorDataCache[itemId]) {
+        // console.log(`[Cache] Creator-Daten für ${itemId} aus Cache geladen.`);
+        return creatorDataCache[itemId];
+    }
+
     const apiUrl = `${API_BASE_URL}/${collectionId}/items/${itemId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
     try {
@@ -36,7 +45,13 @@ async function fetchCollectionItem(collectionId, itemId) {
             console.warn(`API-Fehler (fetchCollectionItem ${collectionId}/${itemId}): ${response.status} - ${await response.text()}`);
             return null; 
         }
-        return await response.json();
+        const data = await response.json();
+        // Speichere im Cache, wenn es sich um die USER_COLLECTION_ID handelt
+        if (collectionId === USER_COLLECTION_ID && data) {
+            // console.log(`[Cache] Creator-Daten für ${itemId} im Cache gespeichert.`);
+            creatorDataCache[itemId] = data;
+        }
+        return data;
     } catch (error) {
         console.error(`❌ Fehler beim Abrufen von Collection Item ${collectionId}/${itemId}: ${error.message}`);
         return null;
@@ -61,12 +76,8 @@ async function fetchJobData(jobId) {
 }
 
 async function fetchIndividualJobsInBatches(appIds, batchSize = 100, delayBetweenBatches = 1000) { 
-    // Wiederhergestellte Konfiguration: 100 Anfragen pro Batch, 1 Sekunde Pause
-    // Diese Konfiguration birgt weiterhin ein Risiko für Rate-Limiting, wenn Webflow
-    // jede einzelne GET-Anfrage zählt und nicht die "100 Items in a single request" Logik
-    // auf diesen Typ von parallelen Einzelanfragen anwendet.
     console.log(`Starte Abruf von ${appIds.length} Jobs mit individuellen GET-Anfragen. Batch-Größe: ${batchSize}, Verzögerung: ${delayBetweenBatches}ms.`);
-    if (batchSize > 10 && delayBetweenBatches < (batchSize * 500) ) { // Grobe Schätzung: 0.5s pro Request
+    if (batchSize > 10 && delayBetweenBatches < (batchSize * 500) ) { 
         console.warn(`WARNUNG: Batch-Konfiguration (Size: ${batchSize}, Delay: ${delayBetweenBatches}ms) könnte Webflow Rate Limits überschreiten!`);
     }
     const allResults = []; 
@@ -511,7 +522,8 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             applicantListContainer.appendChild(listWrapper);
 
             const applicantCountText = document.createElement("span");
-            applicantCountText.classList.add("db-bewerber-count-text"); 
+            // ANPASSUNG: CSS-Klasse geändert
+            applicantCountText.classList.add("is-txt-16"); 
             
             const applicantIds = jobData['bewerber'] || []; 
             applicantCountText.textContent = `${applicantIds.length} Bewerber`;
@@ -524,9 +536,9 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             const idsToFetch = applicantIds.slice(0, MAX_APPLICANT_IMAGES);
 
             idsToFetch.forEach(creatorId => {
-                console.log(`[Applicant Image] Fetching user data for creator ID: ${creatorId} (Job: ${jobData.name || jobData.id})`);
+                // console.log(`[Applicant Image] Fetching user data for creator ID: ${creatorId} (Job: ${jobData.name || jobData.id})`);
                 fetchCollectionItem(USER_COLLECTION_ID, creatorId).then(creatorResult => {
-                    console.log(`[Applicant Image] Result for ${creatorId}:`, creatorResult); // Log für das Ergebnis des User-Fetches
+                    // console.log(`[Applicant Image] Result for ${creatorId}:`, creatorResult); 
                     const listItem = document.createElement("div");
                     listItem.classList.add("db-bewerber-count-list-item");
                     const img = document.createElement("img");
@@ -537,20 +549,19 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
 
                     if (creatorResult && (creatorResult.item || creatorResult.fieldData) ) {
                         const creatorFieldData = creatorResult.item?.fieldData || creatorResult.fieldData;
-                        console.log(`[Applicant Image] FieldData for ${creatorId}:`, creatorFieldData); // Log für die User-FieldData
+                        // console.log(`[Applicant Image] FieldData for ${creatorId}:`, creatorFieldData); 
                         creatorName = creatorFieldData?.name || 'Creator';
-                        // ANPASSUNG: Direkt auf das Feld zugreifen, da es die URL ist
-                        imageUrl = creatorFieldData?.['user-profile-img']; 
-                        console.log(`[Applicant Image] Image URL for ${creatorId} from 'user-profile-img': ${imageUrl}`);
+                        imageUrl = creatorFieldData?.['user-profile-img']; // Direkt auf das URL-Feld zugreifen
+                        // console.log(`[Applicant Image] Image URL for ${creatorId} from 'user-profile-img': ${imageUrl}`);
                     } else {
-                         console.log(`[Applicant Image] No valid creatorResult or fieldData for ${creatorId}.`);
+                        // console.log(`[Applicant Image] No valid creatorResult or fieldData for ${creatorId}.`);
                     }
                     
                     img.src = imageUrl || `https://via.placeholder.com/32x32?text=${creatorName?.charAt(0)?.toUpperCase() || 'P'}`;
                     img.alt = creatorName;
                     
                     img.onerror = () => { 
-                        console.log(`[Applicant Image] Error loading image for ${creatorId}: ${img.src}. Using placeholder.`);
+                        // console.log(`[Applicant Image] Error loading image for ${creatorId}: ${img.src}. Using placeholder.`);
                         img.src = `https://via.placeholder.com/32x32?text=Err`; 
                         img.alt = 'Fehler';
                     }; 
