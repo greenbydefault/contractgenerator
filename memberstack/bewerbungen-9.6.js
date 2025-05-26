@@ -27,58 +27,45 @@ function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
 
-async function fetchCollectionItem(collectionId, memberId) {
-    const apiUrl = `${API_BASE_URL}/${collectionId}/items/${memberId}/live`;
+async function fetchCollectionItem(collectionId, itemId) { // Geändert zu itemId für generische Nutzung
+    const apiUrl = `${API_BASE_URL}/${collectionId}/items/${itemId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
     try {
         const response = await fetch(workerUrl); 
-        if (!response.ok) throw new Error(`API-Fehler (fetchCollectionItem): ${response.status} - ${await response.text()}`);
+        if (!response.ok) {
+            // console.warn(`API-Fehler (fetchCollectionItem ${collectionId}/${itemId}): ${response.status} - ${await response.text()}`);
+            return null; // Gebe null zurück statt einen Fehler zu werfen, damit Promise.all nicht abbricht
+        }
         return await response.json();
     } catch (error) {
-        console.error(`❌ Fehler beim Abrufen der Collection Item: ${error.message}`);
+        console.error(`❌ Fehler beim Abrufen von Collection Item ${collectionId}/${itemId}: ${error.message}`);
         return null;
     }
 }
 
 // Funktion zum Abrufen der Daten eines einzelnen Jobs (per GET)
 async function fetchJobData(jobId) {
-    const apiUrl = `${API_BASE_URL}/${JOB_COLLECTION_ID}/items/${jobId}/live`;
-    const workerUrl = buildWorkerUrl(apiUrl);
-    try {
-        const response = await fetch(workerUrl); // Standard-Fetch ist GET
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`API-Fehler beim Abrufen von Job ${jobId}: ${response.status} - ${errorText}`);
-            // Wichtig: Wir geben ein Objekt zurück, damit Promise.all nicht beim ersten Fehler abbricht
-            return { appId: jobId, jobData: { id: jobId, error: true, status: response.status, message: `API Error for job ${jobId}: ${errorText}` } };
-        }
-        const jobDataResult = await response.json();
-        const fieldData = jobDataResult?.item?.fieldData || jobDataResult?.fieldData;
-        const slug = fieldData?.slug || jobDataResult?.item?.slug || jobDataResult?.slug;
+    const jobDataResult = await fetchCollectionItem(JOB_COLLECTION_ID, jobId);
+    if (!jobDataResult) {
+        return { appId: jobId, jobData: { id: jobId, error: true, message: `Failed to fetch job ${jobId}` } };
+    }
 
-        if (fieldData && (jobDataResult.id || jobDataResult?.item?.id)) {
-             return { appId: jobId, jobData: { ...fieldData, id: (jobDataResult.id || jobDataResult?.item?.id), slug: slug } };
-        } else {
-            console.warn(`Keine validen fieldData für Job ${jobId} im GET-Request gefunden.`);
-            return { appId: jobId, jobData: { id: jobId, error: true, message: `No valid fieldData for job ${jobId}` }};
-        }
-    } catch (error) {
-        console.error(`❌ Netzwerkfehler beim Abrufen von Job ${jobId}: ${error.message}`);
-        return { appId: jobId, jobData: { id: jobId, error: true, status: 'network_error', message: `Network error for job ${jobId}: ${error.message}` } };
+    const fieldData = jobDataResult?.item?.fieldData || jobDataResult?.fieldData;
+    const slug = fieldData?.slug || jobDataResult?.item?.slug || jobDataResult?.slug;
+
+    if (fieldData && (jobDataResult.id || jobDataResult?.item?.id)) {
+         return { appId: jobId, jobData: { ...fieldData, id: (jobDataResult.id || jobDataResult?.item?.id), slug: slug } };
+    } else {
+        console.warn(`Keine validen fieldData für Job ${jobId} im GET-Request gefunden.`);
+        return { appId: jobId, jobData: { id: jobId, error: true, message: `No valid fieldData for job ${jobId}` }};
     }
 }
 
 
 // Hilfsfunktion zum Abrufen von Jobs in Batches (jeder Job eine einzelne GET-Anfrage)
-async function fetchIndividualJobsInBatches(appIds, batchSize = 100, delayBetweenBatches = 1000) {
-    // WARNUNG: Eine batchSize von 100 für individuelle GET-Anfragen, mit nur 1 Sekunde Verzögerung,
-    // wird SEHR WAHRSCHEINLICH Webflow's Ratenbegrenzung (ca. 120 Anfragen/Minute) treffen
-    // und zu 429 "Too Many Requests"-Fehlern führen.
-    // Diese Konfiguration ist für Testzwecke auf Nutzerwunsch.
-    // Eine viel kleinere batchSize (z.B. 2-5) mit einer proportional längeren Verzögerung
-    // (z.B. batchSize=4, delay=2100ms für ~2 Anfragen/Sekunde) wäre stabiler.
-    console.warn(`TEST-KONFIGURATION: Abruf von ${appIds.length} Jobs mit individuellen GET-Anfragen. Batch-Größe: ${batchSize}, Verzögerung: ${delayBetweenBatches}ms. HOHE GEFAHR VON RATE-LIMITING!`);
-    const allResults = []; // Hier sammeln wir { appId, jobData }
+async function fetchIndividualJobsInBatches(appIds, batchSize = 4, delayBetweenBatches = 2100) { 
+    console.log(`Starte Abruf von ${appIds.length} Jobs mit individuellen GET-Anfragen. Batch-Größe: ${batchSize}, Verzögerung: ${delayBetweenBatches}ms.`);
+    const allResults = []; 
 
     for (let i = 0; i < appIds.length; i += batchSize) {
         const batchAppIds = appIds.slice(i, i + batchSize);
@@ -86,20 +73,17 @@ async function fetchIndividualJobsInBatches(appIds, batchSize = 100, delayBetwee
         const totalBatches = Math.ceil(appIds.length / batchSize);
         console.log(`Verarbeite individuellen GET-Request Batch ${currentBatchNumber}/${totalBatches}: ${batchAppIds.length} Item-IDs gleichzeitig`);
 
-        // Starte alle fetchJobData Anfragen für den aktuellen Batch parallel
         const batchPromises = batchAppIds.map(appId => fetchJobData(appId));
         
         try {
-            const batchJobResults = await Promise.all(batchPromises); // Warte bis alle Anfragen im Batch abgeschlossen sind
-            allResults.push(...batchJobResults); // Füge die Ergebnisse (oder Fehlerobjekte) hinzu
+            const batchJobResults = await Promise.all(batchPromises); 
+            allResults.push(...batchJobResults); 
         } catch (batchError) {
-            // Dieser Catch-Block sollte theoretisch nicht erreicht werden, da fetchJobData Fehler abfängt und Objekte zurückgibt.
             console.error("Unerwarteter Fehler in Promise.all für individuelle GET-Requests:", batchError);
-            // Falls doch, erstelle Fehlerobjekte für diesen Batch
             batchAppIds.forEach(appId => allResults.push({appId, jobData: {id: appId, error: true, message: "Batch processing error for individual GETs"}}));
         }
 
-        if (i + batchSize < appIds.length) { // Wenn es nicht der letzte Batch ist
+        if (i + batchSize < appIds.length) { 
             console.log(`Warte ${delayBetweenBatches / 1000} Sekunden vor dem nächsten Batch individueller GET-Requests...`);
             await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
         }
@@ -153,7 +137,8 @@ function renderSkeletonLoader(targetListElement, count) {
         { type: "text", classModifier: "skeleton-text-short" },
         { type: "text", classModifier: "skeleton-text-medium" },
         { type: "text", classModifier: "skeleton-text-medium" },
-        { type: "tag" }, { type: "tag" }
+        { type: "tag" }, { type: "tag" },
+        { type: "applicants" } // Skeleton für Bewerberanzeige
     ];
     for (let i = 0; i < count; i++) {
         const jobDiv = document.createElement("div");
@@ -167,10 +152,18 @@ function renderSkeletonLoader(targetListElement, count) {
         skeletonName.classList.add("truncate", "job-title", "skeleton-element", "skeleton-text", "skeleton-text-title");
         jobInfoDiv.appendChild(skeletonName);
         jobDiv.appendChild(jobInfoDiv);
+        
         fieldSkeletons.forEach(skelType => {
             const fieldDivItem = document.createElement("div");
             fieldDivItem.classList.add("db-table-row-item");
-            if (skelType.type === "tag") {
+             if (skelType.type === "applicants") {
+                fieldDivItem.classList.add("item-job-applicant-display"); // Klasse für die Spalte
+                const applicantSkelDiv = document.createElement("div");
+                applicantSkelDiv.classList.add("db-bewerber-count-list", "skeleton-element");
+                applicantSkelDiv.style.width = "100px"; // Beispielbreite
+                applicantSkelDiv.style.height = "24px"; // Beispielhöhe
+                fieldDivItem.appendChild(applicantSkelDiv);
+            } else if (skelType.type === "tag") {
                 const skeletonTag = document.createElement("div");
                 skeletonTag.classList.add("job-tag", "skeleton-element", "skeleton-tag-box");
                 fieldDivItem.appendChild(skeletonTag);
@@ -317,6 +310,9 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     }
     appContainer.innerHTML = "";
 
+    console.log(`[renderJobs for ${targetListId}] Items after tab filter: ${jobsToProcessPrimaryFilter.length}`);
+
+
     const showJobActiveFilter = document.getElementById("job-status-active-filter")?.checked;
     const showJobClosedFilter = document.getElementById("job-status-closed-filter")?.checked;
     const showAppPendingFilter = document.getElementById("application-status-pending-filter")?.checked;
@@ -324,12 +320,14 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     const showAppRejectedFilter = document.getElementById("application-status-rejected-filter")?.checked;
     const searchTermNormalized = currentSearchTerm.toLowerCase().trim();
 
-    let filteredJobs = jobsToProcessPrimaryFilter.filter(({ jobData }) => { // Hier ist jobData das Objekt, das von fetchJobData kommt
-        if (!jobData || jobData.error) return false; // Prüfe auf das jobData-Objekt
+    let filteredJobs = jobsToProcessPrimaryFilter.filter(({ jobData }) => { 
+        if (!jobData || jobData.error) return false; 
+        
         if (searchTermNormalized) {
             const jobName = (jobData["name"] || "").toLowerCase();
             if (!jobName.includes(searchTermNormalized)) return false;
         }
+
         const jobEndDate = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
         const now = new Date();
         const isJobCurrentlyActive = jobEndDate && jobEndDate >= now;
@@ -347,21 +345,26 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
         if (!jobStatusPasses) return false;
         
         const currentApplicationStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
-        let applicationStatusPasses = true;
-        if (showAppPendingFilter || showAppAcceptedFilter || showAppRejectedFilter) {
+        let applicationStatusPasses = true; 
+        const appStatusFiltersActive = showAppPendingFilter || showAppAcceptedFilter || showAppRejectedFilter;
+
+        if (appStatusFiltersActive) { 
             applicationStatusPasses = 
                 (showAppPendingFilter && currentApplicationStatus === "Ausstehend") ||
                 (showAppAcceptedFilter && currentApplicationStatus === "Angenommen") ||
                 (showAppRejectedFilter && currentApplicationStatus === "Abgelehnt");
         }
-        return applicationStatusPasses;
+        return applicationStatusPasses; 
     });
+
+    console.log(`[renderJobs for ${targetListId}] Items after secondary filters (checkboxes/search): ${filteredJobs.length}`);
+
 
     let sortedJobs = [...filteredJobs];
     if (activeSortCriteria && activeSortCriteria.key) {
         sortedJobs.sort((a, b) => {
-            const jobDataA = a.jobData; // Zugriff auf das jobData Objekt
-            const jobDataB = b.jobData; // Zugriff auf das jobData Objekt
+            const jobDataA = a.jobData; 
+            const jobDataB = b.jobData; 
             if (!jobDataA || jobDataA.error || !jobDataB || jobDataB.error) return 0;
             let valA, valB;
             switch (activeSortCriteria.key) {
@@ -404,7 +407,7 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
         appContainer.appendChild(noJobsMessage);
     } else {
         const fragment = document.createDocumentFragment();
-        jobsToShowOnPage.forEach(({ appId, jobData }) => { // Destrukturiere hier appId und jobData
+        jobsToShowOnPage.forEach(({ appId, jobData }) => { 
             if (!jobData || jobData.error) {
                  return;
             }
@@ -417,6 +420,7 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             const jobDiv = document.createElement("div");
             jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
 
+            // Job Info (Bild + Name)
             const jobInfoDiv = document.createElement("div");
             jobInfoDiv.classList.add("db-table-row-item", "justify-left", "job-info-container");
             const jobImage = document.createElement("img");
@@ -430,6 +434,7 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             jobInfoDiv.appendChild(jobNameSpan);
             jobDiv.appendChild(jobInfoDiv);
 
+            // Standard Felder
             const fields = [
                 { key: "job-payment", label: "Bezahlung" }, { key: "job-date-end", label: "Bewerbungsfrist" },
                 { key: "fertigstellung-content", label: "Contentdeadline" }, { key: "job-status", label: "Job Status" },
@@ -488,6 +493,60 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
                 }
                 jobDiv.appendChild(fieldDivItem);
             });
+            
+            // NEU: Bewerberanzahl und Bilder anzeigen
+            const applicantDisplayCell = document.createElement("div");
+            applicantDisplayCell.classList.add("db-table-row-item", "item-job-applicant-display");
+
+            const applicantListContainer = document.createElement("div");
+            applicantListContainer.classList.add("db-bewerber-count-list");
+
+            const listWrapper = document.createElement("div");
+            listWrapper.classList.add("db-bewerber-list-wrapper");
+
+            const collList = document.createElement("div");
+            collList.classList.add("db-bewerber-count-coll-list");
+            listWrapper.appendChild(collList);
+            applicantListContainer.appendChild(listWrapper);
+
+            const applicantCountText = document.createElement("span");
+            applicantCountText.classList.add("db-bewerber-count-text"); 
+            
+            // ANPASSUNG: Feldname für Bewerber-IDs ist 'bewerber'
+            const applicantIds = jobData['bewerber'] || []; 
+            applicantCountText.textContent = `${applicantIds.length} Bewerber`;
+            applicantListContainer.appendChild(applicantCountText);
+            
+            applicantDisplayCell.appendChild(applicantListContainer);
+            jobDiv.appendChild(applicantDisplayCell);
+
+            const MAX_APPLICANT_IMAGES = 4;
+            const idsToFetch = applicantIds.slice(0, MAX_APPLICANT_IMAGES);
+
+            idsToFetch.forEach(creatorId => {
+                fetchCollectionItem(USER_COLLECTION_ID, creatorId).then(creatorResult => {
+                    const listItem = document.createElement("div");
+                    listItem.classList.add("db-bewerber-count-list-item");
+                    const img = document.createElement("img");
+                    img.classList.add("db-creator-count-img");
+                    
+                    if (creatorResult && (creatorResult.item || creatorResult.fieldData) ) { // Prüfe ob creatorResult und item oder fieldData existiert
+                        const creatorFieldData = creatorResult.item?.fieldData || creatorResult.fieldData; // Flexibler Zugriff
+                        // ANPASSUNG: Feldname für Profilbild ist 'user-profile-img'
+                        img.src = creatorFieldData?.['user-profile-img']?.url || `https://via.placeholder.com/32x32?text=${creatorFieldData?.name?.charAt(0) || 'P'}`;
+                        img.alt = creatorFieldData?.name || 'Creator';
+                    } else {
+                        img.src = `https://via.placeholder.com/32x32?text=P`; 
+                        img.alt = 'Creator';
+                    }
+                    img.onerror = () => { img.src = `https://via.placeholder.com/32x32?text=Err`; img.alt = 'Fehler';}; 
+                    
+                    listItem.appendChild(img);
+                    collList.appendChild(listItem); 
+                });
+            });
+
+
             jobLink.appendChild(jobDiv);
             fragment.appendChild(jobLink);
         });
@@ -535,19 +594,23 @@ function renderActiveTabContent() {
     
     renderSkeletonLoader(targetListElement, JOBS_PER_PAGE);
 
-    // Stelle sicher, dass allJobResults ein Array von {appId, jobData} Objekten ist
     const jobsForThisTab = allJobResults.filter(result => {
         return result.jobData && !result.jobData.error && activeTabConfig.filterFn(result.jobData, currentWebflowMemberId);
     });
     
     setTimeout(() => {
         renderJobs(jobsForThisTab, currentWebflowMemberId, activeTabConfig.listId);
-    }, 50);
+    }, 50); 
 }
 
 async function initializeUserApplications() {
     const initialTabConfig = TABS_CONFIG.find(tab => tab.id === activeTabId);
     const initialListElement = initialTabConfig ? document.getElementById(initialTabConfig.listId) : null;
+    const itemCountElement = document.querySelector('[data-db-table-item-count]');
+
+    if (itemCountElement) {
+        itemCountElement.textContent = "..."; 
+    }
 
     if (initialListElement) {
         renderSkeletonLoader(initialListElement, JOBS_PER_PAGE);
@@ -557,8 +620,6 @@ async function initializeUserApplications() {
         else console.error("FEHLER: Initialer App-Container für Skeleton nicht im DOM gefunden.");
     }
     
-    const itemCountElement = document.querySelector('[data-db-table-item-count]');
-
     try {
         if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
             const member = await window.$memberstackDom.getCurrentMember();
@@ -574,10 +635,8 @@ async function initializeUserApplications() {
         }
 
         if (applicationsFromUser.length > 0) {
-            // Nutze fetchIndividualJobsInBatches für einzelne GET-Anfragen
             allJobResults = await fetchIndividualJobsInBatches(applicationsFromUser); 
             
-            // Filterung der Ergebnisse: Nur gültige jobData-Objekte behalten
             const validJobResults = allJobResults.filter(result => result.jobData && !result.jobData.error && Object.keys(result.jobData).length > 2);
             const erroredJobsCount = allJobResults.length - validJobResults.length;
 
@@ -631,7 +690,7 @@ async function initializeUserApplications() {
              }
         }
         if (itemCountElement) {
-            itemCountElement.textContent = "0";
+            itemCountElement.textContent = "0"; 
         }
     }
 }
@@ -703,10 +762,9 @@ function setupEventListeners() {
         link.addEventListener("click", (e) => {
             e.preventDefault();
             const newTabId = link.dataset.tabId;
-            // if (newTabId === activeTabId && document.getElementById(TABS_CONFIG.find(t => t.id === newTabId).listId).innerHTML !== "") return; 
-            if (newTabId === activeTabId) { // Nur neu rendern, wenn der Tab-Inhalt leer ist (z.B. nach Fehler) oder wenn es explizit gewünscht ist
+            if (newTabId === activeTabId) { 
                  const currentListContent = document.getElementById(TABS_CONFIG.find(t => t.id === newTabId).listId);
-                 if(currentListContent && currentListContent.children.length > 0 && !currentListContent.querySelector('.skeleton-row')) { // Nicht neu laden, wenn schon Inhalt da ist und es kein Skeleton ist
+                 if(currentListContent && currentListContent.children.length > 0 && !currentListContent.querySelector('.skeleton-row')) { 
                     return;
                  }
             }
