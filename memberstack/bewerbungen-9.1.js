@@ -14,14 +14,13 @@ let currentWebflowMemberId = null;
 let activeSortCriteria = null;
 let currentSearchTerm = "";
 
-// NEU: Tab-Konfiguration
 const TABS_CONFIG = [
     { id: "alle", listContainerId: "application-list-container", listId: "application-list", name: "Alle", filterFn: (jobData, memberId) => true },
     { id: "abgelehnt", listContainerId: "application-list-rejected-container", listId: "application-list-rejected", name: "Abgelehnt", filterFn: (jobData, memberId) => getApplicationStatusForFilter(jobData, memberId) === "Abgelehnt" },
     { id: "ausstehend", listContainerId: "application-list-pending-container", listId: "application-list-pending", name: "Ausstehend", filterFn: (jobData, memberId) => getApplicationStatusForFilter(jobData, memberId) === "Ausstehend" },
     { id: "favoriten", listContainerId: "application-list-fav-container", listId: "application-list-fav", name: "In Auswahl", filterFn: (jobData, memberId) => jobData["job-favoriten"] && Array.isArray(jobData["job-favoriten"]) && jobData["job-favoriten"].includes(memberId) }
 ];
-let activeTabId = TABS_CONFIG[0].id; // Standardmäßig "Alle" aktiv
+let activeTabId = TABS_CONFIG[0].id;
 
 // 🛠️ Hilfsfunktionen
 function buildWorkerUrl(apiUrl) {
@@ -47,12 +46,14 @@ async function fetchJobData(jobId) {
     try {
         const response = await fetch(workerUrl);
         if (!response.ok) {
-            console.error(`API-Fehler beim Abrufen von Job ${jobId}: ${response.status} - ${await response.text()}`);
-            return { id: jobId, error: true, status: response.status, message: `API Error for job ${jobId}` };
+            // Logge den Fehler, aber lasse die Funktion ein Fehlerobjekt zurückgeben, anstatt einen Error zu werfen,
+            // damit Promise.all in fetchJobsInBatches nicht beim ersten Fehler abbricht.
+            const errorText = await response.text();
+            console.error(`API-Fehler beim Abrufen von Job ${jobId}: ${response.status} - ${errorText}`);
+            return { id: jobId, error: true, status: response.status, message: `API Error for job ${jobId}: ${errorText}` };
         }
         const jobData = await response.json();
-        // Sicherstellen, dass fieldData und slug vorhanden sind
-        const fieldData = jobData?.item?.fieldData || jobData?.fieldData; // Anpassung an mögliche Webflow API Antwortstrukturen
+        const fieldData = jobData?.item?.fieldData || jobData?.fieldData;
         const slug = fieldData?.slug || jobData?.item?.slug || jobData?.slug;
         return fieldData ? { ...fieldData, id: jobData.id || jobData?.item?.id, slug: slug } : { id: jobId, error: true, message: `No fieldData for job ${jobId}`};
     } catch (error) {
@@ -60,6 +61,38 @@ async function fetchJobData(jobId) {
         return { id: jobId, error: true, status: 'network_error', message: `Network error for job ${jobId}: ${error.message}` };
     }
 }
+
+// NEUE Hilfsfunktion zum Abrufen von Jobs in Batches mit Verzögerung
+async function fetchJobsInBatches(appIds, batchSize = 2, delayBetweenBatches = 1100) {
+    console.log(`Starte Abruf von ${appIds.length} Jobs in Batches von ${batchSize} mit ${delayBetweenBatches}ms Verzögerung.`);
+    const results = [];
+    for (let i = 0; i < appIds.length; i += batchSize) {
+        const batchAppIds = appIds.slice(i, i + batchSize);
+        console.log(`Verarbeite Batch ${Math.floor(i / batchSize) + 1}: IDs ${batchAppIds.join(', ')}`);
+        const batchPromises = batchAppIds.map(appId =>
+            fetchJobData(appId).then(jobDataResponse => ({ appId, jobData: jobDataResponse }))
+        );
+        
+        try {
+            const batchResults = await Promise.all(batchPromises);
+            results.push(...batchResults);
+        } catch (batchError) {
+            // Sollte durch die Fehlerbehandlung in fetchJobData eigentlich nicht hier landen,
+            // aber als zusätzliche Sicherheit.
+            console.error("Ein Fehler ist im Batch Promise.all aufgetreten (unerwartet):", batchError);
+            // Füge Fehler-Platzhalter für diesen Batch hinzu, falls nötig
+            batchAppIds.forEach(appId => results.push({appId, jobData: {id: appId, error: true, message: "Batch processing error"}}));
+        }
+
+        if (i + batchSize < appIds.length) { // Wenn es nicht der letzte Batch ist
+            console.log(`Warte ${delayBetweenBatches}ms vor dem nächsten Batch...`);
+            await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+        }
+    }
+    console.log("Alle Batches verarbeitet.");
+    return results;
+}
+
 
 function calculateDeadlineCountdown(endDate) {
     if (!endDate) return { text: "N/A", isExpired: false };
@@ -83,24 +116,22 @@ function calculateDeadlineCountdown(endDate) {
 }
 
 function getApplicationStatusForFilter(jobData, memberId) {
-    if (!jobData || jobData.error) return "Ausstehend"; // Fallback, falls jobData nicht korrekt geladen wurde
+    if (!jobData || jobData.error) return "Ausstehend";
     const bookedCreators = jobData["booked-creators"] || [];
     const rejectedCreators = jobData["rejected-creators"] || [];
     const endDateApp = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
     const now = new Date();
 
     if (memberId && bookedCreators.includes(memberId)) return "Angenommen";
-    // Wichtig: "Abgelehnt" Status auch prüfen, wenn Job abgelaufen UND Creator nicht gebucht wurde.
     if (memberId && rejectedCreators.includes(memberId)) return "Abgelehnt";
     if (memberId && endDateApp && endDateApp < now && !bookedCreators.includes(memberId)) return "Abgelehnt";
     
     return "Ausstehend";
 }
 
-// 💀 Skeleton Loader rendern
 function renderSkeletonLoader(targetListElement, count) {
     if (!targetListElement) {
-        console.warn("Skeleton Loader: Target list element not found.");
+        // console.warn("Skeleton Loader: Target list element not found."); // Wird ggf. zu oft geloggt
         return;
     }
     targetListElement.innerHTML = "";
@@ -123,28 +154,26 @@ function renderSkeletonLoader(targetListElement, count) {
         jobInfoDiv.appendChild(skeletonName);
         jobDiv.appendChild(jobInfoDiv);
         fieldSkeletons.forEach(skelType => {
-            const fieldDiv = document.createElement("div");
-            fieldDiv.classList.add("db-table-row-item");
+            const fieldDivItem = document.createElement("div");
+            fieldDivItem.classList.add("db-table-row-item");
             if (skelType.type === "tag") {
                 const skeletonTag = document.createElement("div");
                 skeletonTag.classList.add("job-tag", "skeleton-element", "skeleton-tag-box");
-                fieldDiv.appendChild(skeletonTag);
+                fieldDivItem.appendChild(skeletonTag);
             } else {
                 const skeletonFieldText = document.createElement("div");
                 skeletonFieldText.classList.add("db-job-tag-txt", "skeleton-element", "skeleton-text", skelType.classModifier || "");
-                fieldDiv.appendChild(skeletonFieldText);
+                fieldDivItem.appendChild(skeletonFieldText);
             }
-            jobDiv.appendChild(fieldDiv);
+            jobDiv.appendChild(fieldDivItem);
         });
         targetListElement.appendChild(jobDiv);
     }
 }
 
-// 📄 Pagination Controls rendern
 function renderPaginationControls(paginationContainerElement, currentPageNum, totalPagesNum) {
-    // ... (Rest der Funktion bleibt gleich, stellt sicher, dass sie den korrekten Container verwendet)
     if (!paginationContainerElement) {
-        console.warn("Pagination container not found for controls.");
+        // console.warn("Pagination container not found for controls."); // Wird ggf. zu oft geloggt
         return;
     }
     paginationContainerElement.innerHTML = ''; 
@@ -159,7 +188,6 @@ function renderPaginationControls(paginationContainerElement, currentPageNum, to
         buttons.forEach(btn => btn.classList.add('disabled-loading'));
         
         currentPage = newPage;
-        // Wichtig: renderActiveTabContent sorgt dafür, dass die richtige Liste mit der neuen Seite gerendert wird
         renderActiveTabContent(); 
     }
 
@@ -173,7 +201,6 @@ function renderPaginationControls(paginationContainerElement, currentPageNum, to
         prevButton.addEventListener("click", async (e) => {
             e.preventDefault();
             if (prevButton.classList.contains("disabled") || prevButton.classList.contains("disabled-loading")) return;
-            // prevButton.textContent = "Lade..."; // Kann zu UI-Sprüngen führen, wenn schnell geklickt wird
             await handlePageChange(currentPageNum - 1);
         });
     }
@@ -206,8 +233,6 @@ function renderPaginationControls(paginationContainerElement, currentPageNum, to
         firstPageLink.addEventListener("click", async (e) => {
             e.preventDefault();
             if (firstPageLink.classList.contains("disabled-loading") || currentPageNum === 1) return;
-            // document.querySelectorAll('.db-pagination-count:not(.ellipsis)').forEach(el => el.classList.add("disabled-loading"));
-            // firstPageLink.textContent = "...";
             await handlePageChange(1);
         });
         paginationContainerElement.appendChild(firstPageLink);
@@ -230,8 +255,6 @@ function renderPaginationControls(paginationContainerElement, currentPageNum, to
             pageLink.addEventListener("click", async (e) => {
                 e.preventDefault();
                 if (pageLink.classList.contains("disabled-loading")) return;
-                // document.querySelectorAll('.db-pagination-count:not(.ellipsis)').forEach(el => el.classList.add("disabled-loading"));
-                // pageLink.textContent = "...";
                 await handlePageChange(i);
             });
         }
@@ -252,8 +275,6 @@ function renderPaginationControls(paginationContainerElement, currentPageNum, to
         lastPageLink.addEventListener("click", async (e) => {
             e.preventDefault();
             if (lastPageLink.classList.contains("disabled-loading") || currentPageNum === totalPagesNum) return;
-            // document.querySelectorAll('.db-pagination-count:not(.ellipsis)').forEach(el => el.classList.add("disabled-loading"));
-            // lastPageLink.textContent = "...";
             await handlePageChange(totalPagesNum);
         });
         paginationContainerElement.appendChild(lastPageLink);
@@ -269,14 +290,12 @@ function renderPaginationControls(paginationContainerElement, currentPageNum, to
         nextButton.addEventListener("click", async (e) => {
             e.preventDefault();
             if (nextButton.classList.contains("disabled") || nextButton.classList.contains("disabled-loading")) return;
-            // nextButton.textContent = "Lade...";
             await handlePageChange(currentPageNum + 1);
         });
     }
     paginationContainerElement.appendChild(nextButton);
 }
 
-// 🖨️ Jobs rendern (angepasst für spezifische Listen-ID)
 function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     const appContainer = document.getElementById(targetListId);
     if (!appContainer) {
@@ -285,54 +304,35 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     }
     appContainer.innerHTML = "";
 
-    // Sekundäre Filter (Checkboxes, Suche) auf die bereits für den Tab vorab gefilterten Jobs anwenden
     const showJobActiveFilter = document.getElementById("job-status-active-filter")?.checked;
     const showJobClosedFilter = document.getElementById("job-status-closed-filter")?.checked;
-    // Die Filter für Bewerbungsstatus (pending, accepted, rejected) sind durch die Tabs bereits primär abgedeckt.
-    // Hier könnten sie als zusätzliche Verfeinerung dienen, falls gewünscht, oder entfernt/ignoriert werden,
-    // da der Tab bereits die Hauptfilterung vornimmt. Fürs Erste lassen wir sie, falls Nutzer innerhalb eines Tabs weiter filtern will.
     const showAppPendingFilter = document.getElementById("application-status-pending-filter")?.checked;
     const showAppAcceptedFilter = document.getElementById("application-status-accepted-filter")?.checked;
     const showAppRejectedFilter = document.getElementById("application-status-rejected-filter")?.checked;
-
     const searchTermNormalized = currentSearchTerm.toLowerCase().trim();
 
     let filteredJobs = jobsToProcessPrimaryFilter.filter(({ jobData }) => {
         if (!jobData || jobData.error) return false;
-
-        // Suchfilter
         if (searchTermNormalized) {
             const jobName = (jobData["name"] || "").toLowerCase();
             if (!jobName.includes(searchTermNormalized)) return false;
         }
-
-        // Job-Status Filter (Aktiv/Geschlossen)
         const jobEndDate = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
         const now = new Date();
         const isJobCurrentlyActive = jobEndDate && jobEndDate >= now;
         
-        let jobStatusPasses = true; // Standardmäßig true, wenn keine Checkboxen aktiv
-        if (showJobActiveFilter || showJobClosedFilter) { // Nur filtern, wenn eine der Optionen gewählt ist
+        let jobStatusPasses = true; 
+        if (showJobActiveFilter || showJobClosedFilter) {
              jobStatusPasses = 
                 (showJobActiveFilter && isJobCurrentlyActive) || 
                 (showJobClosedFilter && !isJobCurrentlyActive) ||
-                (showJobActiveFilter && showJobClosedFilter); // Wenn beide, dann alle anzeigen (oder spezifische Logik)
-            
-            // Sonderfall: Kein Enddatum, aber Filter aktiv
+                (showJobActiveFilter && showJobClosedFilter); 
             if (!jobEndDate) {
-                if (showJobActiveFilter && !showJobClosedFilter) jobStatusPasses = false; // Soll aktiv zeigen, aber kein Datum -> nicht aktiv
-                // Wenn nur showJobClosedFilter aktiv ist und kein Enddatum, könnte man es als "nicht aktiv" = geschlossen interpretieren
-                // oder als "unbekannt" und nicht anzeigen. Aktuell: Wenn showJobClosedFilter, dann true.
+                if (showJobActiveFilter && !showJobClosedFilter) jobStatusPasses = false; 
             }
         }
         if (!jobStatusPasses) return false;
         
-        // Bewerbungsstatus Filter (Ausstehend/Angenommen/Abgelehnt)
-        // Diese Filter sind primär durch die Tabs abgedeckt.
-        // Wenn Checkboxen für diese trotzdem aktiv sind, könnten sie die Tab-Auswahl weiter verfeinern.
-        // Beispiel: Im Tab "Alle" kann man dann nach "allen angenommenen" filtern.
-        // Im Tab "Abgelehnt" macht ein weiterer Filter auf "angenommen" keinen Sinn.
-        // Fürs Erste lassen wir die Logik, sie greift, wenn die Checkboxen explizit genutzt werden.
         const currentApplicationStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
         let applicationStatusPasses = true;
         if (showAppPendingFilter || showAppAcceptedFilter || showAppRejectedFilter) {
@@ -344,7 +344,6 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
         return applicationStatusPasses;
     });
 
-    // Sortierlogik
     let sortedJobs = [...filteredJobs];
     if (activeSortCriteria && activeSortCriteria.key) {
         sortedJobs.sort((a, b) => {
@@ -388,13 +387,14 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     if (jobsToShowOnPage.length === 0) {
         const noJobsMessage = document.createElement('p');
         noJobsMessage.textContent = "ℹ️ Keine Jobs entsprechen den aktuellen Kriterien für diesen Tab.";
-        noJobsMessage.classList.add('job-entry', 'visible'); // Stellt sicher, dass die Nachricht sichtbar ist
+        noJobsMessage.classList.add('job-entry', 'visible');
         appContainer.appendChild(noJobsMessage);
     } else {
         const fragment = document.createDocumentFragment();
         jobsToShowOnPage.forEach(({ jobData }) => {
             if (!jobData || jobData.error) {
-                 console.warn("Skipping job due to error or no data:", jobData);
+                 // console.warn("Skipping job due to error or no data in renderJobs:", jobData?.id || 'unknown ID');
+                 // Man könnte hier eine Platzhalter-Nachricht für fehlerhafte Jobs anzeigen
                  return;
             }
             const jobLink = document.createElement("a");
@@ -426,8 +426,8 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             ];
             fields.forEach(field => {
                 const value = jobData[field.key];
-                const fieldDiv = document.createElement("div");
-                fieldDiv.classList.add("db-table-row-item", `item-${field.key}`);
+                const fieldDivItem = document.createElement("div");
+                fieldDivItem.classList.add("db-table-row-item", `item-${field.key}`);
                 const fieldText = document.createElement("span"); 
 
                 if (field.key === "job-payment") {
@@ -456,7 +456,7 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
                     if (endDateJob && endDateJob < now) { statusDiv.classList.add("is-bg-light-red"); statusTextInner.textContent = "Beendet"; }
                     else if (endDateJob) { statusDiv.classList.add("is-bg-light-green"); statusTextInner.textContent = "Aktiv"; }
                     else { statusDiv.classList.add("is-bg-light-grey"); statusTextInner.textContent = "Unbekannt"; }
-                    statusDiv.appendChild(statusTextInner); fieldDiv.appendChild(statusDiv);
+                    statusDiv.appendChild(statusTextInner); fieldDivItem.appendChild(statusDiv);
                 } else if (field.key === "application-status") {
                     const statusDiv = document.createElement("div"); statusDiv.classList.add("job-tag");
                     const statusTextInner = document.createElement("span");
@@ -464,7 +464,7 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
                     if (appStatus === "Angenommen") { statusDiv.classList.add("is-bg-light-green"); statusTextInner.textContent = "Angenommen"; }
                     else if (appStatus === "Abgelehnt") { statusDiv.classList.add("is-bg-light-red"); statusTextInner.textContent = "Abgelehnt"; }
                     else { statusDiv.classList.add("is-bg-light-blue"); statusTextInner.textContent = "Ausstehend"; }
-                    statusDiv.appendChild(statusTextInner); fieldDiv.appendChild(statusDiv);
+                    statusDiv.appendChild(statusTextInner); fieldDivItem.appendChild(statusDiv);
                 } else { 
                     fieldText.classList.add("db-job-tag-txt");
                     fieldText.textContent = value || "Nicht verfügbar";
@@ -472,10 +472,10 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
 
                 if (field.key !== "job-status" && field.key !== "application-status") {
                     if (fieldText.textContent || fieldText.classList.length > 0) { 
-                         fieldDiv.appendChild(fieldText);
+                         fieldDivItem.appendChild(fieldText);
                     }
                 }
-                jobDiv.appendChild(fieldDiv);
+                jobDiv.appendChild(fieldDivItem);
             });
             jobLink.appendChild(jobDiv);
             fragment.appendChild(jobLink);
@@ -497,18 +497,19 @@ function createPaginationContainer() {
         container = document.createElement("div");
         container.id = "pagination-controls-container";
         container.className = "db-table-pagination"; 
-        // Append to a sensible default if specific app list parent isn't easily determined here
         const firstTabContainer = document.getElementById(TABS_CONFIG[0].listContainerId);
         if (firstTabContainer && firstTabContainer.parentNode) {
-             firstTabContainer.parentNode.appendChild(container); // Append after all tab content containers
+             firstTabContainer.parentNode.appendChild(container);
         } else {
-            document.body.appendChild(container); 
+            // Fallback, falls der erste Tab-Container nicht gefunden wird (sollte nicht passieren)
+            const bodyFirstChild = document.body.firstChild;
+            if (bodyFirstChild) document.body.insertBefore(container, bodyFirstChild.nextSibling);
+            else document.body.appendChild(container);
         }
     }
     return container;
 }
 
-// NEU: Funktion zum Rendern des Inhalts des aktiven Tabs
 function renderActiveTabContent() {
     const activeTabConfig = TABS_CONFIG.find(tab => tab.id === activeTabId);
     if (!activeTabConfig) {
@@ -519,31 +520,21 @@ function renderActiveTabContent() {
     const targetListElement = document.getElementById(activeTabConfig.listId);
     if (!targetListElement) {
         console.error("Ziellisten-Element für Tab nicht gefunden:", activeTabConfig.listId);
-        // Optional: Versuchen, den Skeleton Loader im ersten Tab anzuzeigen, falls dieser gerade initialisiert wird
-        const initialListElement = document.getElementById(TABS_CONFIG[0].listId);
-        if (initialListElement) renderSkeletonLoader(initialListElement, JOBS_PER_PAGE);
         return;
     }
     
-    // Zeige Skeleton Loader im Ziel-Tab-Container, bevor Jobs geladen/gerendert werden
     renderSkeletonLoader(targetListElement, JOBS_PER_PAGE);
 
-
-    // Filtere die allJobResults basierend auf der filterFn des aktiven Tabs
     const jobsForThisTab = allJobResults.filter(job => {
-        // Stelle sicher, dass job.jobData existiert, bevor darauf zugegriffen wird
         return job.jobData && !job.jobData.error && activeTabConfig.filterFn(job.jobData, currentWebflowMemberId);
     });
     
-    // Kurze Verzögerung, damit der Skeleton Loader sichtbar ist, bevor die Jobs gerendert werden
-    // (besonders nützlich, wenn das Filtern sehr schnell geht)
+    // Kurze Verzögerung, damit der Skeleton Loader gezeichnet wird, bevor die (potenziell schnelle) Filterung und das Rendern beginnen.
     setTimeout(() => {
         renderJobs(jobsForThisTab, currentWebflowMemberId, activeTabConfig.listId);
-    }, 50); // Kleine Verzögerung
+    }, 50);
 }
 
-
-// Initialisierungsfunktion
 async function initializeUserApplications() {
     const initialTabConfig = TABS_CONFIG.find(tab => tab.id === activeTabId);
     const initialListElement = initialTabConfig ? document.getElementById(initialTabConfig.listId) : null;
@@ -551,7 +542,6 @@ async function initializeUserApplications() {
     if (initialListElement) {
         renderSkeletonLoader(initialListElement, JOBS_PER_PAGE);
     } else {
-        // Fallback, falls der initial aktive Tab nicht korrekt geladen werden kann
         const fallbackListElement = document.getElementById(TABS_CONFIG[0].listId);
         if (fallbackListElement) renderSkeletonLoader(fallbackListElement, JOBS_PER_PAGE);
         else console.error("FEHLER: Initialer App-Container für Skeleton nicht im DOM gefunden.");
@@ -562,39 +552,44 @@ async function initializeUserApplications() {
     try {
         if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
             const member = await window.$memberstackDom.getCurrentMember();
-            currentWebflowMemberId = member?.data?.customFields?.['webflow-member-id']; // Korrekter Zugriff auf customFields
+            currentWebflowMemberId = member?.data?.customFields?.['webflow-member-id'];
             if (!currentWebflowMemberId) console.warn("⚠️ Kein 'webflow-member-id' im Memberstack-Profil gefunden.");
         } else { console.warn("⚠️ MemberStack (window.$memberstackDom.getCurrentMember) ist nicht verfügbar."); }
 
         let applicationsFromUser = [];
         if (currentWebflowMemberId) {
             const userData = await fetchCollectionItem(USER_COLLECTION_ID, currentWebflowMemberId);
-            // Zugriff auf fieldData, das die Bewerbungen enthält
             const userFieldData = userData?.item?.fieldData || userData?.fieldData;
             applicationsFromUser = userFieldData?.["abgeschlossene-bewerbungen"] || [];
         }
 
         if (applicationsFromUser.length > 0) {
-            const jobPromises = applicationsFromUser.map(appId => fetchJobData(appId).then(jobDataResponse => ({ appId, jobData: jobDataResponse })));
-            allJobResults = await Promise.all(jobPromises);
-            // Filtert Jobs heraus, die Fehler hatten oder keine validen Daten (mehr als nur id/error/slug)
-            allJobResults = allJobResults.filter(job => job.jobData && !job.jobData.error && Object.keys(job.jobData).length > 3); 
+            // MODIFIZIERT: Jobs in Batches abrufen
+            allJobResults = await fetchJobsInBatches(applicationsFromUser, 2, 1100); // Batch-Größe 2, 1.1s Verzögerung
+            
+            // Filtere Jobs, die während des Batch-Abrufs Fehler hatten (obwohl fetchJobData bereits Fehlerobjekte zurückgibt)
+            // oder die keine validen Daten haben.
+            const validJobResults = allJobResults.filter(job => job.jobData && !job.jobData.error && Object.keys(job.jobData).length > 2); // Mindestens id, slug, name (oder ähnliches)
+            const erroredJobsCount = allJobResults.length - validJobResults.length;
+            if (erroredJobsCount > 0) {
+                console.warn(`${erroredJobsCount} Jobs konnten nicht korrekt geladen werden oder hatten Fehler.`);
+            }
+            allJobResults = validJobResults; // Überschreibe mit nur validen Jobs für die weitere Verarbeitung
             
             if (itemCountElement) {
                 itemCountElement.textContent = allJobResults.length;
             }
             
-            currentPage = 1; // Zurücksetzen für den ersten Render
-            renderActiveTabContent(); // Rendert den initial aktiven Tab
+            currentPage = 1;
+            renderActiveTabContent();
         } else {
-            if (initialListElement) initialListElement.innerHTML = ""; // Leere den Skeleton Loader
+            if (initialListElement) initialListElement.innerHTML = ""; 
             else if (document.getElementById(TABS_CONFIG[0].listId)) document.getElementById(TABS_CONFIG[0].listId).innerHTML = "";
 
             const noJobsMessage = document.createElement('p');
             noJobsMessage.textContent = "Keine abgeschlossenen Bewerbungen gefunden oder keine Jobs zum Anzeigen.";
             noJobsMessage.classList.add('job-entry', 'visible');
             
-            // Nachricht im ersten Tab anzeigen, wenn keine Jobs vorhanden sind
             const firstTabList = document.getElementById(TABS_CONFIG[0].listId);
             if (firstTabList) {
                 firstTabList.appendChild(noJobsMessage);
@@ -612,19 +607,26 @@ async function initializeUserApplications() {
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler beim Laden der Bewerbungen:", error);
         if (initialListElement) initialListElement.innerHTML = "";
-        const errorMessage = document.createElement('p');
-        errorMessage.innerHTML = `❌ Es ist ein Fehler aufgetreten: ${error.message}. Bitte versuchen Sie es später erneut.`;
-        errorMessage.classList.add('job-entry', 'visible');
-        if (initialListElement) initialListElement.appendChild(errorMessage);
+        const errorMessageText = `❌ Es ist ein Fehler aufgetreten: ${error.message}. Bitte versuchen Sie es später erneut.`;
+        if (initialListElement) {
+            const errorP = document.createElement('p');
+            errorP.innerHTML = errorMessageText;
+            errorP.classList.add('job-entry', 'visible');
+            initialListElement.appendChild(errorP);
+        } else {
+             const activeTabConfig = TABS_CONFIG.find(tab => tab.id === activeTabId);
+             const currentListElement = activeTabConfig ? document.getElementById(activeTabConfig.listId) : null;
+             if(currentListElement) {
+                currentListElement.innerHTML = `<p class="job-entry visible">${errorMessageText}</p>`;
+             }
+        }
         if (itemCountElement) {
             itemCountElement.textContent = "0";
         }
     }
 }
 
-// Event Listener
 function setupEventListeners() {
-    // Filter Checkboxen Listener
     const filterCheckboxIds = [
         "job-status-active-filter", "job-status-closed-filter",
         "application-status-pending-filter", "application-status-accepted-filter", "application-status-rejected-filter"
@@ -632,12 +634,11 @@ function setupEventListeners() {
     const allFilterCheckboxes = filterCheckboxIds.map(id => document.getElementById(id)).filter(cb => cb !== null);
     allFilterCheckboxes.forEach(checkbox => {
         checkbox.addEventListener("change", () => {
-            currentPage = 1; // Reset Paginierung bei Filteränderung
+            currentPage = 1; 
             renderActiveTabContent();
         });
     });
 
-    // Sortier Checkboxen Listener
     const sortCheckboxDefinitions = [
         { id: "job-sort-deadline-asc", key: "deadline", direction: "asc" },
         { id: "job-sort-deadline-desc", key: "deadline", direction: "desc" },
@@ -676,7 +677,6 @@ function setupEventListeners() {
         });
     });
 
-    // Suchfeld Listener
     const searchInput = document.getElementById("filter-search");
     if (searchInput) {
         searchInput.addEventListener("input", (event) => {
@@ -688,33 +688,32 @@ function setupEventListeners() {
         console.warn("⚠️ Suchfeld 'filter-search' nicht im DOM gefunden.");
     }
 
-    // Tab-Link Listener
-    const tabLinks = document.querySelectorAll(".tab-link[data-tab-id]"); // Selektor für Tab-Links
+    const tabLinks = document.querySelectorAll(".tab-link[data-tab-id]");
     tabLinks.forEach(link => {
         link.addEventListener("click", (e) => {
             e.preventDefault();
             const newTabId = link.dataset.tabId;
-            if (newTabId === activeTabId) return; // Nichts tun, wenn derselbe Tab geklickt wird
+            if (newTabId === activeTabId && document.getElementById(TABS_CONFIG.find(t => t.id === newTabId).listId).innerHTML !== "") return; 
 
             activeTabId = newTabId;
-            currentPage = 1; // Paginierung für neuen Tab zurücksetzen
+            currentPage = 1; 
 
-            // Aktive Klassen für Tabs und Content-Bereiche aktualisieren
-            tabLinks.forEach(tl => tl.classList.remove("active-tab")); // Oder deine spezifische Klasse für aktive Tabs
+            tabLinks.forEach(tl => tl.classList.remove("active-tab")); 
             link.classList.add("active-tab");
 
             TABS_CONFIG.forEach(tabConfig => {
                 const contentContainer = document.getElementById(tabConfig.listContainerId);
                 if (contentContainer) {
                     contentContainer.style.display = tabConfig.id === activeTabId ? "" : "none";
-                     // contentContainer.classList.toggle("active-content", tabConfig.id === activeTabId); // Alternative mit Klasse
+                } else {
+                    console.warn(`Listen-Container ${tabConfig.listContainerId} für Tab ${tabConfig.id} nicht gefunden.`);
                 }
             });
             renderActiveTabContent();
         });
     });
 
-    // Warnungen für fehlende Elemente
+    if (tabLinks.length === 0 && TABS_CONFIG.length > 1) console.warn("⚠️ Keine Tab-Links mit 'data-tab-id' gefunden. Tab-Navigation wird nicht funktionieren.");
     filterCheckboxIds.forEach(id => {
         if (!document.getElementById(id)) console.warn(`⚠️ Filter-Checkbox '${id}' nicht im DOM gefunden.`);
     });
@@ -725,13 +724,10 @@ function setupEventListeners() {
         if (!document.getElementById(tab.listId)) console.warn(`⚠️ Listen-Element für Tab '${tab.name}' (ID: ${tab.listId}) nicht im DOM gefunden.`);
         if (!document.getElementById(tab.listContainerId)) console.warn(`⚠️ Listen-Container-Element für Tab '${tab.name}' (ID: ${tab.listContainerId}) nicht im DOM gefunden.`);
     });
-    if (tabLinks.length === 0) console.warn("⚠️ Keine Tab-Links mit 'data-tab-id' gefunden.");
 
 }
 
-// Start der Anwendung
 window.addEventListener("DOMContentLoaded", () => {
-    // Sicherstellen, dass der initiale Tab-Container sichtbar ist
     TABS_CONFIG.forEach(tabConfig => {
         const contentContainer = document.getElementById(tabConfig.listContainerId);
         if (contentContainer) {
@@ -744,5 +740,5 @@ window.addEventListener("DOMContentLoaded", () => {
 
     initializeUserApplications();
     setupEventListeners();
-    createPaginationContainer(); // Stellt sicher, dass der Paginierungscontainer existiert
+    createPaginationContainer(); 
 });
