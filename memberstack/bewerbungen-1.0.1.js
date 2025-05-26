@@ -31,6 +31,7 @@ function buildWorkerUrl(apiUrl) {
 
 async function fetchCollectionItem(collectionId, itemId) { 
     if (collectionId === USER_COLLECTION_ID && creatorDataCache[itemId]) {
+        // console.log(`[Cache] Creator data for ${itemId} loaded from cache.`);
         return creatorDataCache[itemId];
     }
 
@@ -39,16 +40,17 @@ async function fetchCollectionItem(collectionId, itemId) {
     try {
         const response = await fetch(workerUrl); 
         if (!response.ok) {
-            console.warn(`API-Fehler (fetchCollectionItem ${collectionId}/${itemId}): ${response.status} - ${await response.text()}`);
+            console.warn(`API Error (fetchCollectionItem ${collectionId}/${itemId}): ${response.status} - ${await response.text()}`);
             return null; 
         }
         const data = await response.json();
         if (collectionId === USER_COLLECTION_ID && data) {
+            // console.log(`[Cache] Creator data for ${itemId} stored in cache.`);
             creatorDataCache[itemId] = data;
         }
         return data;
     } catch (error) {
-        console.error(`❌ Fehler beim Abrufen von Collection Item ${collectionId}/${itemId}: ${error.message}`);
+        console.error(`❌ Error fetching Collection Item ${collectionId}/${itemId}: ${error.message}`);
         return null;
     }
 }
@@ -65,15 +67,15 @@ async function fetchJobData(jobId) {
     if (fieldData && (jobDataResult.id || jobDataResult?.item?.id)) {
          return { appId: jobId, jobData: { ...fieldData, id: (jobDataResult.id || jobDataResult?.item?.id), slug: slug } };
     } else {
-        console.warn(`Keine validen fieldData für Job ${jobId} im GET-Request gefunden.`);
+        console.warn(`No valid fieldData found for Job ${jobId} in GET request.`);
         return { appId: jobId, jobData: { id: jobId, error: true, message: `No valid fieldData for job ${jobId}` }};
     }
 }
 
 async function fetchIndividualJobsInBatches(appIds, batchSize = 100, delayBetweenBatches = 1000) { 
-    console.log(`Starte Abruf von ${appIds.length} Jobs mit individuellen GET-Anfragen. Batch-Größe: ${batchSize}, Verzögerung: ${delayBetweenBatches}ms.`);
-    if (batchSize > 10 && delayBetweenBatches < (batchSize * 500) ) { 
-        console.warn(`WARNUNG: Batch-Konfiguration (Size: ${batchSize}, Delay: ${delayBetweenBatches}ms) könnte Webflow Rate Limits überschreiten!`);
+    console.log(`Starting fetch of ${appIds.length} jobs with individual GET requests. Batch size: ${batchSize}, Delay: ${delayBetweenBatches}ms.`);
+    if (batchSize > 20 && delayBetweenBatches < (batchSize * 50) ) { // Adjusted warning threshold
+        console.warn(`WARNING: Batch configuration (Size: ${batchSize}, Delay: ${delayBetweenBatches}ms) might exceed Webflow Rate Limits!`);
     }
     const allResults = []; 
 
@@ -81,7 +83,7 @@ async function fetchIndividualJobsInBatches(appIds, batchSize = 100, delayBetwee
         const batchAppIds = appIds.slice(i, i + batchSize);
         const currentBatchNumber = Math.floor(i / batchSize) + 1;
         const totalBatches = Math.ceil(appIds.length / batchSize);
-        console.log(`Verarbeite individuellen GET-Request Batch ${currentBatchNumber}/${totalBatches}: ${batchAppIds.length} Item-IDs gleichzeitig`);
+        console.log(`Processing individual GET request batch ${currentBatchNumber}/${totalBatches}: ${batchAppIds.length} Item IDs simultaneously`);
 
         const batchPromises = batchAppIds.map(appId => fetchJobData(appId));
         
@@ -89,16 +91,16 @@ async function fetchIndividualJobsInBatches(appIds, batchSize = 100, delayBetwee
             const batchJobResults = await Promise.all(batchPromises); 
             allResults.push(...batchJobResults); 
         } catch (batchError) {
-            console.error("Unerwarteter Fehler in Promise.all für individuelle GET-Requests:", batchError);
+            console.error("Unexpected error in Promise.all for individual GET requests:", batchError);
             batchAppIds.forEach(appId => allResults.push({appId, jobData: {id: appId, error: true, message: "Batch processing error for individual GETs"}}));
         }
 
         if (i + batchSize < appIds.length) { 
-            console.log(`Warte ${delayBetweenBatches / 1000} Sekunden vor dem nächsten Batch individueller GET-Requests...`);
+            console.log(`Waiting ${delayBetweenBatches / 1000} seconds before the next batch of individual GET requests...`);
             await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
         }
     }
-    console.log("Alle individuellen GET-Request Batches verarbeitet.");
+    console.log("All individual GET request batches processed.");
     return allResults;
 }
 
@@ -316,6 +318,7 @@ async function renderJobApplicantImages(jobData, collListElement) {
     const MAX_APPLICANT_IMAGES = 4;
     const applicantIds = jobData['bewerber'] || [];
     let imagesDisplayedCount = 0;
+    collListElement.innerHTML = ''; // Clear previous images for this job row
 
     for (const creatorId of applicantIds) {
         if (imagesDisplayedCount >= MAX_APPLICANT_IMAGES) {
@@ -325,12 +328,12 @@ async function renderJobApplicantImages(jobData, collListElement) {
         const creatorResult = await fetchCollectionItem(USER_COLLECTION_ID, creatorId);
         
         let imageUrl;
-        let creatorName = 'Creator'; // Default name
+        let creatorName = 'Creator';
 
         if (creatorResult && (creatorResult.item || creatorResult.fieldData) ) {
             const creatorFieldData = creatorResult.item?.fieldData || creatorResult.fieldData;
-            creatorName = creatorFieldData?.name || 'Creator'; // Get name if available
-            imageUrl = creatorFieldData?.['image-thumbnail-small-92px']; // Use new field name
+            creatorName = creatorFieldData?.name || 'Creator';
+            imageUrl = creatorFieldData?.['image-thumbnail-small-92px']; 
         }
         
         if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '') {
@@ -341,10 +344,7 @@ async function renderJobApplicantImages(jobData, collListElement) {
             img.src = imageUrl;
             img.alt = creatorName;
             img.onerror = () => { 
-                // Potentially remove the item or use a more distinct error placeholder
-                // For now, browser default or CSS might hide it / show broken icon.
-                // To prevent counting a broken image, we could move imagesDisplayedCount++
-                // to an onload handler, but that complicates the loop.
+                // console.log(`Error loading image for creator ${creatorId}: ${img.src}`);
             }; 
             listItem.appendChild(img);
             collListElement.appendChild(listItem); 
@@ -362,8 +362,7 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     }
     appContainer.innerHTML = "";
 
-    console.log(`[renderJobs for ${targetListId}] Items after tab filter: ${jobsToProcessPrimaryFilter.length}`);
-
+    console.log(`[renderJobs for ${targetListId}] Items after tab filter (jobsToProcessPrimaryFilter): ${jobsToProcessPrimaryFilter.length}`);
 
     const showJobActiveFilter = document.getElementById("job-status-active-filter")?.checked;
     const showJobClosedFilter = document.getElementById("job-status-closed-filter")?.checked;
@@ -375,38 +374,38 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     let filteredJobs = jobsToProcessPrimaryFilter.filter(({ jobData }) => { 
         if (!jobData || jobData.error) return false; 
         
+        // 1. Search Filter
         if (searchTermNormalized) {
             const jobName = (jobData["name"] || "").toLowerCase();
             if (!jobName.includes(searchTermNormalized)) return false;
         }
 
+        // 2. Job Status Filter (Active/Closed)
         const jobEndDate = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
         const now = new Date();
         const isJobCurrentlyActive = jobEndDate && jobEndDate >= now;
         
-        let jobStatusPasses = true; 
-        if (showJobActiveFilter || showJobClosedFilter) {
-             jobStatusPasses = 
-                (showJobActiveFilter && isJobCurrentlyActive) || 
-                (showJobClosedFilter && !isJobCurrentlyActive) ||
-                (showJobActiveFilter && showJobClosedFilter); 
-            if (!jobEndDate) {
-                if (showJobActiveFilter && !showJobClosedFilter) jobStatusPasses = false; 
-            }
+        if (showJobActiveFilter && !showJobClosedFilter) { 
+            if (!isJobCurrentlyActive) return false;
+        } else if (!showJobActiveFilter && showJobClosedFilter) { 
+            if (isJobCurrentlyActive) return false;
+        } else if (showJobActiveFilter && showJobClosedFilter) {
+            // Both checked, no filtering on job status
         }
-        if (!jobStatusPasses) return false;
+        // If neither job status checkbox is checked, this filter is bypassed.
         
+        // 3. Application Status Filter (Pending/Accepted/Rejected)
         const currentApplicationStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
-        let applicationStatusPasses = true; 
         const appStatusFiltersActive = showAppPendingFilter || showAppAcceptedFilter || showAppRejectedFilter;
 
         if (appStatusFiltersActive) { 
-            applicationStatusPasses = 
-                (showAppPendingFilter && currentApplicationStatus === "Ausstehend") ||
-                (showAppAcceptedFilter && currentApplicationStatus === "Angenommen") ||
-                (showAppRejectedFilter && currentApplicationStatus === "Abgelehnt");
+            let passesAppStatus = false;
+            if (showAppPendingFilter && currentApplicationStatus === "Ausstehend") passesAppStatus = true;
+            if (showAppAcceptedFilter && currentApplicationStatus === "Angenommen") passesAppStatus = true;
+            if (showAppRejectedFilter && currentApplicationStatus === "Abgelehnt") passesAppStatus = true;
+            if (!passesAppStatus) return false; 
         }
-        return applicationStatusPasses; 
+        return true; 
     });
 
     console.log(`[renderJobs for ${targetListId}] Items after secondary filters (checkboxes/search): ${filteredJobs.length}`);
@@ -559,7 +558,7 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             applicantListContainer.appendChild(listWrapper);
 
             const applicantCountText = document.createElement("span");
-            applicantCountText.classList.add("is-txt-16"); // Angepasste Klasse
+            applicantCountText.classList.add("is-txt-16"); 
             
             const applicantIds = jobData['bewerber'] || []; 
             applicantCountText.textContent = `${applicantIds.length} Bewerber`;
@@ -568,7 +567,6 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             applicantDisplayCell.appendChild(applicantListContainer);
             jobDiv.appendChild(applicantDisplayCell);
 
-            // Asynchrones Laden und Anzeigen der Bewerberbilder
             renderJobApplicantImages(jobData, collList);
 
 
