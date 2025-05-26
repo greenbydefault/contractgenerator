@@ -50,9 +50,8 @@ async function fetchJobsViaBulkEndpoint(appIds, batchSize = 100, delayBetweenBat
         const totalBatches = Math.ceil(appIds.length / batchSize);
         console.log(`Verarbeite Bulk-Batch ${currentBatchNumber}/${totalBatches}: ${batchItemIds.length} Item-IDs`);
 
-        // ANPASSUNG: "/bulk" entfernt, basierend auf User-Feedback.
-        // Es wird angenommen, dass der Endpunkt für Live Items direkt POST mit itemIds im Body akzeptiert.
-        const bulkApiUrl = `${API_BASE_URL}/collections/${JOB_COLLECTION_ID}/items/live`; 
+        // KORREKTUR: API_BASE_URL enthält bereits "/collections".
+        const bulkApiUrl = `${API_BASE_URL}/${JOB_COLLECTION_ID}/items/live`; 
         const workerUrl = buildWorkerUrl(bulkApiUrl);
 
         try {
@@ -73,7 +72,7 @@ async function fetchJobsViaBulkEndpoint(appIds, batchSize = 100, delayBetweenBat
                 }));
             } else {
                 const bulkResult = await response.json();
-                const items = bulkResult?.items || []; // Annahme: Antwort enthält ein "items" Array
+                const items = bulkResult?.items || []; 
                 
                 items.forEach(item => {
                     const fieldData = item?.fieldData || item?.cmsData?.live?.fieldData; 
