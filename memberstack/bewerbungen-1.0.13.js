@@ -13,13 +13,15 @@ let currentPage = 1;
 let allJobResults = []; 
 let currentWebflowMemberId = null;
 let isBackgroundLoadingComplete = false; 
+let currentUserBookedJobIds = []; // NEU: Speichert die gebuchten Job-IDs des aktuellen Nutzers
 
 const TABS_CONFIG = [
     { id: "alle", listContainerId: "application-list-container", listId: "application-list", name: "Alle", filterFn: (jobData, memberId) => true },
-    { id: "angenommen", listContainerId: "application-list-accepted-container", listId: "application-list-accepted", name: "Zusagen", filterFn: (jobData, memberId) => getApplicationStatusForFilter(jobData, memberId) === "Angenommen" }, // Neuer Tab
+    // ANPASSUNG: Filterfunktion für "angenommen" Tab
+    { id: "angenommen", listContainerId: "application-list-accepted-container", listId: "application-list-accepted", name: "Zusagen", filterFn: (jobData, memberId) => jobData && jobData.id && currentUserBookedJobIds.includes(jobData.id) }, 
     { id: "abgelehnt", listContainerId: "application-list-rejected-container", listId: "application-list-rejected", name: "Abgelehnt", filterFn: (jobData, memberId) => getApplicationStatusForFilter(jobData, memberId) === "Abgelehnt" },
     { id: "ausstehend", listContainerId: "application-list-pending-container", listId: "application-list-pending", name: "Ausstehend", filterFn: (jobData, memberId) => getApplicationStatusForFilter(jobData, memberId) === "Ausstehend" },
-    { id: "favoriten", listContainerId: "application-list-fav-container", listId: "application-list-fav", name: "In Auswahl", filterFn: (jobData, memberId) => jobData["job-favoriten"] && Array.isArray(jobData["job-favoriten"]) && jobData["job-favoriten"].includes(memberId) }
+    { id: "favoriten", listContainerId: "application-list-fav-container", listId: "application-list-fav", name: "In Auswahl", filterFn: (jobData, memberId) => jobData && jobData["job-favoriten"] && Array.isArray(jobData["job-favoriten"]) && jobData["job-favoriten"].includes(memberId) }
 ];
 let activeTabId = TABS_CONFIG[0].id; 
 
@@ -28,9 +30,9 @@ const FILTER_BASE_IDS = {
     searchIdPrefix: "filter-search",    
     jobStatusActive: "job-status-active-filter",
     jobStatusClosed: "job-status-closed-filter",
-    appStatusPending: "application-status-pending-filter", // Wird für diesen Tab nicht direkt genutzt, aber für Konsistenz
-    appStatusAccepted: "application-status-accepted-filter",// Wird für diesen Tab nicht direkt genutzt
-    appStatusRejected: "application-status-rejected-filter" // Wird für diesen Tab nicht direkt genutzt
+    appStatusPending: "application-status-pending-filter", 
+    appStatusAccepted: "application-status-accepted-filter",
+    appStatusRejected: "application-status-rejected-filter" 
 };
 
 const SORT_BASE_IDS = {
@@ -137,12 +139,14 @@ function calculateDeadlineCountdown(endDate) {
 
 function getApplicationStatusForFilter(jobData, memberId) {
     if (!jobData || jobData.error || !jobData.isFullyLoaded) return "Ausstehend"; 
-    const bookedCreators = jobData["booked-creators"] || [];
+    const bookedCreators = jobData["booked-creators"] || []; // Dieses Feld wird für die Spaltenanzeige verwendet
     const rejectedCreators = jobData["rejected-creators"] || [];
     const endDateApp = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
     const now = new Date();
 
-    if (memberId && bookedCreators.includes(memberId)) return "Angenommen";
+    // Für die Tab-Filterung von "Angenommen" verwenden wir currentUserBookedJobIds.
+    // Für die Spaltenanzeige und andere Filter verwenden wir weiterhin jobData["booked-creators"].
+    if (memberId && bookedCreators.includes(memberId)) return "Angenommen"; 
     if (memberId && rejectedCreators.includes(memberId)) return "Abgelehnt";
     if (memberId && endDateApp && endDateApp < now && !bookedCreators.includes(memberId)) return "Abgelehnt";
     
@@ -208,8 +212,6 @@ async function handlePageChange(newPage) {
     currentPage = newPage;
 
     const activeTabConfig = TABS_CONFIG.find(tab => tab.id === activeTabId);
-    // Finde alle Jobs, die dem Primärfilter des Tabs entsprechen (unabhängig vom Ladezustand)
-    // Dies ist wichtig, um die korrekte Teilmenge für die Paginierung zu bestimmen.
     const allPotentialJobsForThisTab = allJobResults.filter(result => 
         result.jobData && activeTabConfig.filterFn(result.jobData, currentWebflowMemberId)
     );
@@ -217,7 +219,6 @@ async function handlePageChange(newPage) {
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
     const endIndex = Math.min(startIndex + JOBS_PER_PAGE, allPotentialJobsForThisTab.length);
     
-    // Nur die Jobs auf der aktuellen Seite der *potenziellen* Jobs für diesen Tab
     const jobsForPageRange = allPotentialJobsForThisTab.slice(startIndex, endIndex);
     const idsToLoadForPage = jobsForPageRange
         .filter(job => !job.jobData.isFullyLoaded && !job.jobData.error) 
@@ -372,9 +373,14 @@ function renderJobs(jobsToDisplayAfterPrimaryFilter, webflowMemberId, targetList
     const currentSearchTermValue = document.getElementById(`${FILTER_BASE_IDS.searchIdPrefix}-${activeTabId}`)?.value?.toLowerCase().trim() || "";
     const jobStatusActive = document.getElementById(`${FILTER_BASE_IDS.jobStatusActive}-${activeTabId}`)?.checked;
     const jobStatusClosed = document.getElementById(`${FILTER_BASE_IDS.jobStatusClosed}-${activeTabId}`)?.checked;
+    
+    // Die appStatus Filter werden hier nicht mehr benötigt, da der Tab "angenommen" seine eigene Logik hat
+    // und die anderen Status-Tabs ihre Logik in TABS_CONFIG.filterFn haben.
+    // Für den "alle" Tab könnten sie aber nützlich sein.
     const appStatusPending = document.getElementById(`${FILTER_BASE_IDS.appStatusPending}-${activeTabId}`)?.checked;
     const appStatusAccepted = document.getElementById(`${FILTER_BASE_IDS.appStatusAccepted}-${activeTabId}`)?.checked;
     const appStatusRejected = document.getElementById(`${FILTER_BASE_IDS.appStatusRejected}-${activeTabId}`)?.checked;
+
 
     currentFilteredList = currentFilteredList.filter(({ jobData }) => {
         if (!jobData || !jobData.isFullyLoaded || jobData.error) return false; 
@@ -386,20 +392,16 @@ function renderJobs(jobsToDisplayAfterPrimaryFilter, webflowMemberId, targetList
         const jobEndDate = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
         const isJobCurrentlyActive = jobEndDate && jobEndDate >= new Date();
 
-        if (jobStatusActive && !jobStatusClosed && !isJobCurrentlyActive) { // Nur "Aktiv" ist ausgewählt
+        if (jobStatusActive && !jobStatusClosed && !isJobCurrentlyActive) { 
             return false;
         }
-        if (!jobStatusActive && jobStatusClosed && isJobCurrentlyActive) { // Nur "Geschlossen" ist ausgewählt
+        if (!jobStatusActive && jobStatusClosed && isJobCurrentlyActive) { 
             return false;
         }
-        // Wenn beide oder keine der Job-Status-Checkboxen aktiv sind, wird dieser Teil des Filters übersprungen.
         
-        // Die appStatus Filter werden nur angewendet, wenn mindestens einer davon aktiv ist.
-        // Wenn der aktive Tab bereits einem dieser Status entspricht (z.B. Tab "Angenommen"),
-        // dann ist eine zusätzliche Filterung durch die Checkboxen für diesen Status nicht notwendig,
-        // aber es schadet auch nicht, da es das Ergebnis nicht weiter einschränkt.
-        // Wenn der Tab "Alle" aktiv ist, wirken diese Checkboxen wie erwartet.
-        if (appStatusPending || appStatusAccepted || appStatusRejected) {
+        // Wende appStatus Filter nur an, wenn der aktive Tab "alle" ist
+        // oder wenn einer der spezifischen Filter-Checkboxen aktiv ist (für den Fall, dass Nutzer im "alle" Tab nach Status filtert)
+        if (activeTabId === "alle" && (appStatusPending || appStatusAccepted || appStatusRejected)) {
             const currentAppStatus = getApplicationStatusForFilter(jobData, webflowMemberId);
             let passesAppStatus = false;
             if (appStatusPending && currentAppStatus === "Ausstehend") passesAppStatus = true;
@@ -620,10 +622,16 @@ function renderActiveTabContent() {
     
     const potentialJobsForThisTab = allJobResults.filter(result => {
         if (!result.jobData) return false; 
+        // Für die Paginierungs-Gesamtseitenzahl filtern wir basierend auf dem Tab-Kriterium,
+        // auch wenn die vollen Daten noch nicht da sind.
+        // Die filterFn muss damit umgehen können (z.B. für "alle" ist es ok).
+        // Für spezifischere Tabs (Status, Favoriten) werden hier nur Jobs berücksichtigt,
+        // deren Platzhalter-jobData die filterFn nicht sofort fehlschlagen lässt.
         return activeTabConfig.filterFn(result.jobData, currentWebflowMemberId);
     });
     const totalPagesForPaginationDisplay = Math.ceil(potentialJobsForThisTab.length / JOBS_PER_PAGE) || 1;
 
+    // Für die eigentliche Anzeige filtern wir nur die Jobs, die voll geladen sind.
     const jobsToPassToRenderJobs = allJobResults.filter(result => {
         return result.jobData && result.jobData.isFullyLoaded && !result.jobData.error && 
                activeTabConfig.filterFn(result.jobData, currentWebflowMemberId);
@@ -641,6 +649,7 @@ async function fetchAllRemainingJobDataInBackground(remainingAppIds) {
     if (remainingAppIds.length === 0) {
         isBackgroundLoadingComplete = true;
         console.log("Keine weiteren Jobs im Hintergrund zu laden.");
+        // Auch wenn nichts geladen wurde, Tab neu rendern, um Paginierung zu finalisieren
         renderActiveTabContent(); 
         return;
     }
@@ -686,6 +695,7 @@ async function initializeUserApplications() {
             const userData = await fetchCollectionItem(USER_COLLECTION_ID, currentWebflowMemberId);
             const userFieldData = userData?.item?.fieldData || userData?.fieldData;
             applicationsFromUser = userFieldData?.["abgeschlossene-bewerbungen"] || [];
+            currentUserBookedJobIds = userFieldData?.["booked-jobs"] || []; // Lade gebuchte Jobs des Users
         }
 
         if (itemCountElement) { 
@@ -699,9 +709,6 @@ async function initializeUserApplications() {
 
         const paginationContainer = document.getElementById("pagination-controls-container") || createPaginationContainer();
         const initialPotentialJobsForActiveTab = allJobResults.filter(result => {
-            // Hier ist result.jobData der Platzhalter, filterFn sollte damit umgehen können
-            // oder für spezifische Tabs (Status, Favoriten) erst nach dem Laden der vollen Daten greifen.
-            // Für den "alle"-Tab ist es unproblematisch.
             return initialTabConfig.filterFn(result.jobData, currentWebflowMemberId);
         });
         const totalPagesInitial = Math.ceil(initialPotentialJobsForActiveTab.length / JOBS_PER_PAGE) || 1;
