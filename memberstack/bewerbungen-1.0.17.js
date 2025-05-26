@@ -13,20 +13,11 @@ let currentPage = 1;
 let allJobResults = []; 
 let currentWebflowMemberId = null;
 let isBackgroundLoadingComplete = false; 
-// let currentUserBookedJobIds = []; // Entfernt, da der "Zusagen"-Tab entfernt wurde
+// Die Variable currentUserBookedJobIds wurde entfernt, da der "Zusagen"-Tab und seine Logik entfernt wurden.
 
 const TABS_CONFIG = [
     { id: "alle", listContainerId: "application-list-container", listId: "application-list", name: "Alle", filterFn: (jobData, memberId) => true },
-    // { 
-    //     id: "angenommen", // "Zusagen"-Tab wurde entfernt
-    //     listContainerId: "application-list-accepted-container", 
-    //     listId: "application-list-accepted", 
-    //     name: "Zusagen", 
-    //     filterFn: (jobData, memberId) => {
-    //         const isBooked = jobData && jobData.id && currentUserBookedJobIds.includes(jobData.id);
-    //         return isBooked;
-    //     } 
-    // }, 
+    // Der "angenommen" (Zusagen) Tab wurde entfernt.
     { id: "abgelehnt", listContainerId: "application-list-rejected-container", listId: "application-list-rejected", name: "Abgelehnt", filterFn: (jobData, memberId) => getApplicationStatusForFilter(jobData, memberId) === "Abgelehnt" },
     { id: "ausstehend", listContainerId: "application-list-pending-container", listId: "application-list-pending", name: "Ausstehend", filterFn: (jobData, memberId) => getApplicationStatusForFilter(jobData, memberId) === "Ausstehend" },
     { id: "favoriten", listContainerId: "application-list-fav-container", listId: "application-list-fav", name: "In Auswahl", filterFn: (jobData, memberId) => jobData && jobData["job-favoriten"] && Array.isArray(jobData["job-favoriten"]) && jobData["job-favoriten"].includes(memberId) }
@@ -39,7 +30,7 @@ const FILTER_BASE_IDS = {
     jobStatusActive: "job-status-active-filter",
     jobStatusClosed: "job-status-closed-filter",
     appStatusPending: "application-status-pending-filter", 
-    appStatusAccepted: "application-status-accepted-filter", // Bleibt für Filter im "Alle"-Tab relevant
+    appStatusAccepted: "application-status-accepted-filter", 
     appStatusRejected: "application-status-rejected-filter" 
 };
 
@@ -152,7 +143,6 @@ function getApplicationStatusForFilter(jobData, memberId) {
     const endDateApp = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
     const now = new Date();
 
-    // Diese Funktion bestimmt den Status für die Anzeige und für die Tabs "Abgelehnt" und "Ausstehend"
     if (memberId && bookedCreators.includes(memberId)) return "Angenommen"; 
     if (memberId && rejectedCreators.includes(memberId)) return "Abgelehnt";
     if (memberId && endDateApp && endDateApp < now && !bookedCreators.includes(memberId)) return "Abgelehnt";
@@ -631,24 +621,21 @@ function renderActiveTabContent() {
         return;
     }
     
-    // 1. Bestimme alle Jobs, die potenziell in diesem Tab angezeigt werden könnten (basierend auf Primärfilter)
     const potentialJobsForThisTab = allJobResults.filter(result => {
         if (!result.jobData) return false; 
         return activeTabConfig.filterFn(result.jobData, currentWebflowMemberId);
     });
     const totalPagesForPaginationDisplay = Math.ceil(potentialJobsForThisTab.length / JOBS_PER_PAGE) || 1;
 
-    // 2. Bestimme die Jobs, die tatsächlich *angezeigt* werden sollen:
-    //    Nur voll geladene, fehlerfreie Jobs, die dem Primärfilter des Tabs entsprechen.
     const jobsToPassToRenderJobs = allJobResults.filter(result => {
         return result.jobData && result.jobData.isFullyLoaded && !result.jobData.error && 
                activeTabConfig.filterFn(result.jobData, currentWebflowMemberId);
     });
     
-    if (activeTabId === 'angenommen') {
-        console.log(`[Debug Angenommen Tab - renderActiveTabContent] currentUserBookedJobIds:`, currentUserBookedJobIds);
-        console.log(`[Debug Angenommen Tab - renderActiveTabContent] potentialJobsForThisTab (vor isFullyLoaded Check):`, potentialJobsForThisTab.map(j => ({id: j.appId, isBooked: currentUserBookedJobIds.includes(j.appId)})));
-        console.log(`[Debug Angenommen Tab - renderActiveTabContent] jobsToPassToRenderJobs (nach isFullyLoaded Check):`, jobsToPassToRenderJobs.map(j => ({id: j.appId, name: j.jobData.name, isBooked: currentUserBookedJobIds.includes(j.jobData.id) })));
+    if (activeTabId === 'angenommen') { // Diese Debug-Logik ist jetzt irrelevant, da der Tab entfernt wurde.
+        // console.log(`[Debug Angenommen Tab - renderActiveTabContent] currentUserBookedJobIds:`, currentUserBookedJobIds);
+        // console.log(`[Debug Angenommen Tab - renderActiveTabContent] potentialJobsForThisTab (vor isFullyLoaded Check):`, potentialJobsForThisTab.map(j => ({id: j.appId, isBooked: currentUserBookedJobIds.includes(j.appId)})));
+        // console.log(`[Debug Angenommen Tab - renderActiveTabContent] jobsToPassToRenderJobs (nach isFullyLoaded Check):`, jobsToPassToRenderJobs.map(j => ({id: j.appId, name: j.jobData.name, isBooked: currentUserBookedJobIds.includes(j.jobData.id) })));
     }
 
 
@@ -709,9 +696,7 @@ async function initializeUserApplications() {
             const userData = await fetchCollectionItem(USER_COLLECTION_ID, currentWebflowMemberId);
             const userFieldData = userData?.item?.fieldData || userData?.fieldData;
             applicationsFromUser = userFieldData?.["abgeschlossene-bewerbungen"] || [];
-            currentUserBookedJobIds = userFieldData?.["booked-jobs"] || []; 
-            console.log("[Initialize] User's booked job IDs:", currentUserBookedJobIds);
-            // console.log("[Initialize] User's 'abgeschlossene-bewerbungen':", applicationsFromUser);
+            // currentUserBookedJobIds wurde entfernt
         }
 
         if (itemCountElement) { 
@@ -745,11 +730,6 @@ async function initializeUserApplications() {
                 }
             });
             
-            // Debugging: Loggen, welche der initial geladenen Jobs gebucht sind
-            const initiallyLoadedAndBooked = allJobResults.filter(r => r.jobData.isFullyLoaded && currentUserBookedJobIds.includes(r.jobData.id));
-            console.log(`[Initialize] DEBUG: Initially loaded and 'booked' (according to currentUserBookedJobIds): ${initiallyLoadedAndBooked.length} jobs. IDs:`, initiallyLoadedAndBooked.map(j=>j.appId));
-
-
             console.log(`Initial load complete. Loaded full data for ${initialAppIdsToLoad.length} jobs. Rendering active tab.`);
             currentPage = 1;
             renderActiveTabContent(); 
