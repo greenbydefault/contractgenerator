@@ -14,7 +14,6 @@ let currentWebflowMemberId = null;
 let activeSortCriteria = null;
 let currentSearchTerm = "";
 
-// NEU: Cache für Creator-Daten (insbesondere Profilbilder)
 const creatorDataCache = {};
 
 const TABS_CONFIG = [
@@ -31,9 +30,7 @@ function buildWorkerUrl(apiUrl) {
 }
 
 async function fetchCollectionItem(collectionId, itemId) { 
-    // Prüfe zuerst den Cache, wenn es sich um die USER_COLLECTION_ID handelt
     if (collectionId === USER_COLLECTION_ID && creatorDataCache[itemId]) {
-        // console.log(`[Cache] Creator-Daten für ${itemId} aus Cache geladen.`);
         return creatorDataCache[itemId];
     }
 
@@ -46,9 +43,7 @@ async function fetchCollectionItem(collectionId, itemId) {
             return null; 
         }
         const data = await response.json();
-        // Speichere im Cache, wenn es sich um die USER_COLLECTION_ID handelt
         if (collectionId === USER_COLLECTION_ID && data) {
-            // console.log(`[Cache] Creator-Daten für ${itemId} im Cache gespeichert.`);
             creatorDataCache[itemId] = data;
         }
         return data;
@@ -317,6 +312,48 @@ function renderPaginationControls(paginationContainerElement, currentPageNum, to
     paginationContainerElement.appendChild(nextButton);
 }
 
+async function renderJobApplicantImages(jobData, collListElement) {
+    const MAX_APPLICANT_IMAGES = 4;
+    const applicantIds = jobData['bewerber'] || [];
+    let imagesDisplayedCount = 0;
+
+    for (const creatorId of applicantIds) {
+        if (imagesDisplayedCount >= MAX_APPLICANT_IMAGES) {
+            break; 
+        }
+
+        const creatorResult = await fetchCollectionItem(USER_COLLECTION_ID, creatorId);
+        
+        let imageUrl;
+        let creatorName = 'Creator'; // Default name
+
+        if (creatorResult && (creatorResult.item || creatorResult.fieldData) ) {
+            const creatorFieldData = creatorResult.item?.fieldData || creatorResult.fieldData;
+            creatorName = creatorFieldData?.name || 'Creator'; // Get name if available
+            imageUrl = creatorFieldData?.['image-thumbnail-small-92px']; // Use new field name
+        }
+        
+        if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '') {
+            const listItem = document.createElement("div");
+            listItem.classList.add("db-bewerber-count-list-item");
+            const img = document.createElement("img");
+            img.classList.add("db-creator-count-img");
+            img.src = imageUrl;
+            img.alt = creatorName;
+            img.onerror = () => { 
+                // Potentially remove the item or use a more distinct error placeholder
+                // For now, browser default or CSS might hide it / show broken icon.
+                // To prevent counting a broken image, we could move imagesDisplayedCount++
+                // to an onload handler, but that complicates the loop.
+            }; 
+            listItem.appendChild(img);
+            collListElement.appendChild(listItem); 
+            imagesDisplayedCount++;
+        }
+    }
+}
+
+
 function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     const appContainer = document.getElementById(targetListId);
     if (!appContainer) {
@@ -522,8 +559,7 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             applicantListContainer.appendChild(listWrapper);
 
             const applicantCountText = document.createElement("span");
-            // ANPASSUNG: CSS-Klasse geändert
-            applicantCountText.classList.add("is-txt-16"); 
+            applicantCountText.classList.add("is-txt-16"); // Angepasste Klasse
             
             const applicantIds = jobData['bewerber'] || []; 
             applicantCountText.textContent = `${applicantIds.length} Bewerber`;
@@ -532,44 +568,8 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             applicantDisplayCell.appendChild(applicantListContainer);
             jobDiv.appendChild(applicantDisplayCell);
 
-            const MAX_APPLICANT_IMAGES = 4;
-            const idsToFetch = applicantIds.slice(0, MAX_APPLICANT_IMAGES);
-
-            idsToFetch.forEach(creatorId => {
-                // console.log(`[Applicant Image] Fetching user data for creator ID: ${creatorId} (Job: ${jobData.name || jobData.id})`);
-                fetchCollectionItem(USER_COLLECTION_ID, creatorId).then(creatorResult => {
-                    // console.log(`[Applicant Image] Result for ${creatorId}:`, creatorResult); 
-                    const listItem = document.createElement("div");
-                    listItem.classList.add("db-bewerber-count-list-item");
-                    const img = document.createElement("img");
-                    img.classList.add("db-creator-count-img");
-                    
-                    let imageUrl;
-                    let creatorName = 'Creator';
-
-                    if (creatorResult && (creatorResult.item || creatorResult.fieldData) ) {
-                        const creatorFieldData = creatorResult.item?.fieldData || creatorResult.fieldData;
-                        // console.log(`[Applicant Image] FieldData for ${creatorId}:`, creatorFieldData); 
-                        creatorName = creatorFieldData?.name || 'Creator';
-                        imageUrl = creatorFieldData?.['user-profile-img']; // Direkt auf das URL-Feld zugreifen
-                        // console.log(`[Applicant Image] Image URL for ${creatorId} from 'user-profile-img': ${imageUrl}`);
-                    } else {
-                        // console.log(`[Applicant Image] No valid creatorResult or fieldData for ${creatorId}.`);
-                    }
-                    
-                    img.src = imageUrl || `https://via.placeholder.com/32x32?text=${creatorName?.charAt(0)?.toUpperCase() || 'P'}`;
-                    img.alt = creatorName;
-                    
-                    img.onerror = () => { 
-                        // console.log(`[Applicant Image] Error loading image for ${creatorId}: ${img.src}. Using placeholder.`);
-                        img.src = `https://via.placeholder.com/32x32?text=Err`; 
-                        img.alt = 'Fehler';
-                    }; 
-                    
-                    listItem.appendChild(img);
-                    collList.appendChild(listItem); 
-                });
-            });
+            // Asynchrones Laden und Anzeigen der Bewerberbilder
+            renderJobApplicantImages(jobData, collList);
 
 
             jobLink.appendChild(jobDiv);
