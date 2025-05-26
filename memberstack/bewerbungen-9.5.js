@@ -40,78 +40,72 @@ async function fetchCollectionItem(collectionId, memberId) {
     }
 }
 
-async function fetchJobsViaBulkEndpoint(appIds, batchSize = 100, delayBetweenBatches = 1000) {
-    console.log(`Starte Bulk-Abruf von ${appIds.length} Jobs in Batches von bis zu ${batchSize} mit ${delayBetweenBatches}ms Verzögerung.`);
-    const allFetchedJobData = []; 
+// Funktion zum Abrufen der Daten eines einzelnen Jobs (per GET)
+async function fetchJobData(jobId) {
+    const apiUrl = `${API_BASE_URL}/${JOB_COLLECTION_ID}/items/${jobId}/live`;
+    const workerUrl = buildWorkerUrl(apiUrl);
+    try {
+        const response = await fetch(workerUrl); // Standard-Fetch ist GET
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`API-Fehler beim Abrufen von Job ${jobId}: ${response.status} - ${errorText}`);
+            // Wichtig: Wir geben ein Objekt zurück, damit Promise.all nicht beim ersten Fehler abbricht
+            return { appId: jobId, jobData: { id: jobId, error: true, status: response.status, message: `API Error for job ${jobId}: ${errorText}` } };
+        }
+        const jobDataResult = await response.json();
+        const fieldData = jobDataResult?.item?.fieldData || jobDataResult?.fieldData;
+        const slug = fieldData?.slug || jobDataResult?.item?.slug || jobDataResult?.slug;
+
+        if (fieldData && (jobDataResult.id || jobDataResult?.item?.id)) {
+             return { appId: jobId, jobData: { ...fieldData, id: (jobDataResult.id || jobDataResult?.item?.id), slug: slug } };
+        } else {
+            console.warn(`Keine validen fieldData für Job ${jobId} im GET-Request gefunden.`);
+            return { appId: jobId, jobData: { id: jobId, error: true, message: `No valid fieldData for job ${jobId}` }};
+        }
+    } catch (error) {
+        console.error(`❌ Netzwerkfehler beim Abrufen von Job ${jobId}: ${error.message}`);
+        return { appId: jobId, jobData: { id: jobId, error: true, status: 'network_error', message: `Network error for job ${jobId}: ${error.message}` } };
+    }
+}
+
+
+// Hilfsfunktion zum Abrufen von Jobs in Batches (jeder Job eine einzelne GET-Anfrage)
+async function fetchIndividualJobsInBatches(appIds, batchSize = 100, delayBetweenBatches = 1000) {
+    // WARNUNG: Eine batchSize von 100 für individuelle GET-Anfragen, mit nur 1 Sekunde Verzögerung,
+    // wird SEHR WAHRSCHEINLICH Webflow's Ratenbegrenzung (ca. 120 Anfragen/Minute) treffen
+    // und zu 429 "Too Many Requests"-Fehlern führen.
+    // Diese Konfiguration ist für Testzwecke auf Nutzerwunsch.
+    // Eine viel kleinere batchSize (z.B. 2-5) mit einer proportional längeren Verzögerung
+    // (z.B. batchSize=4, delay=2100ms für ~2 Anfragen/Sekunde) wäre stabiler.
+    console.warn(`TEST-KONFIGURATION: Abruf von ${appIds.length} Jobs mit individuellen GET-Anfragen. Batch-Größe: ${batchSize}, Verzögerung: ${delayBetweenBatches}ms. HOHE GEFAHR VON RATE-LIMITING!`);
+    const allResults = []; // Hier sammeln wir { appId, jobData }
 
     for (let i = 0; i < appIds.length; i += batchSize) {
-        const batchItemIds = appIds.slice(i, i + batchSize);
+        const batchAppIds = appIds.slice(i, i + batchSize);
         const currentBatchNumber = Math.floor(i / batchSize) + 1;
         const totalBatches = Math.ceil(appIds.length / batchSize);
-        console.log(`Verarbeite Bulk-Batch ${currentBatchNumber}/${totalBatches}: ${batchItemIds.length} Item-IDs`);
+        console.log(`Verarbeite individuellen GET-Request Batch ${currentBatchNumber}/${totalBatches}: ${batchAppIds.length} Item-IDs gleichzeitig`);
 
-        // KORREKTUR: API_BASE_URL enthält bereits "/collections".
-        const bulkApiUrl = `${API_BASE_URL}/${JOB_COLLECTION_ID}/items/live`; 
-        const workerUrl = buildWorkerUrl(bulkApiUrl);
-
+        // Starte alle fetchJobData Anfragen für den aktuellen Batch parallel
+        const batchPromises = batchAppIds.map(appId => fetchJobData(appId));
+        
         try {
-            const response = await fetch(workerUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ itemIds: batchItemIds })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`API-Fehler beim Bulk-Abrufen von Jobs (Batch ${currentBatchNumber}): ${response.status} - ${errorText}`);
-                batchItemIds.forEach(id => allFetchedJobData.push({ 
-                    appId: id, 
-                    jobData: { id, error: true, status: response.status, message: `Bulk API Error (${response.status}): ${errorText}` } 
-                }));
-            } else {
-                const bulkResult = await response.json();
-                const items = bulkResult?.items || []; 
-                
-                items.forEach(item => {
-                    const fieldData = item?.fieldData || item?.cmsData?.live?.fieldData; 
-                    const slug = fieldData?.slug || item?.slug; 
-
-                    if (fieldData && item.id) { 
-                        allFetchedJobData.push({
-                            appId: item.id, 
-                            jobData: { ...fieldData, id: item.id, slug: slug }
-                        });
-                    } else {
-                        console.warn(`Unvollständige Daten für Item ID ${item.id || 'unbekannt'} im Bulk-Response erhalten.`);
-                        allFetchedJobData.push({ appId: item.id || 'unknown_id_in_batch', jobData: { id: item.id || 'unknown_id_in_batch', error: true, message: "Unvollständige Daten im Bulk-Response" }});
-                    }
-                });
-
-                const returnedIds = new Set(items.map(it => it.id));
-                batchItemIds.forEach(requestedId => {
-                    if (!returnedIds.has(requestedId)) {
-                        console.warn(`Keine Daten für Item ID ${requestedId} im Bulk-Response gefunden.`);
-                        allFetchedJobData.push({ appId: requestedId, jobData: { id: requestedId, error: true, message: "Item nicht im Bulk-Response gefunden" }});
-                    }
-                });
-            }
-        } catch (error) {
-            console.error(`Netzwerk- oder Verarbeitungsfehler beim Bulk-Abrufen von Jobs (Batch ${currentBatchNumber}):`, error);
-            batchItemIds.forEach(id => allFetchedJobData.push({ 
-                appId: id, 
-                jobData: { id, error: true, message: `Netzwerk-/Verarbeitungsfehler: ${error.message}` } 
-            }));
+            const batchJobResults = await Promise.all(batchPromises); // Warte bis alle Anfragen im Batch abgeschlossen sind
+            allResults.push(...batchJobResults); // Füge die Ergebnisse (oder Fehlerobjekte) hinzu
+        } catch (batchError) {
+            // Dieser Catch-Block sollte theoretisch nicht erreicht werden, da fetchJobData Fehler abfängt und Objekte zurückgibt.
+            console.error("Unerwarteter Fehler in Promise.all für individuelle GET-Requests:", batchError);
+            // Falls doch, erstelle Fehlerobjekte für diesen Batch
+            batchAppIds.forEach(appId => allResults.push({appId, jobData: {id: appId, error: true, message: "Batch processing error for individual GETs"}}));
         }
 
-        if (i + batchSize < appIds.length) { 
-            console.log(`Warte ${delayBetweenBatches / 1000} Sekunden vor dem nächsten Bulk-Batch...`);
+        if (i + batchSize < appIds.length) { // Wenn es nicht der letzte Batch ist
+            console.log(`Warte ${delayBetweenBatches / 1000} Sekunden vor dem nächsten Batch individueller GET-Requests...`);
             await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
         }
     }
-    console.log("Alle Bulk-Batches verarbeitet.");
-    return allFetchedJobData;
+    console.log("Alle individuellen GET-Request Batches verarbeitet.");
+    return allResults;
 }
 
 
@@ -330,8 +324,8 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     const showAppRejectedFilter = document.getElementById("application-status-rejected-filter")?.checked;
     const searchTermNormalized = currentSearchTerm.toLowerCase().trim();
 
-    let filteredJobs = jobsToProcessPrimaryFilter.filter(({ jobData }) => {
-        if (!jobData || jobData.error) return false;
+    let filteredJobs = jobsToProcessPrimaryFilter.filter(({ jobData }) => { // Hier ist jobData das Objekt, das von fetchJobData kommt
+        if (!jobData || jobData.error) return false; // Prüfe auf das jobData-Objekt
         if (searchTermNormalized) {
             const jobName = (jobData["name"] || "").toLowerCase();
             if (!jobName.includes(searchTermNormalized)) return false;
@@ -366,8 +360,8 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     let sortedJobs = [...filteredJobs];
     if (activeSortCriteria && activeSortCriteria.key) {
         sortedJobs.sort((a, b) => {
-            const jobDataA = a.jobData;
-            const jobDataB = b.jobData;
+            const jobDataA = a.jobData; // Zugriff auf das jobData Objekt
+            const jobDataB = b.jobData; // Zugriff auf das jobData Objekt
             if (!jobDataA || jobDataA.error || !jobDataB || jobDataB.error) return 0;
             let valA, valB;
             switch (activeSortCriteria.key) {
@@ -410,7 +404,7 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
         appContainer.appendChild(noJobsMessage);
     } else {
         const fragment = document.createDocumentFragment();
-        jobsToShowOnPage.forEach(({ jobData }) => {
+        jobsToShowOnPage.forEach(({ appId, jobData }) => { // Destrukturiere hier appId und jobData
             if (!jobData || jobData.error) {
                  return;
             }
@@ -541,8 +535,9 @@ function renderActiveTabContent() {
     
     renderSkeletonLoader(targetListElement, JOBS_PER_PAGE);
 
-    const jobsForThisTab = allJobResults.filter(job => {
-        return job.jobData && !job.jobData.error && activeTabConfig.filterFn(job.jobData, currentWebflowMemberId);
+    // Stelle sicher, dass allJobResults ein Array von {appId, jobData} Objekten ist
+    const jobsForThisTab = allJobResults.filter(result => {
+        return result.jobData && !result.jobData.error && activeTabConfig.filterFn(result.jobData, currentWebflowMemberId);
     });
     
     setTimeout(() => {
@@ -579,12 +574,15 @@ async function initializeUserApplications() {
         }
 
         if (applicationsFromUser.length > 0) {
-            allJobResults = await fetchJobsViaBulkEndpoint(applicationsFromUser); 
+            // Nutze fetchIndividualJobsInBatches für einzelne GET-Anfragen
+            allJobResults = await fetchIndividualJobsInBatches(applicationsFromUser); 
             
-            const validJobResults = allJobResults.filter(job => job.jobData && !job.jobData.error && Object.keys(job.jobData).length > 2); 
+            // Filterung der Ergebnisse: Nur gültige jobData-Objekte behalten
+            const validJobResults = allJobResults.filter(result => result.jobData && !result.jobData.error && Object.keys(result.jobData).length > 2);
             const erroredJobsCount = allJobResults.length - validJobResults.length;
+
             if (erroredJobsCount > 0) {
-                console.warn(`${erroredJobsCount} Jobs konnten nicht korrekt geladen werden oder hatten Fehler (möglicherweise aufgrund von 429-Fehlern im Bulk-Abruf).`);
+                console.warn(`${erroredJobsCount} Jobs konnten nicht korrekt geladen werden oder hatten Fehler (Rate-Limit sehr wahrscheinlich).`);
             }
             allJobResults = validJobResults; 
             
@@ -705,7 +703,14 @@ function setupEventListeners() {
         link.addEventListener("click", (e) => {
             e.preventDefault();
             const newTabId = link.dataset.tabId;
-            if (newTabId === activeTabId && document.getElementById(TABS_CONFIG.find(t => t.id === newTabId).listId).innerHTML !== "") return; 
+            // if (newTabId === activeTabId && document.getElementById(TABS_CONFIG.find(t => t.id === newTabId).listId).innerHTML !== "") return; 
+            if (newTabId === activeTabId) { // Nur neu rendern, wenn der Tab-Inhalt leer ist (z.B. nach Fehler) oder wenn es explizit gewünscht ist
+                 const currentListContent = document.getElementById(TABS_CONFIG.find(t => t.id === newTabId).listId);
+                 if(currentListContent && currentListContent.children.length > 0 && !currentListContent.querySelector('.skeleton-row')) { // Nicht neu laden, wenn schon Inhalt da ist und es kein Skeleton ist
+                    return;
+                 }
+            }
+
 
             activeTabId = newTabId;
             currentPage = 1; 
