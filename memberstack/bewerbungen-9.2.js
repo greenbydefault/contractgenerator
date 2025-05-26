@@ -31,66 +31,88 @@ async function fetchCollectionItem(collectionId, memberId) {
     const apiUrl = `${API_BASE_URL}/${collectionId}/items/${memberId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
     try {
-        const response = await fetch(workerUrl);
-        if (!response.ok) throw new Error(`API-Fehler: ${response.status} - ${await response.text()}`);
+        const response = await fetch(workerUrl); 
+        if (!response.ok) throw new Error(`API-Fehler (fetchCollectionItem): ${response.status} - ${await response.text()}`);
         return await response.json();
     } catch (error) {
-        console.error(`❌ Fehler beim Abrufen der Collection: ${error.message}`);
+        console.error(`❌ Fehler beim Abrufen der Collection Item: ${error.message}`);
         return null;
     }
 }
 
-async function fetchJobData(jobId) {
-    const apiUrl = `${API_BASE_URL}/${JOB_COLLECTION_ID}/items/${jobId}/live`;
-    const workerUrl = buildWorkerUrl(apiUrl);
-    try {
-        const response = await fetch(workerUrl);
-        if (!response.ok) {
-            // Logge den Fehler, aber lasse die Funktion ein Fehlerobjekt zurückgeben, anstatt einen Error zu werfen,
-            // damit Promise.all in fetchJobsInBatches nicht beim ersten Fehler abbricht.
-            const errorText = await response.text();
-            console.error(`API-Fehler beim Abrufen von Job ${jobId}: ${response.status} - ${errorText}`);
-            return { id: jobId, error: true, status: response.status, message: `API Error for job ${jobId}: ${errorText}` };
-        }
-        const jobData = await response.json();
-        const fieldData = jobData?.item?.fieldData || jobData?.fieldData;
-        const slug = fieldData?.slug || jobData?.item?.slug || jobData?.slug;
-        return fieldData ? { ...fieldData, id: jobData.id || jobData?.item?.id, slug: slug } : { id: jobId, error: true, message: `No fieldData for job ${jobId}`};
-    } catch (error) {
-        console.error(`❌ Fehler beim Abrufen der Job-Daten für ${jobId}: ${error.message}`);
-        return { id: jobId, error: true, status: 'network_error', message: `Network error for job ${jobId}: ${error.message}` };
-    }
-}
+async function fetchJobsViaBulkEndpoint(appIds, batchSize = 100, delayBetweenBatches = 1000) {
+    console.log(`Starte Bulk-Abruf von ${appIds.length} Jobs in Batches von bis zu ${batchSize} mit ${delayBetweenBatches}ms Verzögerung.`);
+    const allFetchedJobData = []; 
 
-// NEUE Hilfsfunktion zum Abrufen von Jobs in Batches mit Verzögerung
-async function fetchJobsInBatches(appIds, batchSize = 2, delayBetweenBatches = 1100) {
-    console.log(`Starte Abruf von ${appIds.length} Jobs in Batches von ${batchSize} mit ${delayBetweenBatches}ms Verzögerung.`);
-    const results = [];
     for (let i = 0; i < appIds.length; i += batchSize) {
-        const batchAppIds = appIds.slice(i, i + batchSize);
-        console.log(`Verarbeite Batch ${Math.floor(i / batchSize) + 1}: IDs ${batchAppIds.join(', ')}`);
-        const batchPromises = batchAppIds.map(appId =>
-            fetchJobData(appId).then(jobDataResponse => ({ appId, jobData: jobDataResponse }))
-        );
-        
+        const batchItemIds = appIds.slice(i, i + batchSize);
+        const currentBatchNumber = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(appIds.length / batchSize);
+        console.log(`Verarbeite Bulk-Batch ${currentBatchNumber}/${totalBatches}: ${batchItemIds.length} Item-IDs`);
+
+        // ANPASSUNG: "/bulk" entfernt, basierend auf User-Feedback.
+        // Es wird angenommen, dass der Endpunkt für Live Items direkt POST mit itemIds im Body akzeptiert.
+        const bulkApiUrl = `${API_BASE_URL}/collections/${JOB_COLLECTION_ID}/items/live`; 
+        const workerUrl = buildWorkerUrl(bulkApiUrl);
+
         try {
-            const batchResults = await Promise.all(batchPromises);
-            results.push(...batchResults);
-        } catch (batchError) {
-            // Sollte durch die Fehlerbehandlung in fetchJobData eigentlich nicht hier landen,
-            // aber als zusätzliche Sicherheit.
-            console.error("Ein Fehler ist im Batch Promise.all aufgetreten (unerwartet):", batchError);
-            // Füge Fehler-Platzhalter für diesen Batch hinzu, falls nötig
-            batchAppIds.forEach(appId => results.push({appId, jobData: {id: appId, error: true, message: "Batch processing error"}}));
+            const response = await fetch(workerUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ itemIds: batchItemIds })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`API-Fehler beim Bulk-Abrufen von Jobs (Batch ${currentBatchNumber}): ${response.status} - ${errorText}`);
+                batchItemIds.forEach(id => allFetchedJobData.push({ 
+                    appId: id, 
+                    jobData: { id, error: true, status: response.status, message: `Bulk API Error (${response.status}): ${errorText}` } 
+                }));
+            } else {
+                const bulkResult = await response.json();
+                const items = bulkResult?.items || []; // Annahme: Antwort enthält ein "items" Array
+                
+                items.forEach(item => {
+                    const fieldData = item?.fieldData || item?.cmsData?.live?.fieldData; 
+                    const slug = fieldData?.slug || item?.slug; 
+
+                    if (fieldData && item.id) { 
+                        allFetchedJobData.push({
+                            appId: item.id, 
+                            jobData: { ...fieldData, id: item.id, slug: slug }
+                        });
+                    } else {
+                        console.warn(`Unvollständige Daten für Item ID ${item.id || 'unbekannt'} im Bulk-Response erhalten.`);
+                        allFetchedJobData.push({ appId: item.id || 'unknown_id_in_batch', jobData: { id: item.id || 'unknown_id_in_batch', error: true, message: "Unvollständige Daten im Bulk-Response" }});
+                    }
+                });
+
+                const returnedIds = new Set(items.map(it => it.id));
+                batchItemIds.forEach(requestedId => {
+                    if (!returnedIds.has(requestedId)) {
+                        console.warn(`Keine Daten für Item ID ${requestedId} im Bulk-Response gefunden.`);
+                        allFetchedJobData.push({ appId: requestedId, jobData: { id: requestedId, error: true, message: "Item nicht im Bulk-Response gefunden" }});
+                    }
+                });
+            }
+        } catch (error) {
+            console.error(`Netzwerk- oder Verarbeitungsfehler beim Bulk-Abrufen von Jobs (Batch ${currentBatchNumber}):`, error);
+            batchItemIds.forEach(id => allFetchedJobData.push({ 
+                appId: id, 
+                jobData: { id, error: true, message: `Netzwerk-/Verarbeitungsfehler: ${error.message}` } 
+            }));
         }
 
-        if (i + batchSize < appIds.length) { // Wenn es nicht der letzte Batch ist
-            console.log(`Warte ${delayBetweenBatches}ms vor dem nächsten Batch...`);
+        if (i + batchSize < appIds.length) { 
+            console.log(`Warte ${delayBetweenBatches / 1000} Sekunden vor dem nächsten Bulk-Batch...`);
             await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
         }
     }
-    console.log("Alle Batches verarbeitet.");
-    return results;
+    console.log("Alle Bulk-Batches verarbeitet.");
+    return allFetchedJobData;
 }
 
 
@@ -131,7 +153,6 @@ function getApplicationStatusForFilter(jobData, memberId) {
 
 function renderSkeletonLoader(targetListElement, count) {
     if (!targetListElement) {
-        // console.warn("Skeleton Loader: Target list element not found."); // Wird ggf. zu oft geloggt
         return;
     }
     targetListElement.innerHTML = "";
@@ -173,7 +194,6 @@ function renderSkeletonLoader(targetListElement, count) {
 
 function renderPaginationControls(paginationContainerElement, currentPageNum, totalPagesNum) {
     if (!paginationContainerElement) {
-        // console.warn("Pagination container not found for controls."); // Wird ggf. zu oft geloggt
         return;
     }
     paginationContainerElement.innerHTML = ''; 
@@ -393,8 +413,6 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
         const fragment = document.createDocumentFragment();
         jobsToShowOnPage.forEach(({ jobData }) => {
             if (!jobData || jobData.error) {
-                 // console.warn("Skipping job due to error or no data in renderJobs:", jobData?.id || 'unknown ID');
-                 // Man könnte hier eine Platzhalter-Nachricht für fehlerhafte Jobs anzeigen
                  return;
             }
             const jobLink = document.createElement("a");
@@ -501,7 +519,6 @@ function createPaginationContainer() {
         if (firstTabContainer && firstTabContainer.parentNode) {
              firstTabContainer.parentNode.appendChild(container);
         } else {
-            // Fallback, falls der erste Tab-Container nicht gefunden wird (sollte nicht passieren)
             const bodyFirstChild = document.body.firstChild;
             if (bodyFirstChild) document.body.insertBefore(container, bodyFirstChild.nextSibling);
             else document.body.appendChild(container);
@@ -529,7 +546,6 @@ function renderActiveTabContent() {
         return job.jobData && !job.jobData.error && activeTabConfig.filterFn(job.jobData, currentWebflowMemberId);
     });
     
-    // Kurze Verzögerung, damit der Skeleton Loader gezeichnet wird, bevor die (potenziell schnelle) Filterung und das Rendern beginnen.
     setTimeout(() => {
         renderJobs(jobsForThisTab, currentWebflowMemberId, activeTabConfig.listId);
     }, 50);
@@ -564,17 +580,14 @@ async function initializeUserApplications() {
         }
 
         if (applicationsFromUser.length > 0) {
-            // MODIFIZIERT: Jobs in Batches abrufen
-            allJobResults = await fetchJobsInBatches(applicationsFromUser, 2, 1100); // Batch-Größe 2, 1.1s Verzögerung
+            allJobResults = await fetchJobsViaBulkEndpoint(applicationsFromUser); 
             
-            // Filtere Jobs, die während des Batch-Abrufs Fehler hatten (obwohl fetchJobData bereits Fehlerobjekte zurückgibt)
-            // oder die keine validen Daten haben.
-            const validJobResults = allJobResults.filter(job => job.jobData && !job.jobData.error && Object.keys(job.jobData).length > 2); // Mindestens id, slug, name (oder ähnliches)
+            const validJobResults = allJobResults.filter(job => job.jobData && !job.jobData.error && Object.keys(job.jobData).length > 2); 
             const erroredJobsCount = allJobResults.length - validJobResults.length;
             if (erroredJobsCount > 0) {
-                console.warn(`${erroredJobsCount} Jobs konnten nicht korrekt geladen werden oder hatten Fehler.`);
+                console.warn(`${erroredJobsCount} Jobs konnten nicht korrekt geladen werden oder hatten Fehler (möglicherweise aufgrund von 429-Fehlern im Bulk-Abruf).`);
             }
-            allJobResults = validJobResults; // Überschreibe mit nur validen Jobs für die weitere Verarbeitung
+            allJobResults = validJobResults; 
             
             if (itemCountElement) {
                 itemCountElement.textContent = allJobResults.length;
