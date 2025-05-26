@@ -27,14 +27,14 @@ function buildWorkerUrl(apiUrl) {
     return `${WORKER_BASE_URL}${encodeURIComponent(apiUrl)}`;
 }
 
-async function fetchCollectionItem(collectionId, itemId) { // Geändert zu itemId für generische Nutzung
+async function fetchCollectionItem(collectionId, itemId) { 
     const apiUrl = `${API_BASE_URL}/${collectionId}/items/${itemId}/live`;
     const workerUrl = buildWorkerUrl(apiUrl);
     try {
         const response = await fetch(workerUrl); 
         if (!response.ok) {
-            // console.warn(`API-Fehler (fetchCollectionItem ${collectionId}/${itemId}): ${response.status} - ${await response.text()}`);
-            return null; // Gebe null zurück statt einen Fehler zu werfen, damit Promise.all nicht abbricht
+            console.warn(`API-Fehler (fetchCollectionItem ${collectionId}/${itemId}): ${response.status} - ${await response.text()}`);
+            return null; 
         }
         return await response.json();
     } catch (error) {
@@ -43,7 +43,6 @@ async function fetchCollectionItem(collectionId, itemId) { // Geändert zu itemI
     }
 }
 
-// Funktion zum Abrufen der Daten eines einzelnen Jobs (per GET)
 async function fetchJobData(jobId) {
     const jobDataResult = await fetchCollectionItem(JOB_COLLECTION_ID, jobId);
     if (!jobDataResult) {
@@ -61,10 +60,15 @@ async function fetchJobData(jobId) {
     }
 }
 
-
-// Hilfsfunktion zum Abrufen von Jobs in Batches (jeder Job eine einzelne GET-Anfrage)
-async function fetchIndividualJobsInBatches(appIds, batchSize = 4, delayBetweenBatches = 2100) { 
+async function fetchIndividualJobsInBatches(appIds, batchSize = 100, delayBetweenBatches = 1000) { 
+    // Wiederhergestellte Konfiguration: 100 Anfragen pro Batch, 1 Sekunde Pause
+    // Diese Konfiguration birgt weiterhin ein Risiko für Rate-Limiting, wenn Webflow
+    // jede einzelne GET-Anfrage zählt und nicht die "100 Items in a single request" Logik
+    // auf diesen Typ von parallelen Einzelanfragen anwendet.
     console.log(`Starte Abruf von ${appIds.length} Jobs mit individuellen GET-Anfragen. Batch-Größe: ${batchSize}, Verzögerung: ${delayBetweenBatches}ms.`);
+    if (batchSize > 10 && delayBetweenBatches < (batchSize * 500) ) { // Grobe Schätzung: 0.5s pro Request
+        console.warn(`WARNUNG: Batch-Konfiguration (Size: ${batchSize}, Delay: ${delayBetweenBatches}ms) könnte Webflow Rate Limits überschreiten!`);
+    }
     const allResults = []; 
 
     for (let i = 0; i < appIds.length; i += batchSize) {
@@ -138,7 +142,7 @@ function renderSkeletonLoader(targetListElement, count) {
         { type: "text", classModifier: "skeleton-text-medium" },
         { type: "text", classModifier: "skeleton-text-medium" },
         { type: "tag" }, { type: "tag" },
-        { type: "applicants" } // Skeleton für Bewerberanzeige
+        { type: "applicants" } 
     ];
     for (let i = 0; i < count; i++) {
         const jobDiv = document.createElement("div");
@@ -157,11 +161,11 @@ function renderSkeletonLoader(targetListElement, count) {
             const fieldDivItem = document.createElement("div");
             fieldDivItem.classList.add("db-table-row-item");
              if (skelType.type === "applicants") {
-                fieldDivItem.classList.add("item-job-applicant-display"); // Klasse für die Spalte
+                fieldDivItem.classList.add("item-job-applicant-display"); 
                 const applicantSkelDiv = document.createElement("div");
                 applicantSkelDiv.classList.add("db-bewerber-count-list", "skeleton-element");
-                applicantSkelDiv.style.width = "100px"; // Beispielbreite
-                applicantSkelDiv.style.height = "24px"; // Beispielhöhe
+                applicantSkelDiv.style.width = "100px"; 
+                applicantSkelDiv.style.height = "24px"; 
                 fieldDivItem.appendChild(applicantSkelDiv);
             } else if (skelType.type === "tag") {
                 const skeletonTag = document.createElement("div");
@@ -420,7 +424,6 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             const jobDiv = document.createElement("div");
             jobDiv.classList.add("db-table-row", "db-table-bewerbungen");
 
-            // Job Info (Bild + Name)
             const jobInfoDiv = document.createElement("div");
             jobInfoDiv.classList.add("db-table-row-item", "justify-left", "job-info-container");
             const jobImage = document.createElement("img");
@@ -434,7 +437,6 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             jobInfoDiv.appendChild(jobNameSpan);
             jobDiv.appendChild(jobInfoDiv);
 
-            // Standard Felder
             const fields = [
                 { key: "job-payment", label: "Bezahlung" }, { key: "job-date-end", label: "Bewerbungsfrist" },
                 { key: "fertigstellung-content", label: "Contentdeadline" }, { key: "job-status", label: "Job Status" },
@@ -494,7 +496,6 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
                 jobDiv.appendChild(fieldDivItem);
             });
             
-            // NEU: Bewerberanzahl und Bilder anzeigen
             const applicantDisplayCell = document.createElement("div");
             applicantDisplayCell.classList.add("db-table-row-item", "item-job-applicant-display");
 
@@ -512,7 +513,6 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             const applicantCountText = document.createElement("span");
             applicantCountText.classList.add("db-bewerber-count-text"); 
             
-            // ANPASSUNG: Feldname für Bewerber-IDs ist 'bewerber'
             const applicantIds = jobData['bewerber'] || []; 
             applicantCountText.textContent = `${applicantIds.length} Bewerber`;
             applicantListContainer.appendChild(applicantCountText);
@@ -524,22 +524,36 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
             const idsToFetch = applicantIds.slice(0, MAX_APPLICANT_IMAGES);
 
             idsToFetch.forEach(creatorId => {
+                console.log(`[Applicant Image] Fetching user data for creator ID: ${creatorId} (Job: ${jobData.name || jobData.id})`);
                 fetchCollectionItem(USER_COLLECTION_ID, creatorId).then(creatorResult => {
+                    console.log(`[Applicant Image] Result for ${creatorId}:`, creatorResult); // Log für das Ergebnis des User-Fetches
                     const listItem = document.createElement("div");
                     listItem.classList.add("db-bewerber-count-list-item");
                     const img = document.createElement("img");
                     img.classList.add("db-creator-count-img");
                     
-                    if (creatorResult && (creatorResult.item || creatorResult.fieldData) ) { // Prüfe ob creatorResult und item oder fieldData existiert
-                        const creatorFieldData = creatorResult.item?.fieldData || creatorResult.fieldData; // Flexibler Zugriff
-                        // ANPASSUNG: Feldname für Profilbild ist 'user-profile-img'
-                        img.src = creatorFieldData?.['user-profile-img']?.url || `https://via.placeholder.com/32x32?text=${creatorFieldData?.name?.charAt(0) || 'P'}`;
-                        img.alt = creatorFieldData?.name || 'Creator';
+                    let imageUrl;
+                    let creatorName = 'Creator';
+
+                    if (creatorResult && (creatorResult.item || creatorResult.fieldData) ) {
+                        const creatorFieldData = creatorResult.item?.fieldData || creatorResult.fieldData;
+                        console.log(`[Applicant Image] FieldData for ${creatorId}:`, creatorFieldData); // Log für die User-FieldData
+                        creatorName = creatorFieldData?.name || 'Creator';
+                        // ANPASSUNG: Direkt auf das Feld zugreifen, da es die URL ist
+                        imageUrl = creatorFieldData?.['user-profile-img']; 
+                        console.log(`[Applicant Image] Image URL for ${creatorId} from 'user-profile-img': ${imageUrl}`);
                     } else {
-                        img.src = `https://via.placeholder.com/32x32?text=P`; 
-                        img.alt = 'Creator';
+                         console.log(`[Applicant Image] No valid creatorResult or fieldData for ${creatorId}.`);
                     }
-                    img.onerror = () => { img.src = `https://via.placeholder.com/32x32?text=Err`; img.alt = 'Fehler';}; 
+                    
+                    img.src = imageUrl || `https://via.placeholder.com/32x32?text=${creatorName?.charAt(0)?.toUpperCase() || 'P'}`;
+                    img.alt = creatorName;
+                    
+                    img.onerror = () => { 
+                        console.log(`[Applicant Image] Error loading image for ${creatorId}: ${img.src}. Using placeholder.`);
+                        img.src = `https://via.placeholder.com/32x32?text=Err`; 
+                        img.alt = 'Fehler';
+                    }; 
                     
                     listItem.appendChild(img);
                     collList.appendChild(listItem); 
