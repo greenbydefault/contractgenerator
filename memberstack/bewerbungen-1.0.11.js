@@ -23,8 +23,8 @@ const TABS_CONFIG = [
 let activeTabId = TABS_CONFIG[0].id; 
 
 const FILTER_BASE_IDS = {
-    search: "db-table-filter-search", 
-    searchIdPrefix: "filter-search", 
+    searchClass: "db-table-filter-search", // Klasse für alle Such-Inputs
+    searchIdPrefix: "filter-search",    // Präfix für die ID der Such-Inputs
     jobStatusActive: "job-status-active-filter",
     jobStatusClosed: "job-status-closed-filter",
     appStatusPending: "application-status-pending-filter",
@@ -85,17 +85,13 @@ async function fetchIndividualJobsInBatches(appIds, batchSize, delayBetweenBatch
         console.log(`[${operationName}] No App IDs to fetch.`);
         return [];
     }
-    // Adjusted warning to be less aggressive for smaller on-demand fetches
-    if (batchSize > 10 && appIds.length > batchSize && delayBetweenBatches < (batchSize * 100) && operationName === "Initial Fast Load") { 
-        console.warn(`[${operationName}] WARNING: Batch configuration might hit Webflow Rate Limits!`);
-    }
     const allResults = []; 
 
     for (let i = 0; i < appIds.length; i += batchSize) {
         const batchAppIds = appIds.slice(i, i + batchSize);
         const currentBatchNumber = Math.floor(i / batchSize) + 1;
         const totalBatches = Math.ceil(appIds.length / batchSize);
-        console.log(`[${operationName}] Processing batch ${currentBatchNumber}/${totalBatches}: ${batchAppIds.length} Item IDs`);
+        // console.log(`[${operationName}] Processing batch ${currentBatchNumber}/${totalBatches}: ${batchAppIds.length} Item IDs`);
 
         const batchPromises = batchAppIds.map(appId => fetchJobData(appId));
         
@@ -108,11 +104,11 @@ async function fetchIndividualJobsInBatches(appIds, batchSize, delayBetweenBatch
         }
 
         if (i + batchSize < appIds.length) { 
-            console.log(`[${operationName}] Waiting ${delayBetweenBatches / 1000}s before next batch...`);
+            // console.log(`[${operationName}] Waiting ${delayBetweenBatches / 1000}s before next batch...`);
             await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
         }
     }
-    console.log(`[${operationName}] All batches processed.`);
+    console.log(`[${operationName}] All batches processed for ${appIds.length} IDs.`);
     return allResults;
 }
 
@@ -156,7 +152,7 @@ function renderSkeletonLoader(targetListElement, count) {
     if (!targetListElement) {
         return;
     }
-    targetListElement.innerHTML = "";
+    targetListElement.innerHTML = ""; // Clear previous skeletons or content
     const fieldSkeletons = [
         { type: "text", classModifier: "skeleton-text-short" },
         { type: "text", classModifier: "skeleton-text-medium" },
@@ -164,7 +160,8 @@ function renderSkeletonLoader(targetListElement, count) {
         { type: "tag" }, { type: "tag" },
         { type: "applicant-count" } 
     ];
-    for (let i = 0; i < count; i++) {
+    const actualCount = Math.min(count, JOBS_PER_PAGE); // Don't render more skeletons than jobs per page
+    for (let i = 0; i < actualCount; i++) {
         const jobDiv = document.createElement("div");
         jobDiv.classList.add("db-table-row", "db-table-bewerbungen", "skeleton-row");
         const jobInfoDiv = document.createElement("div");
@@ -209,10 +206,15 @@ async function handlePageChange(newPage) {
     
     currentPage = newPage;
 
+    const activeTabConfig = TABS_CONFIG.find(tab => tab.id === activeTabId);
+    const potentialJobsForThisTab = allJobResults.filter(result => 
+        result.jobData && activeTabConfig.filterFn(result.jobData, currentWebflowMemberId)
+    );
+
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
-    const endIndex = Math.min(startIndex + JOBS_PER_PAGE, allJobResults.length);
+    const endIndex = Math.min(startIndex + JOBS_PER_PAGE, potentialJobsForThisTab.length);
     
-    const jobsForPageRange = allJobResults.slice(startIndex, endIndex);
+    const jobsForPageRange = potentialJobsForThisTab.slice(startIndex, endIndex);
     const idsToLoadForPage = jobsForPageRange
         .filter(job => !job.jobData.isFullyLoaded && !job.jobData.error) 
         .map(job => job.appId);
@@ -360,7 +362,6 @@ function renderJobs(jobsToDisplayAfterPrimaryFilter, webflowMemberId, targetList
         return;
     }
     appContainer.innerHTML = "";
-    // console.log(`[renderJobs for ${targetListId}] Tab-ID: ${activeTabId}. Items after tab-specific pre-filter: ${jobsToDisplayAfterPrimaryFilter.length}`);
 
     let currentFilteredList = [...jobsToDisplayAfterPrimaryFilter];
 
@@ -399,8 +400,6 @@ function renderJobs(jobsToDisplayAfterPrimaryFilter, webflowMemberId, targetList
         return true;
     });
     
-    // console.log(`[renderJobs for ${targetListId}] Final items after all secondary filters: ${currentFilteredList.length}`);
-
     const filteredAndSortedJobs = currentFilteredList; 
 
     let currentSortCriteria = null;
@@ -448,24 +447,16 @@ function renderJobs(jobsToDisplayAfterPrimaryFilter, webflowMemberId, targetList
         });
     }
 
-    // Paginierung der *gefilterten und sortierten* Liste für die Anzeige
-    const totalPagesForDisplay = Math.ceil(filteredAndSortedJobs.length / JOBS_PER_PAGE); // Dies kann sich ändern
+    const totalPagesForDisplay = Math.ceil(filteredAndSortedJobs.length / JOBS_PER_PAGE) || 1;
     const startIndex = (currentPage - 1) * JOBS_PER_PAGE;
     const endIndex = startIndex + JOBS_PER_PAGE;
     const jobsToShowOnPage = filteredAndSortedJobs.slice(startIndex, endIndex);
 
     if (jobsToShowOnPage.length === 0 && filteredAndSortedJobs.length > 0 && currentPage > totalPagesForDisplay) {
-        // Wenn nach Filterung keine Jobs auf der aktuellen Seite sind, aber Jobs existieren,
-        // und die aktuelle Seite außerhalb des gültigen Bereichs liegt, setze auf Seite 1 zurück.
         currentPage = 1;
-        // Rufe renderActiveTabContent erneut auf, um die erste Seite der gefilterten Liste anzuzeigen.
-        // Dies verhindert eine leere Seite, wenn Filter die Anzahl der Seiten reduzieren.
-        // Um eine Endlosschleife zu vermeiden, sollte dies nur einmal passieren.
-        // Eine bessere Lösung wäre, die Paginierungslogik direkt hier zu aktualisieren.
-        // Fürs Erste rufen wir renderActiveTabContent auf, was die Paginierung neu berechnet.
         console.log("Current page out of bounds after filtering. Resetting to page 1 and re-rendering.");
         renderActiveTabContent(); 
-        return; // Verhindere weiteres Rendern in diesem Aufruf
+        return; 
     }
 
 
@@ -581,8 +572,7 @@ function renderJobs(jobsToDisplayAfterPrimaryFilter, webflowMemberId, targetList
     }
 
     const paginationContainer = document.getElementById("pagination-controls-container") || createPaginationContainer();
-    // Verwende totalPagesForPaginationControls für eine stabile Paginierungsanzeige
-    renderPaginationControls(paginationContainer, currentPage, totalPagesForPaginationControls);
+    renderPaginationControls(paginationContainer, currentPage, totalPagesForDisplay); // Nutze totalPagesForDisplay
 }
 
 function createPaginationContainer() {
@@ -620,26 +610,28 @@ function renderActiveTabContent() {
     //    Dies ist wichtig für eine stabile Paginierungsanzahl.
     const potentialJobsForThisTab = allJobResults.filter(result => {
         if (!result.jobData) return false; 
-        // Hier verwenden wir result.jobData direkt, auch wenn es nur ein Platzhalter ist,
-        // da die filterFn für manche Tabs (z.B. "alle") auch ohne volle Daten funktionieren kann.
-        // Für Tabs, die volle Daten benötigen (Status, Favoriten), werden nicht-geladene Items hier
-        // ggf. nicht korrekt gefiltert, aber die Paginierung basiert auf der Gesamtmenge.
+        // Für die Paginierungsberechnung filtern wir basierend auf dem Tab-Kriterium,
+        // auch wenn die vollen Daten noch nicht da sind (für "alle" ist das okay).
+        // Für spezifischere Tabs (Status, Favoriten) werden hier nur Jobs berücksichtigt,
+        // deren Platzhalter-jobData die filterFn nicht sofort fehlschlagen lässt.
+        // Die tatsächliche Anzeige in renderJobs berücksichtigt dann isFullyLoaded.
         return activeTabConfig.filterFn(result.jobData, currentWebflowMemberId);
     });
     const totalPagesForPaginationDisplay = Math.ceil(potentialJobsForThisTab.length / JOBS_PER_PAGE) || 1;
 
 
     // 2. Bestimme die Jobs, die tatsächlich *angezeigt* werden sollen (voll geladen und Primärfilter bestanden)
-    const jobsToActuallyDisplayInList = allJobResults.filter(result => {
+    // Diese Liste wird an renderJobs übergeben, das dann die sekundären Filter anwendet.
+    const jobsToPassToRenderJobs = allJobResults.filter(result => {
         return result.jobData && result.jobData.isFullyLoaded && !result.jobData.error && 
                activeTabConfig.filterFn(result.jobData, currentWebflowMemberId);
     });
     
-    renderSkeletonLoader(targetListElement, Math.min(JOBS_PER_PAGE, jobsToActuallyDisplayInList.length > 0 ? jobsToActuallyDisplayInList.length : JOBS_PER_PAGE));
+    renderSkeletonLoader(targetListElement, Math.min(JOBS_PER_PAGE, jobsToPassToRenderJobs.length > 0 ? jobsToPassToRenderJobs.length : JOBS_PER_PAGE));
 
     setTimeout(() => {
         // Übergebe die Liste der anzuzeigenden Jobs und die stabile Gesamtseitenzahl
-        renderJobs(jobsToActuallyDisplayInList, currentWebflowMemberId, activeTabConfig.listId, totalPagesForPaginationDisplay);
+        renderJobs(jobsToPassToRenderJobs, currentWebflowMemberId, activeTabConfig.listId, totalPagesForPaginationDisplay);
     }, 50); 
 }
 
@@ -648,7 +640,9 @@ async function fetchAllRemainingJobDataInBackground(remainingAppIds) {
     if (remainingAppIds.length === 0) {
         isBackgroundLoadingComplete = true;
         console.log("Keine weiteren Jobs im Hintergrund zu laden.");
-        renderActiveTabContent(); // Sicherstellen, dass nach Abschluss des (leeren) Hintergrundladens gerendert wird
+        // Wichtig: Auch wenn nichts geladen wurde, den aktuellen Tab neu rendern,
+        // damit die Paginierung korrekt auf Basis der nun als "vollständig" betrachteten Daten aktualisiert wird.
+        renderActiveTabContent(); 
         return;
     }
     console.log(`[Background Load] Starting for ${remainingAppIds.length} remaining jobs.`);
@@ -704,13 +698,8 @@ async function initializeUserApplications() {
             jobData: { id: appId, isFullyLoaded: false, error: false } 
         }));
 
-        // Paginierung direkt nach dem Erstellen der Platzhalter rendern,
-        // basierend auf der *potenziellen* Anzahl der Items im initial aktiven Tab.
         const paginationContainer = document.getElementById("pagination-controls-container") || createPaginationContainer();
         const initialPotentialJobsForActiveTab = allJobResults.filter(result => {
-            // Verwende die filterFn des initial aktiven Tabs.
-            // Da jobData hier nur Platzhalter sind, funktioniert dies am besten für den "alle"-Tab.
-            // Für spezifischere Tabs wird die Paginierung in renderActiveTabContent ggf. genauer.
             return initialTabConfig.filterFn(result.jobData, currentWebflowMemberId);
         });
         const totalPagesInitial = Math.ceil(initialPotentialJobsForActiveTab.length / JOBS_PER_PAGE) || 1;
@@ -765,19 +754,17 @@ async function initializeUserApplications() {
 }
 
 function setupEventListeners() {
-    // Event Listener für Suchfelder (mit gemeinsamer Klasse)
-    document.querySelectorAll(`.${FILTER_BASE_IDS.search}`).forEach(input => {
+    document.querySelectorAll(`.${FILTER_BASE_IDS.searchClass}`).forEach(input => {
         input.addEventListener("input", (event) => { 
             currentPage = 1;
             renderActiveTabContent();
         });
     });
 
-    // Event Listener für alle Filter-Checkboxes
     const allFilterCheckboxIDs = [];
     TABS_CONFIG.forEach(tab => {
         Object.keys(FILTER_BASE_IDS).forEach(baseKey => {
-            if (baseKey !== 'search' && baseKey !== 'searchIdPrefix') { 
+            if (baseKey !== 'searchClass' && baseKey !== 'searchIdPrefix') { 
                  allFilterCheckboxIDs.push(`${FILTER_BASE_IDS[baseKey]}-${tab.id}`);
             }
         });
@@ -793,7 +780,6 @@ function setupEventListeners() {
         }
     });
 
-    // Event Listener für alle Sortier-Checkboxes
     const allSortCheckboxIDs = [];
      TABS_CONFIG.forEach(tab => {
         Object.keys(SORT_BASE_IDS).forEach(baseKey => {
@@ -879,6 +865,4 @@ window.addEventListener("DOMContentLoaded", () => {
 
     initializeUserApplications();
     setupEventListeners();
-    // createPaginationContainer() wird jetzt in initializeUserApplications aufgerufen,
-    // nachdem allJobResults mit Platzhaltern gefüllt ist.
 });
