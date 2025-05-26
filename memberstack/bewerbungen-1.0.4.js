@@ -91,9 +91,9 @@ async function fetchJobData(jobId) {
     }
 }
 
-async function fetchIndividualJobsInBatches(appIds, batchSize = 100, delayBetweenBatches = 1000) { 
+async function fetchIndividualJobsInBatches(appIds, batchSize = 50, delayBetweenBatches = 1000) { // Batch-Größe auf 50 geändert
     console.log(`Starting fetch of ${appIds.length} jobs with individual GET requests. Batch size: ${batchSize}, Delay: ${delayBetweenBatches}ms.`);
-    if (batchSize > 20 && delayBetweenBatches < (batchSize * 50) ) { 
+    if (batchSize > 20 && delayBetweenBatches < (batchSize * 50) ) { // Adjusted warning threshold
         console.warn(`WARNING: Batch configuration (Size: ${batchSize}, Delay: ${delayBetweenBatches}ms) might exceed Webflow Rate Limits!`);
     }
     const allResults = []; 
@@ -381,25 +381,21 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
 
     let currentFilteredList = [...jobsToProcessPrimaryFilter];
 
-    // Dynamically get filter values based on activeTabId
-    // WICHTIG: HTML muss IDs wie "filter-search-alle", "job-status-active-filter-abgelehnt" etc. haben
-    const currentSearchTerm = document.getElementById(`${FILTER_BASE_IDS.search}-${activeTabId}`)?.value?.toLowerCase().trim() || "";
+    const currentSearchTermValue = document.getElementById(`${FILTER_BASE_IDS.search}-${activeTabId}`)?.value?.toLowerCase().trim() || "";
     const jobStatusActive = document.getElementById(`${FILTER_BASE_IDS.jobStatusActive}-${activeTabId}`)?.checked;
     const jobStatusClosed = document.getElementById(`${FILTER_BASE_IDS.jobStatusClosed}-${activeTabId}`)?.checked;
     const appStatusPending = document.getElementById(`${FILTER_BASE_IDS.appStatusPending}-${activeTabId}`)?.checked;
     const appStatusAccepted = document.getElementById(`${FILTER_BASE_IDS.appStatusAccepted}-${activeTabId}`)?.checked;
     const appStatusRejected = document.getElementById(`${FILTER_BASE_IDS.appStatusRejected}-${activeTabId}`)?.checked;
 
-    // 1. Search Filter
-    if (currentSearchTerm) {
+    if (currentSearchTermValue) {
         currentFilteredList = currentFilteredList.filter(({ jobData }) => {
             if (!jobData || jobData.error) return false;
-            return (jobData["name"] || "").toLowerCase().includes(currentSearchTerm);
+            return (jobData["name"] || "").toLowerCase().includes(currentSearchTermValue);
         });
     }
-    console.log(`[renderJobs for ${targetListId}] Items after search ('${currentSearchTerm}'): ${currentFilteredList.length}`);
+    console.log(`[renderJobs for ${targetListId}] Items after search ('${currentSearchTermValue}'): ${currentFilteredList.length}`);
 
-    // 2. Job Status Filter (Active/Closed)
     if (jobStatusActive && !jobStatusClosed) { 
         currentFilteredList = currentFilteredList.filter(({ jobData }) => {
             if (!jobData || jobData.error) return false;
@@ -415,7 +411,6 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
     } 
     console.log(`[renderJobs for ${targetListId}] Items after job status filter (Active: ${jobStatusActive}, Closed: ${jobStatusClosed}): ${currentFilteredList.length}`);
     
-    // 3. Application Status Filter (Pending/Accepted/Rejected)
     if (appStatusPending || appStatusAccepted || appStatusRejected) {
         currentFilteredList = currentFilteredList.filter(({ jobData }) => {
             if (!jobData || jobData.error) return false;
@@ -430,9 +425,7 @@ function renderJobs(jobsToProcessPrimaryFilter, webflowMemberId, targetListId) {
 
     const filteredJobs = currentFilteredList;
 
-    // Sortierung (liest Sortierkriterien aus globalen Variablen, die in setupEventListeners gesetzt werden)
     let sortedJobs = [...filteredJobs];
-    // Lese Sortierkriterien basierend auf dem aktiven Tab
     let currentSortCriteria = null;
     TABS_CONFIG.forEach(tab => {
         Object.keys(SORT_BASE_IDS).forEach(key => {
@@ -759,7 +752,6 @@ function setupEventListeners() {
     // Event Listener für ALLE gleichartigen Filterelemente über alle Tabs hinweg.
     // Die Logik in renderJobs() kümmert sich darum, die Werte der Filter des AKTIVEN Tabs zu lesen.
     
-    // Suchfelder (Annahme: Klasse .filter-search-input für alle Suchfelder)
     document.querySelectorAll(`.${FILTER_BASE_IDS.search}`).forEach(input => {
         input.addEventListener("input", () => {
             currentPage = 1;
@@ -767,11 +759,10 @@ function setupEventListeners() {
         });
     });
 
-    // Checkbox-Filter
     const allFilterCheckboxes = [];
     TABS_CONFIG.forEach(tab => {
         Object.values(FILTER_BASE_IDS).forEach(baseId => {
-            if (baseId === FILTER_BASE_IDS.search) return; // Suchfeld schon oben behandelt
+            if (baseId === FILTER_BASE_IDS.search) return; 
             const el = document.getElementById(`${baseId}-${tab.id}`);
             if (el) allFilterCheckboxes.push(el);
         });
@@ -784,14 +775,11 @@ function setupEventListeners() {
         });
     });
 
-    // Sortier-Checkboxen
     const allSortCheckboxes = [];
      TABS_CONFIG.forEach(tab => {
         Object.values(SORT_BASE_IDS).forEach(baseId => {
             const el = document.getElementById(`${baseId}-${tab.id}`);
             if (el) {
-                // Dynamisch data-Attribute setzen, falls nicht schon im HTML
-                // (basierend auf der Annahme, dass die ID-Struktur die Sortierlogik impliziert)
                 if (!el.dataset.sortKey) {
                     if (baseId.includes("deadline")) el.dataset.sortKey = "deadline";
                     else if (baseId.includes("content")) el.dataset.sortKey = "content";
@@ -813,14 +801,10 @@ function setupEventListeners() {
             const targetTabId = TABS_CONFIG.find(tab => targetCheckbox.id.endsWith(tab.id))?.id;
 
             if (targetTabId !== activeTabId) {
-                // Wenn ein Sortierfilter in einem inaktiven Tab geändert wird,
-                // nur den Status dieser Checkbox aktualisieren, aber nicht sofort neu rendern oder andere deaktivieren.
-                // Das Deaktivieren anderer Sortieroptionen geschieht nur für den aktiven Tab.
                 return;
             }
 
             if (targetCheckbox.checked) {
-                // Deaktiviere andere Sortier-Checkboxes NUR im AKTIVEN Tab
                 allSortCheckboxes.forEach(otherCb => {
                     const otherCbTabId = TABS_CONFIG.find(tab => otherCb.id.endsWith(tab.id))?.id;
                     if (otherCb !== targetCheckbox && otherCbTabId === activeTabId) {
@@ -829,7 +813,7 @@ function setupEventListeners() {
                 });
             }
             currentPage = 1;
-            renderActiveTabContent(); // Re-render active tab with new sort criteria
+            renderActiveTabContent(); 
         });
     });
 
@@ -863,20 +847,6 @@ function setupEventListeners() {
             renderActiveTabContent();
         });
     });
-
-    // Warnungen für fehlende Elemente (optional, zur Entwicklungszeit hilfreich)
-    // if (tabLinks.length === 0 && TABS_CONFIG.length > 1) console.warn("⚠️ Keine Tab-Links mit 'data-tab-id' gefunden. Tab-Navigation wird nicht funktionieren.");
-    // TABS_CONFIG.forEach(tab => {
-    //     Object.values(FILTER_BASE_IDS).forEach(baseId => {
-    //         if (!document.getElementById(`${baseId}-${tab.id}`)) console.warn(`⚠️ Filter-Element '${baseId}-${tab.id}' nicht im DOM gefunden.`);
-    //     });
-    //      Object.values(SORT_BASE_IDS).forEach(baseId => {
-    //         if (!document.getElementById(`${baseId}-${tab.id}`)) console.warn(`⚠️ Sortier-Element '${baseId}-${tab.id}' nicht im DOM gefunden.`);
-    //     });
-    //     if (!document.getElementById(tab.listId)) console.warn(`⚠️ Listen-Element für Tab '${tab.name}' (ID: ${tab.listId}) nicht im DOM gefunden.`);
-    //     if (!document.getElementById(tab.listContainerId)) console.warn(`⚠️ Listen-Container-Element für Tab '${tab.name}' (ID: ${tab.listContainerId}) nicht im DOM gefunden.`);
-    // });
-
 }
 
 window.addEventListener("DOMContentLoaded", () => {
