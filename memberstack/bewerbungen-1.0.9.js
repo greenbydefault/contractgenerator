@@ -23,7 +23,8 @@ const TABS_CONFIG = [
 let activeTabId = TABS_CONFIG[0].id; 
 
 const FILTER_BASE_IDS = {
-    search: "filter-search", 
+    search: "db-table-filter-search", // Geändert auf die korrekte Klasse für querySelectorAll
+    searchIdPrefix: "filter-search", // Präfix für die ID-Erstellung
     jobStatusActive: "job-status-active-filter",
     jobStatusClosed: "job-status-closed-filter",
     appStatusPending: "application-status-pending-filter",
@@ -363,7 +364,8 @@ function renderJobs(jobsForCurrentTabAndPrimaryFilter, webflowMemberId, targetLi
     let currentFilteredList = [...jobsForCurrentTabAndPrimaryFilter];
 
     // Filterwerte für den aktuellen Tab auslesen
-    const currentSearchTermValue = document.getElementById(`${FILTER_BASE_IDS.search}-${activeTabId}`)?.value?.toLowerCase().trim() || "";
+    // WICHTIG: Die ID für das Suchfeld wird mit FILTER_BASE_IDS.searchIdPrefix konstruiert
+    const currentSearchTermValue = document.getElementById(`${FILTER_BASE_IDS.searchIdPrefix}-${activeTabId}`)?.value?.toLowerCase().trim() || "";
     const jobStatusActive = document.getElementById(`${FILTER_BASE_IDS.jobStatusActive}-${activeTabId}`)?.checked;
     const jobStatusClosed = document.getElementById(`${FILTER_BASE_IDS.jobStatusClosed}-${activeTabId}`)?.checked;
     const appStatusPending = document.getElementById(`${FILTER_BASE_IDS.appStatusPending}-${activeTabId}`)?.checked;
@@ -372,7 +374,7 @@ function renderJobs(jobsForCurrentTabAndPrimaryFilter, webflowMemberId, targetLi
 
     // Filter anwenden (nur auf voll geladene Jobs)
     currentFilteredList = currentFilteredList.filter(({ jobData }) => {
-        if (!jobData || !jobData.isFullyLoaded || jobData.error) return false; // Wichtig: Nur voll geladene Jobs filtern
+        if (!jobData || !jobData.isFullyLoaded || jobData.error) return false; 
 
         if (currentSearchTermValue && !(jobData["name"] || "").toLowerCase().includes(currentSearchTermValue)) {
             return false;
@@ -419,7 +421,7 @@ function renderJobs(jobsForCurrentTabAndPrimaryFilter, webflowMemberId, targetLi
         filteredAndSortedJobs.sort((a, b) => {
             const jobDataA = a.jobData; 
             const jobDataB = b.jobData; 
-            if (!jobDataA || !jobDataB ) return 0; // Bereits durch isFullyLoaded oben gefiltert
+            if (!jobDataA || !jobDataB ) return 0; 
             let valA, valB;
             switch (currentSortCriteria.key) {
                 case 'deadline':
@@ -462,8 +464,6 @@ function renderJobs(jobsForCurrentTabAndPrimaryFilter, webflowMemberId, targetLi
     } else {
         const fragment = document.createDocumentFragment();
         jobsToShowOnPage.forEach(({ appId, jobData }) => { 
-            // Hier wird nicht mehr auf jobData.isFullyLoaded geprüft, da dies bereits oben passiert ist
-            // und nur voll geladene Jobs in filteredAndSortedJobs sind.
             const jobLink = document.createElement("a");
             jobLink.href = `https://www.creatorjobs.com/creator-job/${jobData.slug || jobData.id || ''}`;
             jobLink.target = "_blank";
@@ -602,11 +602,8 @@ function renderActiveTabContent() {
         return;
     }
     
-    // Filtere die globalen allJobResults basierend auf der filterFn des aktiven Tabs
     const jobsForThisTab = allJobResults.filter(result => {
         if (!result.jobData) return false; 
-        // Für Status-Tabs und Favoriten-Tab nur voll geladene Jobs berücksichtigen,
-        // da die filterFn auf volle Daten angewiesen ist.
         if (!result.jobData.isFullyLoaded && 
             (activeTabConfig.id === 'abgelehnt' || 
              activeTabConfig.id === 'ausstehend' || 
@@ -616,7 +613,7 @@ function renderActiveTabContent() {
         return activeTabConfig.filterFn(result.jobData, currentWebflowMemberId);
     });
     
-    renderSkeletonLoader(targetListElement, Math.min(JOBS_PER_PAGE, jobsForThisTab.length > 0 ? jobsForThisTab.length : JOBS_PER_PAGE));
+    renderSkeletonLoader(targetListElement, Math.min(JOBS_PER_PAGE, jobsForThisTab.filter(j => j.jobData.isFullyLoaded).length > 0 ? jobsForThisTab.filter(j => j.jobData.isFullyLoaded).length : JOBS_PER_PAGE));
 
     setTimeout(() => {
         renderJobs(jobsForThisTab, currentWebflowMemberId, activeTabConfig.listId);
@@ -631,22 +628,18 @@ async function fetchAllRemainingJobDataInBackground(remainingAppIds) {
         return;
     }
     console.log(`[Background Load] Starting for ${remainingAppIds.length} remaining jobs.`);
-    // Konservativere Batch-Konfiguration für den Hintergrund
     const backgroundJobResults = await fetchIndividualJobsInBatches(remainingAppIds, 20, 1500, "Background Load"); 
     
     backgroundJobResults.forEach(loadedResult => {
         const index = allJobResults.findIndex(job => job.appId === loadedResult.appId);
         if (index !== -1) {
-            allJobResults[index] = loadedResult; // Ersetze Platzhalter
+            allJobResults[index] = loadedResult; 
         }
     });
 
     isBackgroundLoadingComplete = true;
     console.log(`[Background Load] Complete. Total jobs in allJobResults: ${allJobResults.length}.`);
     
-    // Rendere den aktuellen Tab neu, um die Paginierung und die Ansicht zu aktualisieren,
-    // falls neue Daten relevant für die aktuelle Ansicht sind.
-    // Nur rendern, wenn der Nutzer nicht gerade aktiv paginiert oder filtert (optional, um Konflikte zu vermeiden)
     console.log("[Background Load] Re-rendering active tab content after background load completion.");
     renderActiveTabContent();
 }
@@ -687,12 +680,19 @@ async function initializeUserApplications() {
             jobData: { id: appId, isFullyLoaded: false, error: false } 
         }));
 
+        // Paginierung direkt nach dem Erstellen der Platzhalter rendern
+        const paginationContainer = document.getElementById("pagination-controls-container") || createPaginationContainer();
+        const totalJobs = allJobResults.length;
+        const totalPagesInitial = Math.ceil(totalJobs / JOBS_PER_PAGE);
+        renderPaginationControls(paginationContainer, 1, totalPagesInitial);
+
+
         if (applicationsFromUser.length > 0) {
             const initialAppIdsToLoad = applicationsFromUser.slice(0, Math.min(applicationsFromUser.length, INITIAL_LOAD_JOB_COUNT));
             const remainingAppIdsToLoad = applicationsFromUser.slice(initialAppIdsToLoad.length);
             
             console.log(`Starting initial fast load for ${initialAppIdsToLoad.length} jobs.`);
-            const initiallyLoadedResults = await fetchIndividualJobsInBatches(initialAppIdsToLoad, 70, 1000, "Initial Fast Load"); // Deine gewünschte Batch-Größe
+            const initiallyLoadedResults = await fetchIndividualJobsInBatches(initialAppIdsToLoad, 70, 1000, "Initial Fast Load"); 
 
             initiallyLoadedResults.forEach(loadedResult => {
                 const index = allJobResults.findIndex(job => job.appId === loadedResult.appId);
@@ -706,27 +706,25 @@ async function initializeUserApplications() {
             renderActiveTabContent(); 
             
             if (remainingAppIdsToLoad.length > 0) {
-                // Starte den Hintergrund-Ladevorgang ohne await, damit die UI nicht blockiert wird
                 fetchAllRemainingJobDataInBackground(remainingAppIdsToLoad);
             } else {
-                isBackgroundLoadingComplete = true; // Alle Daten wurden initial geladen
+                isBackgroundLoadingComplete = true; 
                 console.log("All job data loaded initially.");
             }
             
         } else { 
-            isBackgroundLoadingComplete = true; // Keine Jobs zu laden
+            isBackgroundLoadingComplete = true; 
             if (initialListElement) initialListElement.innerHTML = ""; 
             const noJobsMessage = document.createElement('p');
             noJobsMessage.textContent = "Keine abgeschlossenen Bewerbungen gefunden.";
             noJobsMessage.classList.add('job-entry', 'visible');
             if (initialListElement) initialListElement.appendChild(noJobsMessage);
             
-            const paginationContainer = document.getElementById("pagination-controls-container");
-            if (paginationContainer) paginationContainer.innerHTML = "";
+            if (paginationContainer) paginationContainer.innerHTML = ""; // Paginierung leeren, wenn keine Jobs
         }
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler beim Laden der Bewerbungen:", error);
-        isBackgroundLoadingComplete = true; // Fehler aufgetreten, keinen Hintergrund-Ladevorgang mehr erwarten
+        isBackgroundLoadingComplete = true; 
         if (initialListElement) {
             initialListElement.innerHTML = `<p class="job-entry visible">❌ Es ist ein Fehler aufgetreten: ${error.message}.</p>`;
         }
@@ -737,6 +735,7 @@ async function initializeUserApplications() {
 }
 
 function setupEventListeners() {
+    // Event Listener für Suchfelder (mit gemeinsamer Klasse)
     document.querySelectorAll(`.${FILTER_BASE_IDS.search}`).forEach(input => {
         input.addEventListener("input", (event) => { 
             currentPage = 1;
@@ -744,10 +743,12 @@ function setupEventListeners() {
         });
     });
 
+    // Event Listener für alle Filter-Checkboxes
     const allFilterCheckboxIDs = [];
     TABS_CONFIG.forEach(tab => {
         Object.keys(FILTER_BASE_IDS).forEach(baseKey => {
-            if (baseKey !== 'search') { 
+            // searchIdPrefix wird für die ID-Konstruktion verwendet, search für die Klasse
+            if (baseKey !== 'search' && baseKey !== 'searchIdPrefix') { 
                  allFilterCheckboxIDs.push(`${FILTER_BASE_IDS[baseKey]}-${tab.id}`);
             }
         });
@@ -763,6 +764,7 @@ function setupEventListeners() {
         }
     });
 
+    // Event Listener für alle Sortier-Checkboxes
     const allSortCheckboxIDs = [];
      TABS_CONFIG.forEach(tab => {
         Object.keys(SORT_BASE_IDS).forEach(baseKey => {
@@ -848,5 +850,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
     initializeUserApplications();
     setupEventListeners();
-    createPaginationContainer(); 
+    // createPaginationContainer() wird jetzt in initializeUserApplications aufgerufen,
+    // nachdem allJobResults mit Platzhaltern gefüllt ist.
 });
