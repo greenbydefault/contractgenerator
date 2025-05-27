@@ -5,7 +5,7 @@ const API_BASE_URL = "https://api.webflow.com/v2/collections";
 const WORKER_BASE_URL = "https://bewerbungen.oliver-258.workers.dev/?url="; // Ensure your worker URL is correct
 const JOB_COLLECTION_ID = "6448faf9c5a8a17455c05525";
 const USER_COLLECTION_ID = "6448faf9c5a8a15f6cc05526";
-const JOBS_PER_PAGE = 15;
+const JOBS_PER_PAGE = 10;
 const MAX_VISIBLE_PAGES_MJ = 5;
 const INITIAL_LOAD_JOB_COUNT = JOBS_PER_PAGE * 2; // Initial 30 jobs targeted for fast load
 
