@@ -126,7 +126,6 @@ async function fetchJobDataWithCache(jobId) {
             localStorage.setItem(cacheKey, JSON.stringify(itemToCache));
         } catch (e) {
             console.warn(`[Cache] Error writing to cache for ${jobId}:`, e.message);
-            // Bei vollem Speicher (selten bei localStorage für diesen Zweck) könnte hier eine Aufräumstrategie implementiert werden.
         }
     }
     return result;
@@ -135,7 +134,6 @@ async function fetchJobDataWithCache(jobId) {
 async function fetchIndividualJobsInBatches(appIds, batchSize, delayBetweenBatches, operationName = "Batch Fetch") {
     // console.log(`[${operationName}] Starting fetch of ${appIds.length} jobs. Batch size: ${batchSize}, Delay: ${delayBetweenBatches}ms.`);
     if (appIds.length === 0) {
-        // console.log(`[${operationName}] No App IDs to fetch.`);
         return [];
     }
     const allResults = [];
@@ -163,7 +161,6 @@ function calculateDeadlineCountdown(endDate) {
     if (!endDate) return { text: "N/A", isExpired: false };
     const now = new Date();
     const deadline = new Date(endDate);
-    // Prüfe auf ungültiges Datum
     if (isNaN(deadline.getTime())) return { text: "N/A", isExpired: false };
     
     const diff = deadline - now;
@@ -186,12 +183,9 @@ function getApplicationStatusForFilter(jobData, memberId) {
     const endDateApp = jobData["job-date-end"] ? new Date(jobData["job-date-end"]) : null;
     const now = new Date();
 
-    if (endDateApp && isNaN(endDateApp.getTime())) { // Ungültiges Datum für job-date-end
-        // Behandle dies als "Ausstehend", da der Status nicht klar bestimmt werden kann
-        // oder logge einen Fehler und entscheide, wie es behandelt werden soll.
+    if (endDateApp && isNaN(endDateApp.getTime())) {
         // console.warn(`Invalid job-date-end for job ${jobData.id}: ${jobData["job-date-end"]}`);
     }
-
 
     if (memberId && bookedCreators.includes(memberId)) return "Angenommen";
     if (memberId && rejectedCreators.includes(memberId)) return "Abgelehnt";
@@ -202,7 +196,6 @@ function getApplicationStatusForFilter(jobData, memberId) {
 
 function renderSkeletonLoader(targetListElement, count) {
     if (!targetListElement) {
-        // console.warn("renderSkeletonLoader: targetListElement not found.");
         return;
     }
     targetListElement.innerHTML = "";
@@ -276,7 +269,6 @@ async function handlePageChange(newPage) {
         .map(job => job.appId);
 
     if (idsToLoadForPage.length > 0) {
-        // console.log(`[Pagination] Loading data for ${idsToLoadForPage.length} jobs on page ${currentPage} for tab ${activeTabId}...`);
         const onDemandBatchSize = Math.min(idsToLoadForPage.length, 10);
         const onDemandDelay = 1000;
         const newlyLoadedJobResults = await fetchIndividualJobsInBatches(idsToLoadForPage, onDemandBatchSize, onDemandDelay, "On-Demand Page Load");
@@ -284,7 +276,6 @@ async function handlePageChange(newPage) {
             const indexInAllJobs = allJobResults.findIndex(job => job.appId === loadedResult.appId);
             if (indexInAllJobs !== -1) allJobResults[indexInAllJobs] = loadedResult;
         });
-        // console.log(`[Pagination] Data loaded for page ${currentPage} for tab ${activeTabId}.`);
     }
     renderActiveTabContent();
 }
@@ -403,19 +394,18 @@ function renderJobs(jobsToDisplayAfterPrimaryFilter, webflowMemberId, targetList
                     let dateA = dateStrA ? new Date(dateStrA) : null;
                     let dateB = dateStrB ? new Date(dateStrB) : null;
 
-                    if (dateA && isNaN(dateA.getTime())) dateA = null; // Ungültiges Datum zu null machen
+                    if (dateA && isNaN(dateA.getTime())) dateA = null;
                     if (dateB && isNaN(dateB.getTime())) dateB = null;
 
-                    // Null-Werte ans Ende (asc) oder Anfang (desc) sortieren
-                    if (dateA === null && dateB === null) valA = 0; // Beide null, gleichwertig
+                    if (dateA === null && dateB === null) valA = 0;
                     else if (dateA === null) valA = currentSortCriteria.direction === 'asc' ? Infinity : -Infinity;
-                    else if (dateB === null) valB = currentSortCriteria.direction === 'asc' ? Infinity : -Infinity;
+                    else if (dateB === null) valB = currentSortCriteria.direction === 'asc' ? Infinity : -Infinity; // Fehler hier: sollte valA und valB sein
                     else { valA = dateA.getTime(); valB = dateB.getTime(); }
                     break;
                 case 'budget':
                     valA = parseFloat(String(jobDataA['job-payment'] || '0').replace(/[^0-9.-]+/g, ""));
                     valB = parseFloat(String(jobDataB['job-payment'] || '0').replace(/[^0-9.-]+/g, ""));
-                    if (isNaN(valA)) valA = currentSortCriteria.direction === 'asc' ? Infinity : -Infinity; // NaN ans Ende (asc) / Anfang (desc)
+                    if (isNaN(valA)) valA = currentSortCriteria.direction === 'asc' ? Infinity : -Infinity;
                     if (isNaN(valB)) valB = currentSortCriteria.direction === 'asc' ? Infinity : -Infinity;
                     break;
                 default: return 0;
@@ -435,7 +425,7 @@ function renderJobs(jobsToDisplayAfterPrimaryFilter, webflowMemberId, targetList
     const endIndex = startIndex + JOBS_PER_PAGE;
     const jobsToShowOnPage = currentFilteredList.slice(startIndex, endIndex);
 
-    appContainer.innerHTML = ""; // Skeletons/vorherigen Inhalt löschen
+    appContainer.innerHTML = "";
 
     if (jobsToShowOnPage.length === 0) {
         const noJobsMessage = document.createElement('p');
@@ -548,7 +538,7 @@ function createPaginationContainer() {
         container = document.createElement("div");
         container.id = "pagination-controls-container";
         container.className = "db-table-pagination";
-        const tabsWrapper = document.querySelector('.tabs-content'); // Annahme: Wrapper für Tab-Inhalte
+        const tabsWrapper = document.querySelector('.tabs-content');
         if (tabsWrapper && tabsWrapper.parentNode) {
             tabsWrapper.parentNode.insertBefore(container, tabsWrapper.nextSibling);
         } else {
@@ -586,47 +576,13 @@ function renderActiveTabContent() {
     }, 50);
 }
 
-function updateLoadingStatusMessage(message, type = "info") {
-    let statusEl = document.getElementById('background-loading-status');
-    if (!statusEl) {
-        statusEl = document.createElement('div');
-        statusEl.id = 'background-loading-status';
-        Object.assign(statusEl.style, {
-            position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-            padding: '10px 15px', borderRadius: '5px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-            fontSize: '14px', zIndex: '1001', transition: 'opacity 0.5s ease-in-out, display 0.5s ease-in-out'
-        });
-        document.body.appendChild(statusEl);
-    }
-
-    if (message) {
-        statusEl.textContent = message;
-        statusEl.style.backgroundColor = type === "error" ? "#ffdddd" : (type === "success" ? "#ddffdd" : "#e9ecef");
-        statusEl.style.color = type === "error" ? "#d8000c" : (type === "success" ? "#270" : "#495057");
-        statusEl.style.display = 'block';
-        statusEl.style.opacity = '1';
-        if (type === "success" || type === "error" || (type === "info" && message.includes("geladen"))) {
-            setTimeout(() => {
-                statusEl.style.opacity = '0';
-                setTimeout(() => { if (statusEl.style.opacity === '0') statusEl.style.display = 'none'; }, 500);
-            }, 3000);
-        }
-    } else {
-        statusEl.style.opacity = '0';
-        setTimeout(() => { if (statusEl.style.opacity === '0') statusEl.style.display = 'none'; }, 500);
-    }
-}
-
 async function fetchAllRemainingJobDataInBackground(remainingAppIds) {
     if (remainingAppIds.length === 0) {
         isBackgroundLoadingComplete = true;
-        // console.log("Keine weiteren Jobs im Hintergrund zu laden.");
-        // updateLoadingStatusMessage("Alle Jobs geladen.", "success"); // Wird schon in initializeUserApplications behandelt
         renderActiveTabContent();
         return;
     }
     // console.log(`[Background Load] Starting for ${remainingAppIds.length} remaining jobs.`);
-    updateLoadingStatusMessage(`Lade ${remainingAppIds.length} weitere Jobdetails im Hintergrund...`);
 
     const backgroundBatchSize = 5;
     const backgroundDelay = 5000;
@@ -638,8 +594,7 @@ async function fetchAllRemainingJobDataInBackground(remainingAppIds) {
     });
 
     isBackgroundLoadingComplete = true;
-    // console.log(`[Background Load] Complete. Total jobs in allJobResults: ${allJobResults.length}.`);
-    updateLoadingStatusMessage("Alle Jobdetails erfolgreich im Hintergrund geladen.", "success");
+    // console.log(`[Background Load] Complete.`);
     renderActiveTabContent();
 }
 
@@ -650,8 +605,7 @@ async function initializeUserApplications() {
 
     if (itemCountElement) itemCountElement.textContent = "...";
     if (initialListElement) renderSkeletonLoader(initialListElement, JOBS_PER_PAGE);
-    updateLoadingStatusMessage("Lade Benutzerdaten...");
-
+    
     try {
         if (window.$memberstackDom && typeof window.$memberstackDom.getCurrentMember === 'function') {
             const member = await window.$memberstackDom.getCurrentMember();
@@ -660,14 +614,11 @@ async function initializeUserApplications() {
 
         let applicationsFromUser = [];
         if (currentWebflowMemberId) {
-            // console.log("[User Data] Fetching fresh application list for member:", currentWebflowMemberId);
             const userData = await fetchCollectionItem(USER_COLLECTION_ID, currentWebflowMemberId); // Immer frisch
             const userFieldData = userData?.item?.fieldData || userData?.fieldData;
             applicationsFromUser = userFieldData?.["abgeschlossene-bewerbungen"] || [];
-            // console.log(`[User Data] Found ${applicationsFromUser.length} applications from API.`);
         } else {
             console.warn("Keine Webflow Member ID gefunden.");
-            updateLoadingStatusMessage("Kein Benutzer angemeldet.", "info");
         }
 
         if (itemCountElement) itemCountElement.textContent = applicationsFromUser.length;
@@ -685,7 +636,6 @@ async function initializeUserApplications() {
         renderPaginationControls(paginationContainer, 1, totalPagesInitial);
 
         if (applicationsFromUser.length > 0) {
-            updateLoadingStatusMessage(`Lade initiale Jobdetails (bis zu ${Math.min(applicationsFromUser.length, INITIAL_LOAD_JOB_COUNT)} Jobs)...`);
             let appIdsForInitialLoad = [];
             let remainingAppIdsForBackground = [];
 
@@ -708,7 +658,6 @@ async function initializeUserApplications() {
                 remainingAppIdsForBackground = applicationsFromUser.slice(INITIAL_LOAD_JOB_COUNT);
             }
             
-            // console.log(`Starting initial fast load for details of ${appIdsForInitialLoad.length} jobs.`);
             const initialFastLoadBatchSize = 10;
             const initialFastLoadDelay = 1000;
             const initiallyLoadedResults = await fetchIndividualJobsInBatches(appIdsForInitialLoad, initialFastLoadBatchSize, initialFastLoadDelay, "Initial Fast Load");
@@ -718,8 +667,6 @@ async function initializeUserApplications() {
                 if (index !== -1) allJobResults[index] = loadedResult;
             });
 
-            // console.log(`Initial load of details complete. Rendering active tab.`);
-            updateLoadingStatusMessage("Erste Jobdetails geladen, weitere folgen...", "info");
             currentPage = 1;
             renderActiveTabContent();
 
@@ -727,8 +674,6 @@ async function initializeUserApplications() {
                 fetchAllRemainingJobDataInBackground(remainingAppIdsForBackground);
             } else {
                 isBackgroundLoadingComplete = true;
-                updateLoadingStatusMessage("Alle Jobdetails geladen.", "success");
-                // console.log("All job details loaded initially. No background load needed.");
             }
         } else {
             isBackgroundLoadingComplete = true;
@@ -737,12 +682,10 @@ async function initializeUserApplications() {
             noJobsMessage.textContent = "Keine abgeschlossenen Bewerbungen gefunden.";
             noJobsMessage.classList.add('job-entry', 'visible', 'no-jobs-message');
             if (initialListElement) initialListElement.appendChild(noJobsMessage);
-            updateLoadingStatusMessage("Keine Bewerbungen gefunden.", "info");
             if (paginationContainer) paginationContainer.innerHTML = "";
         }
     } catch (error) {
         console.error("❌ Schwerwiegender Fehler beim Laden der Bewerbungen:", error);
-        updateLoadingStatusMessage(`Fehler: ${error.message}`, "error");
         isBackgroundLoadingComplete = true;
         if (initialListElement) initialListElement.innerHTML = `<p class="job-entry visible no-jobs-message">❌ Es ist ein Fehler aufgetreten: ${error.message}.</p>`;
         if (itemCountElement) itemCountElement.textContent = "0";
@@ -816,8 +759,6 @@ function setupEventListeners() {
                 const idsToLoadForNewTabPageOne = potentialJobsForNewTab.slice(0, JOBS_PER_PAGE)
                     .filter(job => !job.jobData.isFullyLoaded && !job.jobData.error).map(job => job.appId);
                 if (idsToLoadForNewTabPageOne.length > 0 && !isBackgroundLoadingComplete) {
-                    // console.log(`[Tab Switch] Pre-loading ${idsToLoadForNewTabPageOne.length} jobs for new tab '${activeTabId}' page 1.`);
-                    updateLoadingStatusMessage(`Lade Jobs für Tab '${activeTabConfig.name}'...`);
                     const onDemandBatchSize = Math.min(idsToLoadForNewTabPageOne.length, 10);
                     const onDemandDelay = 1000;
                     const newlyLoaded = await fetchIndividualJobsInBatches(idsToLoadForNewTabPageOne, onDemandBatchSize, onDemandDelay, "Tab Switch Pre-load");
@@ -825,7 +766,6 @@ function setupEventListeners() {
                         const indexInAllJobs = allJobResults.findIndex(job => job.appId === loadedResult.appId);
                         if (indexInAllJobs !== -1) allJobResults[indexInAllJobs] = loadedResult;
                     });
-                    updateLoadingStatusMessage(`Jobs für '${activeTabConfig.name}' geladen.`, "info"); // Info, da ggf. noch Hintergrundladung läuft
                 }
             }
             renderActiveTabContent();
